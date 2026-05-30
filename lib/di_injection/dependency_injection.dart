@@ -1,11 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
-import 'package:new_arch/features/auth/data/datasource/profile_remote_datasource.dart';
-import 'package:new_arch/features/auth/data/repository_impl/profile_repository_impl.dart';
-import 'package:new_arch/features/auth/domain/repositories/profile_repository.dart';
-import 'package:new_arch/features/auth/domain/usecases/register_usecase.dart';
-import 'package:new_arch/features/auth/domain/usecases/update_profile_usecase.dart';
-import 'package:new_arch/features/auth/presentation/bloc/profile_bloc.dart';
+import 'package:seshlly/features/auth/data/datasource/profile_remote_datasource.dart';
+import 'package:seshlly/features/auth/data/repository_impl/profile_repository_impl.dart';
+import 'package:seshlly/features/auth/domain/repositories/profile_repository.dart';
+import 'package:seshlly/features/auth/domain/usecases/register_usecase.dart';
+import 'package:seshlly/features/auth/domain/usecases/update_profile_usecase.dart';
+import 'package:seshlly/features/auth/presentation/bloc/profile_bloc.dart';
 
 import '../core/api/dio_client.dart';
 import '../core/network/connectivity_service.dart';

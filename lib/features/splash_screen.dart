@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import 'package:new_arch/routes/app_router.dart';
+import 'package:seshlly/routes/app_router.dart';
 
 import '../core/services/secure_storage_service.dart';
 import '../core/services/storage_service.dart';

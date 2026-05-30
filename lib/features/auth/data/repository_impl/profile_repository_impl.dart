@@ -1,7 +1,7 @@
-import 'package:new_arch/core/services/secure_storage_service.dart';
-import 'package:new_arch/features/auth/data/datasource/profile_remote_datasource.dart';
-import 'package:new_arch/features/auth/domain/entities/register_response.dart';
-import 'package:new_arch/features/auth/domain/repositories/profile_repository.dart';
+import 'package:seshlly/core/services/secure_storage_service.dart';
+import 'package:seshlly/features/auth/data/datasource/profile_remote_datasource.dart';
+import 'package:seshlly/features/auth/domain/entities/register_response.dart';
+import 'package:seshlly/features/auth/domain/repositories/profile_repository.dart';
 
 import '../../../../core/api/base_repository.dart';
 import '../../../../core/errors/app_exception.dart';

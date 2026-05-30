@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:new_arch/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:new_arch/routes/app_router.dart';
+import 'package:seshlly/routes/app_router.dart';
 
 import 'core/theme/app_theme.dart';
 import 'di_injection/dependency_injection.dart';
+import 'features/auth/presentation/bloc/auth_bloc.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

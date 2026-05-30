@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:new_arch/core/services/storage_service.dart';
-import 'package:new_arch/features/auth/data/models/upload_profile_request.dart';
-import 'package:new_arch/features/auth/presentation/bloc/profile_bloc.dart';
-import 'package:new_arch/features/auth/presentation/bloc/profile_event.dart';
-import 'package:new_arch/features/auth/presentation/bloc/profile_state.dart';
+import 'package:seshlly/core/services/storage_service.dart';
+import 'package:seshlly/features/auth/data/models/upload_profile_request.dart';
+import 'package:seshlly/features/auth/presentation/bloc/profile_bloc.dart';
+import 'package:seshlly/features/auth/presentation/bloc/profile_event.dart';
+import 'package:seshlly/features/auth/presentation/bloc/profile_state.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';

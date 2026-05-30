@@ -1,4 +1,4 @@
-import 'package:new_arch/features/auth/domain/entities/register_response.dart';
+import 'package:seshlly/features/auth/domain/entities/register_response.dart';
 
 import '../../../../core/api/base_state.dart';
 import '../../../../core/errors/failure.dart';

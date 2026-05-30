@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:new_arch/features/auth/data/models/register_request.dart';
+import 'package:seshlly/features/auth/data/models/register_request.dart';
 
 abstract class AuthEvent extends Equatable {
   const AuthEvent();

@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:new_arch/features/auth/data/models/upload_profile_request.dart';
+import 'package:seshlly/features/auth/data/models/upload_profile_request.dart';
 
 abstract class ProfileEvent extends Equatable {
   const ProfileEvent();

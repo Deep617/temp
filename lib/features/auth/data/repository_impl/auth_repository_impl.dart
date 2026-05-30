@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:new_arch/core/services/secure_storage_service.dart';
-import 'package:new_arch/features/auth/data/models/register_request.dart';
-import 'package:new_arch/features/auth/domain/entities/register_response.dart';
+import 'package:seshlly/core/services/secure_storage_service.dart';
+import 'package:seshlly/features/auth/data/models/register_request.dart';
+import 'package:seshlly/features/auth/domain/entities/register_response.dart';
 
 import '../../../../core/api/base_repository.dart';
 import '../../../../core/errors/app_exception.dart';

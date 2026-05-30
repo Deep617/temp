@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:new_arch/features/auth/data/models/register_request.dart';
+import 'package:seshlly/features/auth/data/models/register_request.dart';
 
 import '../../../../../core/api/api_endpoints.dart';
 import '../../../../../core/api/dio_client.dart';

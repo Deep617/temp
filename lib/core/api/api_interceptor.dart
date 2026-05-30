@@ -3,7 +3,7 @@ import 'dart:developer';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:new_arch/core/services/secure_storage_service.dart';
+import 'package:seshlly/core/services/secure_storage_service.dart';
 
 import '../../di_injection/dependency_injection.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
