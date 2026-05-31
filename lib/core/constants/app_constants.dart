@@ -73,7 +73,9 @@ class AppConstants {
     'first_checkin':    20,
   };
 
-  // Level thresholds
+
+
+  // Level thresholds  new
   static const List<int> levelThresholds = [0,100,300,600,1000,1500,2200,3000,4000,5500];
   static const List<String> levelNames   = ['Newbie','Rookie','Regular','Athlete','Pro','Elite','Champion','Legend','Icon','GOAT'];
 
