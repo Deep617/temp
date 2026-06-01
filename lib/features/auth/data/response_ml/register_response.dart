@@ -37,8 +37,8 @@ class User {
   String? email;
   String? firstName;
   String? lastName;
-  dynamic username;
-  dynamic avatarUrl;
+  String? username;
+  String? avatarUrl;
   String? phone;
   dynamic bio;
   dynamic country;
@@ -57,9 +57,9 @@ class User {
   List<dynamic>? goals;
   dynamic primaryGym;
   int? xpTotal;
-  int? level;
+  int level;
   int? chatTokens;
-  int? trustScore;
+  double trustScore;
   bool? idVerified;
   bool? isInfluencer;
   dynamic instagramHandle;
@@ -70,41 +70,41 @@ class User {
   int? sessionCount;
 
   User({
-    this.id,
-    this.email,
-    this.firstName,
-    this.lastName,
-    this.username,
+    required this.id,
+    required this.email,
+    required this.firstName,
+    required this.lastName,
     this.avatarUrl,
     this.phone,
+    this.username,
     this.bio,
     this.country,
     this.city,
+    this.status = 'ACTIVE',
+    this.emailVerified = false,
+    this.isBanned = false,
+    this.loginCount = 0,
+    this.lastLoginAt,
+    required this.createdAt,
+    this.primaryActivity,
+    this.activities = const [],
+    this.experienceLevel,
+    this.goals = const [],
+    this.primaryGym,
     this.latitude,
     this.longitude,
-    this.status,
-    this.emailVerified,
-    this.isBanned,
-    this.loginCount,
-    this.lastLoginAt,
-    this.createdAt,
-    this.primaryActivity,
-    this.activities,
-    this.experienceLevel,
-    this.goals,
-    this.primaryGym,
-    this.xpTotal,
-    this.level,
-    this.chatTokens,
-    this.trustScore,
-    this.idVerified,
-    this.isInfluencer,
+    this.xpTotal = 0,
+    this.level = 1,
+    this.chatTokens = 20,
+    this.isInfluencer = false,
     this.instagramHandle,
     this.instagramFollowers,
-    this.subscriptionPlan,
+    this.trustScore = 50.0,
+    this.idVerified = false,
+    this.buddyCount = 0,
+    this.sessionCount = 0,
+    this.subscriptionPlan = 'free',
     this.subscriptionExpiry,
-    this.buddyCount,
-    this.sessionCount,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -182,4 +182,14 @@ class User {
     "buddyCount": buddyCount,
     "sessionCount": sessionCount,
   };
+
+  String get fullName => '$firstName $lastName';
+  String? get displayHandle => username != null ? '@$username' : email;
+  bool get isPro     => subscriptionPlan == 'pro'   || subscriptionPlan == 'elite';
+  bool get isElite   => subscriptionPlan == 'elite';
+  bool get isActive  => subscriptionExpiry == null || subscriptionExpiry!.isAfter(DateTime.now());
+  String get levelName {
+    const names = ['Newbie','Rookie','Regular','Athlete','Pro','Elite','Champion','Legend','Icon','GOAT'];
+    return level <= names.length ? names[level - 1] : 'Legend';
+  }
 }

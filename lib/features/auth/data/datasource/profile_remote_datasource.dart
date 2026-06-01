@@ -1,9 +1,8 @@
 import 'package:dio/dio.dart';
-import 'package:seshlly/features/auth/data/models/register_request.dart';
 
 import '../../../../../core/api/api_endpoints.dart';
 import '../../../../../core/api/dio_client.dart';
-import '../models/upload_profile_request.dart';
+import '../request_ml/upload_profile_request.dart';
 
 class ProfileRemoteDatasource {
   final DioClient client;

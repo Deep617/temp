@@ -1,7 +1,5 @@
-import 'package:seshlly/features/auth/data/models/upload_profile_request.dart';
-
-import '../../data/models/register_request.dart';
-import '../entities/register_response.dart';
+import '../../data/request_ml/upload_profile_request.dart';
+import '../../data/response_ml/register_response.dart';
 
 abstract class ProfileRepository {
   ProfileRepository();

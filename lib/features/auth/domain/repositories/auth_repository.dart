@@ -1,8 +1,9 @@
 import 'package:dio/dio.dart';
-import 'package:seshlly/features/auth/data/models/register_request.dart';
 
-import '../../data/models/login_request.dart';
-import '../entities/register_response.dart';
+import '../../data/request_ml/login_request.dart';
+import '../../data/request_ml/register_request.dart';
+import '../../data/response_ml/register_response.dart';
+
 
 abstract class AuthRepository {
   AuthRepository();
@@ -10,6 +11,8 @@ abstract class AuthRepository {
   Future<RegisterResponse> login(LoginRequest request);
 
   Future<RegisterResponse> register(RegisterRequest request);
+
+  Future<Response> logout();
 
   Future<Response> refreshToken();
 }

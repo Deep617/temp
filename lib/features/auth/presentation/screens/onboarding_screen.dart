@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:seshlly/core/services/storage_service.dart';
-import 'package:seshlly/features/auth/data/models/upload_profile_request.dart';
 import 'package:seshlly/features/auth/presentation/bloc/profile_bloc.dart';
 import 'package:seshlly/features/auth/presentation/bloc/profile_event.dart';
 import 'package:seshlly/features/auth/presentation/bloc/profile_state.dart';
@@ -13,6 +12,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/common/common_widgets.dart';
 import '../../../../core/widgets/error_widget.dart';
 import '../../../../di_injection/dependency_injection.dart';
+import '../../data/request_ml/upload_profile_request.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});

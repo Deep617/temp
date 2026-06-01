@@ -1,11 +1,12 @@
-import 'package:seshlly/core/services/secure_storage_service.dart';
-import 'package:seshlly/features/auth/data/datasource/profile_remote_datasource.dart';
-import 'package:seshlly/features/auth/domain/entities/register_response.dart';
-import 'package:seshlly/features/auth/domain/repositories/profile_repository.dart';
+
 
 import '../../../../core/api/base_repository.dart';
 import '../../../../core/errors/app_exception.dart';
-import '../models/upload_profile_request.dart';
+import '../../../../core/services/secure_storage_service.dart';
+import '../../domain/repositories/profile_repository.dart';
+import '../datasource/profile_remote_datasource.dart';
+import '../request_ml/upload_profile_request.dart';
+import '../response_ml/register_response.dart';
 
 class ProfileRepositoryImpl extends BaseRepository
     implements ProfileRepository {

@@ -1,13 +1,13 @@
 import 'package:dio/dio.dart';
 import 'package:seshlly/core/services/secure_storage_service.dart';
-import 'package:seshlly/features/auth/data/models/register_request.dart';
-import 'package:seshlly/features/auth/domain/entities/register_response.dart';
 
 import '../../../../core/api/base_repository.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasource/auth_remote_datasource.dart';
-import '../models/login_request.dart';
+import '../request_ml/login_request.dart';
+import '../request_ml/register_request.dart';
+import '../response_ml/register_response.dart';
 
 class AuthRepositoryImpl extends BaseRepository implements AuthRepository {
   final AuthRemoteDataSource remote;
@@ -61,5 +61,17 @@ class AuthRepositoryImpl extends BaseRepository implements AuthRepository {
     await secureStorageService.saveAccessToken(newAt);
     await secureStorageService.saveRefreshToken(newRt);
     return response;
+  }
+
+  @override
+  Future<Response> logout() async {
+    try {
+      return await safeApiCall(() async {
+        final response = await remote.logout();
+        return response;
+      });
+    } catch (e) {
+      throw AppException.handle(e);
+    }
   }
 }

@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:seshlly/features/auth/data/models/register_request.dart';
 
-import '../entities/register_response.dart';
+import '../../data/request_ml/register_request.dart';
+import '../../data/response_ml/register_response.dart';
 import '../repositories/auth_repository.dart';
 
 class RegisterUseCase {

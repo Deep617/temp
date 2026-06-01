@@ -1,7 +1,7 @@
-import 'package:seshlly/features/auth/domain/entities/register_response.dart';
 
 import '../../../../core/api/base_state.dart';
 import '../../../../core/errors/failure.dart';
+import '../../data/response_ml/register_response.dart';
 
 class LoginState extends BaseState {
   final RegisterResponse? loginResponse;

@@ -9,6 +9,8 @@ import 'package:seshlly/features/splash_screen.dart';
 import '../di_injection/dependency_injection.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
+import '../features/dashboard/home_screen.dart';
+import '../features/dashboard/profile/profile_screen.dart';
 
 class AppRouter {
   static final router = GoRouter(
@@ -59,6 +61,18 @@ class AppRouter {
           );
         },
       ),
+
+      ShellRoute(
+        builder: (context, state, child) => HomeScreen(child: child),
+        routes: [
+         /* GoRoute(path: AppRoutesPath.home,     builder: (_, __) => const DiscoverScreen()),
+          GoRoute(path: AppRoutesPath.discover, builder: (_, __) => const DiscoverScreen()),
+          GoRoute(path: AppRoutesPath.chats,    builder: (_, __) => const ChatsListScreen()),
+          GoRoute(path: AppRoutesPath.sessions, builder: (_, __) => const SessionsScreen()),*/
+          GoRoute(path: AppRoutesPath.profile,  builder: (_, __) => const ProfileScreen()),
+        ],
+      ),
+
       /*     GoRoute(
         path: '/home',
         builder: (context, state) => const HomeScreen(),

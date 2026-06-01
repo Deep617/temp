@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:seshlly/features/auth/data/models/register_request.dart';
+
+import '../../data/request_ml/register_request.dart';
 
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
@@ -21,8 +22,9 @@ class LoginSubmitted extends AuthEvent {
 class RegisterSubmitted extends AuthEvent {
   RegisterRequest registerRequest;
 
-  RegisterSubmitted({
-    required this.registerRequest,
+  RegisterSubmitted({required this.registerRequest});
+}
 
-  });
+class LogoutSubmitted extends AuthEvent {
+  const LogoutSubmitted();
 }

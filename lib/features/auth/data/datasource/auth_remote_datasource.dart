@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
-import 'package:seshlly/features/auth/data/models/register_request.dart';
 
 import '../../../../../core/api/api_endpoints.dart';
 import '../../../../../core/api/dio_client.dart';
-import '../models/login_request.dart';
+import '../request_ml/login_request.dart';
+import '../request_ml/register_request.dart';
 
 class AuthRemoteDataSource {
   final DioClient client;
@@ -32,6 +32,12 @@ class AuthRemoteDataSource {
       ApiEndpoints.refreshToken,
       data: {'refreshToken': refreshToken},
     );
+
+    return response;
+  }
+
+  Future<Response> logout() async {
+    final response = await client.post('/auth/logout');
 
     return response;
   }

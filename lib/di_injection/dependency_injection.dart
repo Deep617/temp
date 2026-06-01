@@ -3,6 +3,7 @@ import 'package:get_it/get_it.dart';
 import 'package:seshlly/features/auth/data/datasource/profile_remote_datasource.dart';
 import 'package:seshlly/features/auth/data/repository_impl/profile_repository_impl.dart';
 import 'package:seshlly/features/auth/domain/repositories/profile_repository.dart';
+import 'package:seshlly/features/auth/domain/usecases/logout_usecase.dart';
 import 'package:seshlly/features/auth/domain/usecases/register_usecase.dart';
 import 'package:seshlly/features/auth/domain/usecases/update_profile_usecase.dart';
 import 'package:seshlly/features/auth/presentation/bloc/profile_bloc.dart';
@@ -41,7 +42,9 @@ Future<void> setupDependencies() async {
   );
   getIt.registerLazySingleton(() => LoginUseCase(getIt()));
   getIt.registerLazySingleton(() => RegisterUseCase(getIt()));
-  getIt.registerFactory<AuthBloc>(() => AuthBloc(getIt(), getIt(), getIt()));
+  getIt.registerFactory<AuthBloc>(
+    () => AuthBloc(getIt(), getIt(), getIt(), getIt()),
+  );
 
   /// Profile
   getIt.registerLazySingleton<ProfileRemoteDatasource>(
@@ -53,4 +56,5 @@ Future<void> setupDependencies() async {
 
   getIt.registerFactory<ProfileBloc>(() => ProfileBloc(getIt(), getIt()));
   getIt.registerLazySingleton(() => UpdateProfileUseCase(getIt()));
+  getIt.registerLazySingleton(() => LogoutUseCase(getIt()));
 }
