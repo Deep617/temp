@@ -60,4 +60,17 @@ class DioClient {
     }
     throw Exception((response.statusMessage ?? 'Request failed',));
   }
+
+  Future<Response> delete(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    Response response = await dio.delete(path, queryParameters: queryParameters);
+    if (response.statusCode != null &&
+        response.statusCode! >= 200 &&
+        response.statusCode! < 300) {
+      return response;
+    }
+    throw Exception((response.statusMessage ?? 'Request failed',));
+  }
 }

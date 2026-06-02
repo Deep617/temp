@@ -2,8 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_event.dart';
 import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_state.dart';
+
 import '../../../../../core/api/base_state.dart';
-import '../../../../../core/errors/app_exception.dart';
+import '../../../../../core/errors/app_error.dart';
 import '../../../../../core/errors/failure.dart';
 import '../../../../../core/services/secure_storage_service.dart';
 import '../../../../auth/data/response_ml/register_response.dart';
@@ -42,7 +43,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           updateProfileResponse: updateProfileResponse,
         ),
       );
-    } on AppException catch (e) {
+    } on AppError catch (e) {
       final apiFailure = ApiFailure(
         code: e.statusCode,
         message: e.message,
@@ -71,7 +72,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           updateProfileResponse: updateProfileResponse,
         ),
       );
-    } on AppException catch (e) {
+    } on AppError catch (e) {
       final apiFailure = ApiFailure(
         code: e.statusCode,
         message: e.message,

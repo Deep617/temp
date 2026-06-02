@@ -41,9 +41,10 @@ class MyApp extends StatelessWidget {
         routerConfig: AppRouter.router,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(
-            textScaler: MediaQuery.of(
-              context,
-            ).textScaler.clamp(minScaleFactor: 1.0, maxScaleFactor: 1.5),
+            textScaler: TextScaler.linear(1.0).clamp(
+              minScaleFactor: 1.0,
+              maxScaleFactor: 1.5,
+            ),
           ),
           child: child!,
         ),

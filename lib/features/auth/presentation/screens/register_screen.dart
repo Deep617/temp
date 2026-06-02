@@ -76,7 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: BlocConsumer<AuthBloc, LoginState>(
             listener: (context, state) {
               if (state.isSuccess) {
-                context.push(AppRoutesPath.onboarding);
+                context.push(AppRoutes.onboarding);
               } // Router handles redirect to onboarding
               // on success
             },
@@ -267,8 +267,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         style: AppTextStyles.bodySM(),
                       ),
                       GestureDetector(
-                        onTap: () =>
-                            context.pushReplacement(AppRoutesPath.login),
+                        onTap: () => context.pushReplacement(AppRoutes.login),
                         child: Text(
                           'Sign In',
                           style: AppTextStyles.bodySM(

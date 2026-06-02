@@ -25,12 +25,15 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _showPass = false;
+  bool isOnBoarded = false;
 
   @override
-  void initState() {
+  Future<void> initState() async {
     super.initState();
     print("LoginScreen initState");
+    isOnBoarded = await storageService.getOnboarding();
   }
+
   @override
   void dispose() {
     _emailCtrl.dispose();
@@ -50,14 +53,23 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, LoginState>(
-      listener: (context, state) async {
+      listener: (context, state) {
         // Navigation handled by GoRouter redirect — nothing to do here.
         // Errors are surfaced via BlocBuilder below.
         if (state.isSuccess) {
-          bool? isOnBoarded = await storageService.getOnboarding();
           if (isOnBoarded) {
-            context.push(AppRoutesPath.onboarding);
+            context.push(AppRoutes.home);
+          } else {
+            context.push(AppRoutes.onboarding);
           }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Login Successfully 💪',
+                style: AppTextStyles.body(),
+              ),
+            ),
+          );
         }
       },
       child: Scaffold(
@@ -200,7 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           GestureDetector(
                             onTap: () =>
-                                context.pushReplacement(AppRoutesPath.register),
+                                context.pushReplacement(AppRoutes.register),
                             child: Text(
                               'Sign Up',
                               style: AppTextStyles.bodySM(

@@ -59,7 +59,7 @@ class User {
   int? xpTotal;
   int level;
   int? chatTokens;
-  double trustScore;
+  int trustScore;
   bool? idVerified;
   bool? isInfluencer;
   dynamic instagramHandle;
@@ -99,7 +99,7 @@ class User {
     this.isInfluencer = false,
     this.instagramHandle,
     this.instagramFollowers,
-    this.trustScore = 50.0,
+    this.trustScore = 50,
     this.idVerified = false,
     this.buddyCount = 0,
     this.sessionCount = 0,

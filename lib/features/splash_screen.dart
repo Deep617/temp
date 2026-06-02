@@ -36,19 +36,19 @@ class _SplashScreenState extends State<SplashScreen> {
     if (token != null && token.isNotEmpty && isOnboarded) {
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
-          //  context.go(AppRoutesPath.welcome);
+          context.go(AppRoutes.home);
         }
       });
     } else if (token != null && token.isNotEmpty && !isOnboarded) {
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
-          context.go(AppRoutesPath.onboarding);
+          context.go(AppRoutes.home);
         }
       });
     } else {
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
-          context.go(AppRoutesPath.welcome);
+          context.go(AppRoutes.welcome);
         }
       });
     }

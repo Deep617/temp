@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:seshlly/features/auth/domain/usecases/logout_usecase.dart';
 
 import '../../../../core/api/base_state.dart';
-import '../../../../core/errors/app_exception.dart';
+import '../../../../core/errors/app_error.dart';
 import '../../../../core/errors/failure.dart';
 import '../../../../core/services/secure_storage_service.dart';
 import '../../data/request_ml/login_request.dart';
@@ -52,7 +52,7 @@ class AuthBloc extends Bloc<AuthEvent, LoginState> {
       emit(
         state.copyWith(status: ApiStatus.success, loginResponse: loginResponse),
       );
-    } on AppException catch (e) {
+    } on AppError catch (e) {
       final apiFailure = ApiFailure(
         code: e.statusCode,
         message: e.message,
@@ -84,7 +84,7 @@ class AuthBloc extends Bloc<AuthEvent, LoginState> {
           registerResponse: registerResponse,
         ),
       );
-    } on AppException catch (e) {
+    } on AppError catch (e) {
       final apiFailure = ApiFailure(
         code: e.statusCode,
         message: e.message,
@@ -102,16 +102,16 @@ class AuthBloc extends Bloc<AuthEvent, LoginState> {
     try {
       final Response logoutResponse = await _logoutUseCase.logoutPerform();
 
-        if(logoutResponse.statusCode == 200){
-          await _sStorageService.clearStorage();
-        }
-/*      emit(
+      if (logoutResponse.statusCode == 200) {
+        await _sStorageService.clearStorage();
+      }
+      /*      emit(
         state.copyWith(
           status: ApiStatus.success,
           registerResponse: registerResponse,
         ),
       );*/
-    } on AppException catch (e) {
+    } on AppError catch (e) {
       final apiFailure = ApiFailure(
         code: e.statusCode,
         message: e.message,

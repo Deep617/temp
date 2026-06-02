@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:seshlly/features/dashboard/session/presentation/bloc/session_bloc.dart';
+import 'package:seshlly/features/dashboard/session/presentation/bloc/session_event.dart';
 import 'package:seshlly/routes/app_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../di_injection/dependency_injection.dart';
-import 'profile/domain/repositories/profile_repository.dart';
+import 'discover/presentation/bloc/discover_bloc.dart';
+import 'discover/presentation/bloc/discover_event.dart';
 import 'profile/presentation/bloc/profile_bloc.dart';
 import 'profile/presentation/bloc/profile_event.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.child});
+
   final Widget child;
 
   @override
@@ -18,21 +22,24 @@ class HomeScreen extends StatelessWidget {
     // Provide feature BLoCs scoped to the shell route lifetime
     return MultiBlocProvider(
       providers: [
-       /* BlocProvider(
-          create: (ctx) => DiscoverBloc(
-            discoverRepository: ctx.read<DiscoverRepository>(),
-          )..add(const DiscoverProfilesLoaded()),
+        BlocProvider(
+          create: (ctx) =>
+              getIt<DiscoverBloc>()..add(const DiscoverProfilesLoaded()),
         ),
         BlocProvider(
-          create: (ctx) => SessionBloc(
-            sessionRepository: ctx.read<SessionRepository>(),
-          )..add(const SessionsLoaded()),
+          create: (ctx) => getIt<SessionBloc>()..add(const SessionsLoaded()),
         ),
-        BlocProvider(
+        /*  BlocProvider(
           create: (ctx) => ChatBloc(
             chatRepository: ctx.read<ChatRepository>(),
           )..add(const ChatListLoaded()),
         ),*/
+        BlocProvider(
+          create: (ctx) => getIt<ProfileBloc>(), //..add(const ProfileLoaded()),
+        ),
+        BlocProvider(
+          create: (ctx) => getIt<ProfileBloc>(), //..add(const ProfileLoaded()),
+        ),
         BlocProvider(
           create: (ctx) => getIt<ProfileBloc>()..add(const ProfileLoaded()),
         ),
@@ -44,18 +51,19 @@ class HomeScreen extends StatelessWidget {
 
 class _HomeShell extends StatelessWidget {
   const _HomeShell({required this.child});
+
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-   // final unread = context.watch<NotificationBloc>().state.unreadCount;
+    // final unread = context.watch<NotificationBloc>().state.unreadCount;
     final unread = 3;
     final location = GoRouterState.of(context).uri.toString();
 
     int currentIndex = 0;
-    if (location.startsWith('/chats'))    currentIndex = 1;
+    if (location.startsWith('/chats')) currentIndex = 1;
     if (location.startsWith('/sessions')) currentIndex = 2;
-    if (location.startsWith('/profile'))  currentIndex = 3;
+    if (location.startsWith('/profile')) currentIndex = 3;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -68,28 +76,45 @@ class _HomeShell extends StatelessWidget {
           currentIndex: currentIndex,
           onTap: (i) {
             switch (i) {
-              case 0: context.go(AppRoutesPath.home);     break;
-              case 1: context.go(AppRoutesPath.chats);    break;
-              case 2: context.go(AppRoutesPath.sessions); break;
-              case 3: context.go(AppRoutesPath.profile);  break;
+              case 0:
+                context.go(AppRoutes.home);
+                break;
+              case 1:
+                context.go(AppRoutes.chats);
+                break;
+              case 2:
+                context.go(AppRoutes.sessions);
+                break;
+              case 3:
+                context.go(AppRoutes.profile);
+                break;
             }
           },
           items: [
             const BottomNavigationBarItem(
-              icon: Icon(Icons.explore_outlined), activeIcon: Icon(Icons.explore), label: 'Discover',
+              icon: Icon(Icons.explore_outlined),
+              activeIcon: Icon(Icons.explore),
+              label: 'Discover',
             ),
             BottomNavigationBarItem(
               icon: unread > 0
-                  ? Badge(label: Text('\$unread'), child: const Icon(Icons.chat_bubble_outline))
+                  ? Badge(
+                      label: Text('\$unread'),
+                      child: const Icon(Icons.chat_bubble_outline),
+                    )
                   : const Icon(Icons.chat_bubble_outline),
               activeIcon: const Icon(Icons.chat_bubble),
               label: 'Chats',
             ),
             const BottomNavigationBarItem(
-              icon: Icon(Icons.fitness_center_outlined), activeIcon: Icon(Icons.fitness_center), label: 'Sessions',
+              icon: Icon(Icons.fitness_center_outlined),
+              activeIcon: Icon(Icons.fitness_center),
+              label: 'Sessions',
             ),
             const BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile',
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: 'Profile',
             ),
           ],
         ),

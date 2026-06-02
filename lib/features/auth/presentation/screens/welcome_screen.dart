@@ -11,7 +11,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/common/common_widgets.dart';
 
 class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({ super.key });
+  const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -50,23 +50,41 @@ class WelcomeScreen extends StatelessWidget {
                 children: [
                   // Logo
                   Container(
-                    width: 48, height: 48,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(color: AppColors.primaryGlow, blurRadius: 20)],
+                      boxShadow: [
+                        BoxShadow(color: AppColors.primaryGlow, blurRadius: 20),
+                      ],
                     ),
-                    child: const Center(child: Text('F',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.black))),
+                    child: const Center(
+                      child: Text(
+                        'F',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
                   ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
 
                   const Spacer(),
 
                   // Hero text
                   Text('Find Your', style: AppTextStyles.display())
-                      .animate(delay: 100.ms).fadeIn(duration: 400.ms).slideX(begin: -0.2),
-                  Text('Gym Buddy.', style: AppTextStyles.display(color: AppColors.primary))
-                      .animate(delay: 200.ms).fadeIn(duration: 400.ms).slideX(begin: -0.2),
+                      .animate(delay: 100.ms)
+                      .fadeIn(duration: 400.ms)
+                      .slideX(begin: -0.2),
+                  Text(
+                        'Gym Buddy.',
+                        style: AppTextStyles.display(color: AppColors.primary),
+                      )
+                      .animate(delay: 200.ms)
+                      .fadeIn(duration: 400.ms)
+                      .slideX(begin: -0.2),
 
                   const SizedBox(height: 20),
 
@@ -79,33 +97,66 @@ class WelcomeScreen extends StatelessWidget {
 
                   // Activity pills
                   Wrap(
-                    spacing: 8, runSpacing: 8,
-                    children: ['🏋️ Gym', '🏃 Running', '⚡ Hyrox', '🥊 Boxing', '🏊 Swimming']
-                        .asMap().entries.map((e) => Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface2,
-                            borderRadius: BorderRadius.circular(100),
-                            border: Border.all(color: AppColors.border2),
-                          ),
-                          child: Text(e.value, style: AppTextStyles.bodySM()),
-                        ).animate(delay: Duration(milliseconds: 400 + e.key * 80)).fadeIn().slideY(begin: 0.3)
-                    ).toList(),
+                    spacing: 8,
+                    runSpacing: 8,
+                    children:
+                        [
+                              '🏋️ Gym',
+                              '🏃 Running',
+                              '⚡ Hyrox',
+                              '🥊 Boxing',
+                              '🏊 Swimming',
+                            ]
+                            .asMap()
+                            .entries
+                            .map(
+                              (e) =>
+                                  Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.surface2,
+                                          borderRadius: BorderRadius.circular(
+                                            100,
+                                          ),
+                                          border: Border.all(
+                                            color: AppColors.border2,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          e.value,
+                                          style: AppTextStyles.bodySM(),
+                                        ),
+                                      )
+                                      .animate(
+                                        delay: Duration(
+                                          milliseconds: 400 + e.key * 80,
+                                        ),
+                                      )
+                                      .fadeIn()
+                                      .slideY(begin: 0.3),
+                            )
+                            .toList(),
                   ),
 
                   const SizedBox(height: 48),
 
                   // CTA buttons
                   PrimaryButton(
-                    label: 'Get Started',
-                    onPressed: () => context.push(AppRoutesPath.register),
-                  ).animate(delay: 600.ms).fadeIn(duration: 300.ms).slideY(begin: 0.3),
+                        label: 'Get Started',
+                        onPressed: () => context.push(AppRoutes.register),
+                      )
+                      .animate(delay: 600.ms)
+                      .fadeIn(duration: 300.ms)
+                      .slideY(begin: 0.3),
 
                   const SizedBox(height: 12),
 
                   GhostButton(
                     label: 'Sign In',
-                    onPressed: () => context.push(AppRoutesPath.login),
+                    onPressed: () => context.push(AppRoutes.login),
                   ).animate(delay: 700.ms).fadeIn(duration: 300.ms),
 
                   const SizedBox(height: 20),

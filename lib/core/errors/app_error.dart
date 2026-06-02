@@ -4,31 +4,31 @@ import 'package:equatable/equatable.dart';
 // ─────────────────────────────────────────────────────────
 //  AppError — single error model used across all BLoCs
 // ─────────────────────────────────────────────────────────
-class AppException extends Equatable {
+class AppError extends Equatable {
   final String message;
   final int? statusCode;
   final String type; // network | auth | validation | server | unknown
 
-  const AppException({
+  const AppError({
     required this.message,
     this.statusCode,
     this.type = 'unknown',
   });
 
-  static AppException handle(dynamic e) {
+  static AppError fromException(dynamic e) {
     if (e is DioException) {
       switch (e.type) {
         case DioExceptionType.connectionTimeout:
         case DioExceptionType.receiveTimeout:
         case DioExceptionType.sendTimeout:
-          return AppException(
+          return AppError(
             message:
                 'Connection timed out. Check your '
                 'internet.',
             type: 'network',
           );
         case DioExceptionType.connectionError:
-          return const AppException(
+          return const AppError(
             message: 'No internet connection.',
             type: 'network',
           );
@@ -40,43 +40,43 @@ class AppException extends Equatable {
               e.message ??
               'Request failed';
           if (code == 401) {
-            return AppException(
+            return AppError(
               message: message,
               statusCode: 401,
               type: 'auth',
             );
           }
           if (code == 403) {
-            return AppException(
+            return AppError(
               message: 'Access denied.',
               statusCode: 403,
               type: 'auth',
             );
           }
           if (code == 422 || code == 400) {
-            return AppException(
+            return AppError(
               message: message,
               statusCode: code,
               type: 'validation',
             );
           }
-          return AppException(
+          return AppError(
             message: message,
             statusCode: code,
             type: 'server',
           );
         default:
-          return AppException(
+          return AppError(
             message: e.message ?? 'Network error.',
             type: 'network',
           );
       }
     }
     if (e is FormatException) {
-      return AppException(message: "Data parsing error");
+      return AppError(message: "Data parsing error");
     }
 
-    return AppException(message: e.toString());
+    return AppError(message: e.toString());
   }
 
   bool get isAuth => type == 'auth';

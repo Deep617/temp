@@ -1,20 +1,23 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_bloc.dart';
 import 'package:seshlly/features/auth/presentation/screens/onboarding_screen.dart';
 import 'package:seshlly/features/auth/presentation/screens/register_screen.dart';
 import 'package:seshlly/features/auth/presentation/screens/welcome_screen.dart';
+import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_bloc.dart';
 import 'package:seshlly/features/splash_screen.dart';
 
 import '../di_injection/dependency_injection.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
+import '../features/dashboard/discover/presentation/screens/discover_screen.dart';
 import '../features/dashboard/home_screen.dart';
 import '../features/dashboard/profile/presentation/screens/profile_screen.dart';
+import '../features/dashboard/session/presentation/screens/sessions_screen.dart';
 
 class AppRouter {
   static final router = GoRouter(
-    initialLocation: AppRoutesPath.splash,
+    initialLocation: AppRoutes.splash,
     routes: [
       GoRoute(
         path: '/',
@@ -23,13 +26,13 @@ class AppRouter {
         },
       ),
       GoRoute(
-        path: AppRoutesPath.welcome,
+        path: AppRoutes.welcome,
         builder: (context, state) {
           return const WelcomeScreen();
         },
       ),
       GoRoute(
-        path: AppRoutesPath.login,
+        path: AppRoutes.login,
         builder: (context, state) {
           print("login route opened");
           return BlocProvider(
@@ -43,7 +46,7 @@ class AppRouter {
         },
       ),
       GoRoute(
-        path: AppRoutesPath.register,
+        path: AppRoutes.register,
         builder: (context, state) {
           return BlocProvider(
             create: (_) => getIt<AuthBloc>(),
@@ -51,9 +54,8 @@ class AppRouter {
           );
         },
       ),
-
       GoRoute(
-        path: AppRoutesPath.onboarding,
+        path: AppRoutes.onboarding,
         builder: (context, state) {
           return BlocProvider(
             create: (_) => getIt<ProfileBloc>(),
@@ -65,23 +67,63 @@ class AppRouter {
       ShellRoute(
         builder: (context, state, child) => HomeScreen(child: child),
         routes: [
-         /* GoRoute(path: AppRoutesPath.home,     builder: (_, __) => const DiscoverScreen()),
-          GoRoute(path: AppRoutesPath.discover, builder: (_, __) => const DiscoverScreen()),
-          GoRoute(path: AppRoutesPath.chats,    builder: (_, __) => const ChatsListScreen()),
+          GoRoute(
+            path: AppRoutes.home,
+            builder: (_, __) => const DiscoverScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.discover,
+            builder: (_, __) => const DiscoverScreen(),
+          ),
+          /* GoRoute(path: AppRoutesPath.chats,    builder: (_, __) => const ChatsListScreen()),
           GoRoute(path: AppRoutesPath.sessions, builder: (_, __) => const SessionsScreen()),*/
-          GoRoute(path: AppRoutesPath.profile,  builder: (_, __) => const ProfileScreen()),
+          GoRoute(
+            path: AppRoutes.chats,
+            builder: (_, __) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.sessions,
+            builder: (_, __) => const SessionsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.profile,
+            builder: (_, __) => const ProfileScreen(),
+          ),
         ],
       ),
-
-      /*     GoRoute(
-        path: '/home',
-        builder: (context, state) => const HomeScreen(),
-      ),*/
     ],
+    errorBuilder: (ctx, state) => Scaffold(
+      backgroundColor: const Color(0xFF0A0D08),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              '404',
+              style: TextStyle(
+                fontSize: 64,
+                color: Color(0xFFBAEE0B),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Page not found: \${state.uri}',
+              style: const TextStyle(color: Color(0xFF8F9870)),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => ctx.go(AppRoutes.home),
+              child: const Text('Go Home'),
+            ),
+          ],
+        ),
+      ),
+    ),
   );
 }
 
-class AppRoutesPath {
+class AppRoutes {
   static const splash = '/';
   static const welcome = '/welcome';
   static const login = '/login';

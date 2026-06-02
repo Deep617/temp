@@ -1,9 +1,5 @@
-
-
-
-
 import '../../../../../core/api/base_repository.dart';
-import '../../../../../core/errors/app_exception.dart';
+import '../../../../../core/errors/app_error.dart';
 import '../../../../../core/services/secure_storage_service.dart';
 import '../../../../auth/data/request_ml/upload_profile_request.dart';
 import '../../../../auth/data/response_ml/register_response.dart';
@@ -32,7 +28,7 @@ class ProfileRepositoryImpl extends BaseRepository
         return registerResponse;
       });
     } catch (e) {
-      throw AppException.handle(e);
+      throw AppError.fromException(e);
     }
   }
 
@@ -47,7 +43,7 @@ class ProfileRepositoryImpl extends BaseRepository
         return registerResponse;
       });
     } catch (e) {
-      throw AppException.handle(e);
+      throw AppError.fromException(e);
     }
   }
 
@@ -61,7 +57,7 @@ class ProfileRepositoryImpl extends BaseRepository
         return registerResponse;
       });
     } catch (e) {
-      throw AppException.handle(e);
+      throw AppError.fromException(e);
     }
   }
 }

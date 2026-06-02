@@ -158,7 +158,7 @@ class ProfileScreen extends StatelessWidget {
                                   ),
                                   IconButton(
                                     onPressed: () =>
-                                        context.push(AppRoutesPath.editProfile),
+                                        context.push(AppRoutes.editProfile),
                                     icon: Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
@@ -228,7 +228,7 @@ class ProfileScreen extends StatelessWidget {
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.notifications_outlined),
-                    onPressed: () => context.push(AppRoutesPath.notifications),
+                    onPressed: () => context.push(AppRoutes.notifications),
                   ),
                   IconButton(
                     icon: const Icon(Icons.settings_outlined),
@@ -335,7 +335,7 @@ class ProfileScreen extends StatelessWidget {
                         child: user.activities!.isEmpty
                             ? GestureDetector(
                                 onTap: () =>
-                                    context.push(AppRoutesPath.editProfile),
+                                    context.push(AppRoutes.editProfile),
                                 child: Text(
                                   '+ Add your activities',
                                   style: AppTextStyles.bodySM(
@@ -368,7 +368,7 @@ class ProfileScreen extends StatelessWidget {
                       // Upgrade CTA
                       if (!user.isPro)
                         GestureDetector(
-                          onTap: () => context.push(AppRoutesPath.subscription),
+                          onTap: () => context.push(AppRoutes.subscription),
                           child: Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
