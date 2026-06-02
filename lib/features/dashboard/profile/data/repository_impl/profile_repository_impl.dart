@@ -1,12 +1,14 @@
 
 
-import '../../../../core/api/base_repository.dart';
-import '../../../../core/errors/app_exception.dart';
-import '../../../../core/services/secure_storage_service.dart';
+
+
+import '../../../../../core/api/base_repository.dart';
+import '../../../../../core/errors/app_exception.dart';
+import '../../../../../core/services/secure_storage_service.dart';
+import '../../../../auth/data/request_ml/upload_profile_request.dart';
+import '../../../../auth/data/response_ml/register_response.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../datasource/profile_remote_datasource.dart';
-import '../request_ml/upload_profile_request.dart';
-import '../response_ml/register_response.dart';
 
 class ProfileRepositoryImpl extends BaseRepository
     implements ProfileRepository {

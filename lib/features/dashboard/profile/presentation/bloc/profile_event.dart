@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-import '../../data/request_ml/upload_profile_request.dart';
+import '../../../../auth/data/request_ml/upload_profile_request.dart';
 
 abstract class ProfileEvent extends Equatable {
   const ProfileEvent();

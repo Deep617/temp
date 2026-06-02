@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:seshlly/features/auth/presentation/bloc/profile_bloc.dart';
+import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_bloc.dart';
 import 'package:seshlly/features/auth/presentation/screens/onboarding_screen.dart';
 import 'package:seshlly/features/auth/presentation/screens/register_screen.dart';
 import 'package:seshlly/features/auth/presentation/screens/welcome_screen.dart';
@@ -10,7 +10,7 @@ import '../di_injection/dependency_injection.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/dashboard/home_screen.dart';
-import '../features/dashboard/profile/profile_screen.dart';
+import '../features/dashboard/profile/presentation/screens/profile_screen.dart';
 
 class AppRouter {
   static final router = GoRouter(

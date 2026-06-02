@@ -5,12 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:seshlly/features/auth/presentation/bloc/auth_state.dart';
 import 'package:seshlly/routes/app_router.dart';
 
-import '../../../core/constants/app_constants.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
-import '../../../core/widgets/common/common_widgets.dart';
-import '../../auth/presentation/bloc/auth_bloc.dart';
-import '../../auth/presentation/bloc/auth_event.dart';
+import '../../../../../core/constants/app_constants.dart';
+import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/theme/app_text_styles.dart';
+import '../../../../../core/widgets/common/common_widgets.dart';
+import '../../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../../auth/presentation/bloc/auth_event.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -26,7 +26,7 @@ class ProfileScreen extends StatelessWidget {
           );
 
         final thresholds = AppConstants.levelThresholds;
-        final lvl = (user.level! - 1).clamp(0, thresholds.length - 2);
+        final lvl = (user.level - 1).clamp(0, thresholds.length - 2);
         final xpMin = thresholds[lvl];
         final xpMax = thresholds[(lvl + 1).clamp(0, thresholds.length - 1)];
         final xpPct = ((user.xpTotal! - xpMin) / (xpMax - xpMin)).clamp(

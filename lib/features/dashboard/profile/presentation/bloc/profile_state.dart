@@ -1,7 +1,7 @@
 
-import '../../../../core/api/base_state.dart';
-import '../../../../core/errors/failure.dart';
-import '../../data/response_ml/register_response.dart';
+import '../../../../../core/api/base_state.dart';
+import '../../../../../core/errors/failure.dart';
+import '../../../../auth/data/response_ml/register_response.dart';
 
 class ProfileState extends BaseState {
   final RegisterResponse? updateProfileResponse;

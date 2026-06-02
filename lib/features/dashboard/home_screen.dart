@@ -5,9 +5,9 @@ import 'package:seshlly/routes/app_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../di_injection/dependency_injection.dart';
-import '../auth/domain/repositories/profile_repository.dart';
-import '../auth/presentation/bloc/profile_bloc.dart';
-import '../auth/presentation/bloc/profile_event.dart';
+import 'profile/domain/repositories/profile_repository.dart';
+import 'profile/presentation/bloc/profile_bloc.dart';
+import 'profile/presentation/bloc/profile_event.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key, required this.child});

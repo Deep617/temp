@@ -1,5 +1,5 @@
-import '../../data/request_ml/upload_profile_request.dart';
-import '../../data/response_ml/register_response.dart';
+import '../../../../auth/data/request_ml/upload_profile_request.dart';
+import '../../../../auth/data/response_ml/register_response.dart';
 
 abstract class ProfileRepository {
   ProfileRepository();
