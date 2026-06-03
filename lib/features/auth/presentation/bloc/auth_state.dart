@@ -1,37 +1,26 @@
-
 import '../../../../core/api/base_state.dart';
 import '../../../../core/errors/failure.dart';
 import '../../data/response_ml/register_response.dart';
 
 class LoginState extends BaseState {
-  final RegisterResponse? loginResponse;
-  final RegisterResponse? registerResponse;
+  final User? user;
 
-  const LoginState({
-    super.status,
-    super.error,
-    this.loginResponse,
-    this.registerResponse,
-  });
+  const LoginState({super.status, super.error, this.user});
 
   LoginState copyWith({
     ApiStatus? status,
     ApiFailure? error,
-    RegisterResponse? loginResponse,
-    RegisterResponse? registerResponse,
+    User? user,
     bool clearError = false,
     bool clearResponse = false,
   }) {
     return LoginState(
       status: status ?? this.status,
       error: clearError ? null : error ?? this.error,
-      loginResponse: clearResponse ? null : loginResponse ?? this.loginResponse,
-      registerResponse: clearResponse
-          ? null
-          : registerResponse ?? this.registerResponse,
+      user: clearResponse ? null : user ?? this.user,
     );
   }
 
   @override
-  List<Object?> get props => [...super.props, loginResponse, registerResponse];
+  List<Object?> get props => [...super.props, user];
 }

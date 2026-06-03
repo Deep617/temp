@@ -19,11 +19,12 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, LoginState>(
       builder: (context, authState) {
-        final user = authState.loginResponse!.user;
-        if (user == null)
+        final user = authState.user;
+        if (user == null) {
           return const Center(
             child: CircularProgressIndicator(color: AppColors.primary),
           );
+        }
 
         final thresholds = AppConstants.levelThresholds;
         final lvl = (user.level - 1).clamp(0, thresholds.length - 2);

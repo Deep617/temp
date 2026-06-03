@@ -19,11 +19,9 @@ class SessionRepositoryImpl extends BaseRepository
 
   @override
   Future<List<WorkoutSession>> getSessions({String? status, int page = 1}) {
-    try {
-      return remote.getMySessions(status: status, page: page);
-    } catch (e) {
+    return remote.getMySessions(status: status, page: page).catchError((e) {
       throw AppError.fromException(e);
-    }
+    });
   }
 
   @override
@@ -33,16 +31,16 @@ class SessionRepositoryImpl extends BaseRepository
     required DateTime scheduledAt,
     String? gymName,
   }) {
-    try {
-      return remote.scheduleSession(
-        buddyId: buddyId,
-        activity: activity,
-        scheduledAt: scheduledAt,
-        gymName: gymName,
-      );
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+    return remote
+        .scheduleSession(
+          buddyId: buddyId,
+          activity: activity,
+          scheduledAt: scheduledAt,
+          gymName: gymName,
+        )
+        .catchError((e) {
+          throw AppError.fromException(e);
+        });
   }
 
   @override
@@ -50,10 +48,10 @@ class SessionRepositoryImpl extends BaseRepository
     required String sessionId,
     required String imagePath,
   }) {
-    try {
-      return remote.uploadProof(sessionId: sessionId, imagePath: imagePath);
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+    return remote
+        .uploadProof(sessionId: sessionId, imagePath: imagePath)
+        .catchError((e) {
+          throw AppError.fromException(e);
+        });
   }
 }

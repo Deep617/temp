@@ -8,11 +8,13 @@ abstract class BaseRepository {
 
   Future<T> safeApiCall<T>(Future<T> Function() apiCall) async {
     try {
-      /*      final connected = await connectivity.isConnected();
+      /* final connected = await connectivity.isConnected();
       if (!connected) {
         throw AppException(message: "No Internet Connection");
       }*/
       return await apiCall();
+    } on AppError {
+      rethrow;
     } catch (e) {
       throw AppError.fromException(e);
     }

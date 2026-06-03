@@ -8,7 +8,6 @@ import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_blo
 import 'package:seshlly/features/splash_screen.dart';
 
 import '../di_injection/dependency_injection.dart';
-import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/dashboard/discover/presentation/screens/discover_screen.dart';
 import '../features/dashboard/home_screen.dart';
@@ -33,26 +32,11 @@ class AppRouter {
       ),
       GoRoute(
         path: AppRoutes.login,
-        builder: (context, state) {
-          print("login route opened");
-          return BlocProvider(
-            create: (_) {
-              print("AuthBloc created");
-              return getIt<AuthBloc>();
-            },
-
-            child: const LoginScreen(),
-          );
-        },
+        builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
         path: AppRoutes.register,
-        builder: (context, state) {
-          return BlocProvider(
-            create: (_) => getIt<AuthBloc>(),
-            child: const RegisterScreen(),
-          );
-        },
+        builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
         path: AppRoutes.onboarding,
@@ -69,25 +53,25 @@ class AppRouter {
         routes: [
           GoRoute(
             path: AppRoutes.home,
-            builder: (_, __) => const DiscoverScreen(),
+            builder: (context, state) => const DiscoverScreen(),
           ),
           GoRoute(
             path: AppRoutes.discover,
-            builder: (_, __) => const DiscoverScreen(),
+            builder: (context, state) => const DiscoverScreen(),
           ),
           /* GoRoute(path: AppRoutesPath.chats,    builder: (_, __) => const ChatsListScreen()),
           GoRoute(path: AppRoutesPath.sessions, builder: (_, __) => const SessionsScreen()),*/
           GoRoute(
             path: AppRoutes.chats,
-            builder: (_, __) => const ProfileScreen(),
+            builder: (context, state) => const ProfileScreen(),
           ),
           GoRoute(
             path: AppRoutes.sessions,
-            builder: (_, __) => const SessionsScreen(),
+            builder: (context, state) => const SessionsScreen(),
           ),
           GoRoute(
             path: AppRoutes.profile,
-            builder: (_, __) => const ProfileScreen(),
+            builder: (context, state) => const ProfileScreen(),
           ),
         ],
       ),

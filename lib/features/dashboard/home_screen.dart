@@ -35,12 +35,6 @@ class HomeScreen extends StatelessWidget {
           )..add(const ChatListLoaded()),
         ),*/
         BlocProvider(
-          create: (ctx) => getIt<ProfileBloc>(), //..add(const ProfileLoaded()),
-        ),
-        BlocProvider(
-          create: (ctx) => getIt<ProfileBloc>(), //..add(const ProfileLoaded()),
-        ),
-        BlocProvider(
           create: (ctx) => getIt<ProfileBloc>()..add(const ProfileLoaded()),
         ),
       ],

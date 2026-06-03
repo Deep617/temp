@@ -1,5 +1,4 @@
 import '../../../../../core/api/base_repository.dart';
-import '../../../../../core/errors/app_error.dart';
 import '../../../../../core/services/secure_storage_service.dart';
 import '../../../../auth/data/request_ml/upload_profile_request.dart';
 import '../../../../auth/data/response_ml/register_response.dart';
@@ -19,45 +18,33 @@ class ProfileRepositoryImpl extends BaseRepository
 
   @override
   Future<RegisterResponse> getMe() async {
-    try {
-      return await safeApiCall(() async {
-        final response = await remote.getMe();
-        RegisterResponse registerResponse = RegisterResponse.fromJson(
-          response.data['data'],
-        );
-        return registerResponse;
-      });
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+    return await safeApiCall(() async {
+      final response = await remote.getMe();
+      RegisterResponse registerResponse = RegisterResponse.fromJson(
+        response.data['data'],
+      );
+      return registerResponse;
+    });
   }
 
   @override
   Future<RegisterResponse> updateProfile(UploadProfileRequest request) async {
-    try {
-      return await safeApiCall(() async {
-        final response = await remote.updateProfile(request);
-        RegisterResponse registerResponse = RegisterResponse.fromJson(
-          response.data['data'],
-        );
-        return registerResponse;
-      });
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+    return await safeApiCall(() async {
+      final response = await remote.updateProfile(request);
+      RegisterResponse registerResponse = RegisterResponse.fromJson(
+        response.data['data'],
+      );
+      return registerResponse;
+    });
   }
 
   @override
   Future<String> uploadAvatar(String request) async {
-    try {
-      return await safeApiCall(() async {
-        final response = await remote.uploadAvatar(request);
-        String registerResponse = response.data['data']['url'] as String;
+    return await safeApiCall(() async {
+      final response = await remote.uploadAvatar(request);
+      String registerResponse = response.data['data']['url'] as String;
 
-        return registerResponse;
-      });
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+      return registerResponse;
+    });
   }
 }

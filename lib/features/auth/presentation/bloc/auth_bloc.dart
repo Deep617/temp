@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:seshlly/features/auth/domain/usecases/logout_usecase.dart';
 
@@ -41,17 +40,10 @@ class AuthBloc extends Bloc<AuthEvent, LoginState> {
         lgnRequest: LoginRequest(email: event.email, password: event.password),
       );
 
-      if (kDebugMode) {
-        print("Token on login: ${(loginResponse.accessToken)}");
-      }
       _sStorageService.saveAccessToken(loginResponse.accessToken!);
-      _sStorageService.saveAccessToken(loginResponse.refreshToken!);
-      String? tokienafterSave = await _sStorageService.getAccessToken();
-      print("Token on login: ${tokienafterSave}");
+      _sStorageService.saveRefreshToken(loginResponse.refreshToken!);
 
-      emit(
-        state.copyWith(status: ApiStatus.success, loginResponse: loginResponse),
-      );
+      emit(state.copyWith(status: ApiStatus.success, user: loginResponse.user));
     } on AppError catch (e) {
       final apiFailure = ApiFailure(
         code: e.statusCode,
@@ -71,18 +63,11 @@ class AuthBloc extends Bloc<AuthEvent, LoginState> {
       final RegisterResponse registerResponse = await registerUseCase
           .registerCase(registerRequest: event.registerRequest);
 
-      if (kDebugMode) {
-        print("Token on register: ${(registerResponse.accessToken)}");
-      }
       _sStorageService.saveAccessToken(registerResponse.accessToken!);
-      _sStorageService.saveAccessToken(registerResponse.refreshToken!);
-      String? tokienafterSave = await _sStorageService.getAccessToken();
-      print("Token on register: ${tokienafterSave}");
+      _sStorageService.saveRefreshToken(registerResponse.refreshToken!);
+
       emit(
-        state.copyWith(
-          status: ApiStatus.success,
-          registerResponse: registerResponse,
-        ),
+        state.copyWith(status: ApiStatus.success, user: registerResponse.user),
       );
     } on AppError catch (e) {
       final apiFailure = ApiFailure(

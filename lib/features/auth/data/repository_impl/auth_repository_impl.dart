@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:seshlly/core/services/secure_storage_service.dart';
 
 import '../../../../core/api/base_repository.dart';
-import '../../../../core/errors/app_error.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasource/auth_remote_datasource.dart';
 import '../request_ml/login_request.dart';
@@ -21,32 +20,24 @@ class AuthRepositoryImpl extends BaseRepository implements AuthRepository {
 
   @override
   Future<RegisterResponse> login(LoginRequest request) async {
-    try {
-      return await safeApiCall(() async {
-        final response = await remote.login(request);
-        RegisterResponse registerResponse = RegisterResponse.fromJson(
-          response.data['data'],
-        );
-        return registerResponse;
-      });
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+    return await safeApiCall(() async {
+      final response = await remote.login(request);
+      RegisterResponse registerResponse = RegisterResponse.fromJson(
+        response.data['data'],
+      );
+      return registerResponse;
+    });
   }
 
   @override
   Future<RegisterResponse> register(RegisterRequest request) async {
-    try {
-      return await safeApiCall(() async {
-        final response = await remote.register(request);
-        RegisterResponse registerResponse = RegisterResponse.fromJson(
-          response.data['data'],
-        );
-        return registerResponse;
-      });
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+    return await safeApiCall(() async {
+      final response = await remote.register(request);
+      RegisterResponse registerResponse = RegisterResponse.fromJson(
+        response.data['data'],
+      );
+      return registerResponse;
+    });
   }
 
   @override
@@ -65,13 +56,9 @@ class AuthRepositoryImpl extends BaseRepository implements AuthRepository {
 
   @override
   Future<Response> logout() async {
-    try {
-      return await safeApiCall(() async {
-        final response = await remote.logout();
-        return response;
-      });
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+    return await safeApiCall(() async {
+      final response = await remote.logout();
+      return response;
+    });
   }
 }

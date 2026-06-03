@@ -23,62 +23,48 @@ class DiscoverRepositoryImpl extends BaseRepository
     String? level,
     int page = 1,
   }) {
-    try {
-      return remote.getDiscoverProfiles(
-        activity: activity,
-        level: level,
-        page: page,
-      );
-    } catch (e) {
-      throw AppError.fromException(e);
-    }
+    return remote
+        .getDiscoverProfiles(activity: activity, level: level, page: page)
+        .catchError((e) {
+          throw AppError.fromException(e);
+        });
   }
 
   @override
   Future<void> swipeLeft(String userId) {
-    try {
-      return remote.swipeLeft(userId);
-    } catch (e) {
+    return remote.swipeLeft(userId).catchError((e) {
       throw AppError.fromException(e);
-    }
+    });
   }
 
   @override
   Future<bool> swipeRight(String userId) async {
-    try {
-      final res = remote.swipeRight(userId);
-      // accoure error here
-      //return res['data']?['matched'] == true;
-      return false;
-    } catch (e) {
+    final res = remote.swipeRight(userId).catchError((e) {
       throw AppError.fromException(e);
-    }
+    });
+    // accoure error here
+    //return res['data']?['matched'] == true;
+    return false;
   }
 
   @override
   Future<List<BuddyProfile>> getBuddies({int page = 1}) {
-    try {
-      return remote.getMyBuddies(page: page);
-    } catch (e) {
+    return remote.getMyBuddies(page: page).catchError((e) {
       throw AppError.fromException(e);
-    }
+    });
   }
 
   @override
   Future<BuddyProfile> getBuddyProfile(String userId) {
-    try {
-      return remote.getBuddyProfile(userId);
-    } catch (e) {
+    return remote.getBuddyProfile(userId).catchError((e) {
       throw AppError.fromException(e);
-    }
+    });
   }
 
   @override
   Future<void> removeBuddy(String buddyId) {
-    try {
-      return remote.removeBuddy(buddyId);
-    } catch (e) {
+    return remote.removeBuddy(buddyId).catchError((e) {
       throw AppError.fromException(e);
-    }
+    });
   }
 }

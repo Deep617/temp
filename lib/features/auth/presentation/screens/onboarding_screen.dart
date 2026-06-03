@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:seshlly/core/services/storage_service.dart';
 import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_bloc.dart';
 import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_event.dart';
+import 'package:seshlly/routes/app_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -84,6 +86,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           listener: (context, state) {
             if (state.isSuccess) {
               storageService.setOnboarding();
+              context.go(AppRoutes.home);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(

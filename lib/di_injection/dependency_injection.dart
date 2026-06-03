@@ -50,7 +50,7 @@ Future<void> setupDependencies() async {
   );
   getIt.registerLazySingleton(() => LoginUseCase(getIt()));
   getIt.registerLazySingleton(() => RegisterUseCase(getIt()));
-  getIt.registerFactory<AuthBloc>(
+  getIt.registerLazySingleton<AuthBloc>(
     () => AuthBloc(getIt(), getIt(), getIt(), getIt()),
   );
 

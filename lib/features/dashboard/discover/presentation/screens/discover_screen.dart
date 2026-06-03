@@ -92,7 +92,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       },
       child: BlocBuilder<DiscoverBloc, DiscoverState>(
         builder: (context, state) {
-          final user = context.watch<AuthBloc>().state.loginResponse?.user;
+          final user = context.watch<AuthBloc>().state.user;
 
           return Scaffold(
             backgroundColor: AppColors.bg,

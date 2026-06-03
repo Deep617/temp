@@ -42,7 +42,7 @@ class _SplashScreenState extends State<SplashScreen> {
     } else if (token != null && token.isNotEmpty && !isOnboarded) {
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) {
-          context.go(AppRoutes.home);
+          context.go(AppRoutes.onboarding);
         }
       });
     } else {

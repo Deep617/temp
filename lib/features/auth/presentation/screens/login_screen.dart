@@ -28,9 +28,12 @@ class _LoginScreenState extends State<LoginScreen> {
   bool isOnBoarded = false;
 
   @override
-  Future<void> initState() async {
+  void initState() {
     super.initState();
-    print("LoginScreen initState");
+    getOnboarding();
+  }
+
+  getOnboarding() async {
     isOnBoarded = await storageService.getOnboarding();
   }
 
