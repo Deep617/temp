@@ -6,6 +6,7 @@ import 'package:seshlly/routes/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'di_injection/dependency_injection.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/auth/presentation/bloc/auth_event.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,21 +31,22 @@ class MyApp extends StatelessWidget {
       providers: [
         /// GLOBAL BLOCS ONLY
         // Example later:
-        BlocProvider(create: (_) => getIt<AuthBloc>()),
+        BlocProvider(
+          create: (_) => getIt<AuthBloc>()..add(const AuthCheckRequested()),
+        ),
 
         //BlocProvider(create: (_) => getIt<ConnectivityCubit>()),
       ],
       child: MaterialApp.router(
-        title: 'FitConnect',
+        title: 'Seshlly',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
         routerConfig: AppRouter.router,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(1.0).clamp(
-              minScaleFactor: 1.0,
-              maxScaleFactor: 1.5,
-            ),
+            textScaler: TextScaler.linear(
+              1.0,
+            ).clamp(minScaleFactor: 1.0, maxScaleFactor: 1.5),
           ),
           child: child!,
         ),

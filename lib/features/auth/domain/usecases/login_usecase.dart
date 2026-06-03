@@ -11,9 +11,11 @@ class LoginUseCase {
   final ProfileRepository _profileRepository;
   final SecureStorageService _secureStorageService;
 
-  LoginUseCase(this.repository,
-      this._profileRepository,
-      this._secureStorageService,);
+  LoginUseCase(
+    this.repository,
+    this._profileRepository,
+    this._secureStorageService,
+  );
 
   Future<RegisterResponse> loginPerform({required LoginRequest lgnRequest}) {
     return repository.login(lgnRequest);
@@ -27,8 +29,10 @@ class LoginUseCase {
 
       return registerResponse.user;
     } on AppError {
+      _secureStorageService.clearStorage();
       rethrow;
     } catch (e) {
+      _secureStorageService.clearStorage();
       throw AppError.fromException(e);
     }
   }
