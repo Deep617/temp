@@ -1,8 +1,6 @@
 import 'package:dio/dio.dart';
 
-import '../../../../../core/api/api_endpoints.dart';
 import '../../../../../core/api/dio_client.dart';
-import '../../../../auth/data/request_ml/upload_profile_request.dart';
 import '../response_ml/buddy_profile.dart';
 
 class DiscoverRemoteDatasource {
@@ -77,5 +75,4 @@ class DiscoverRemoteDatasource {
       (res.data as Map<String, dynamic>?)?['message'] ?? 'Request failed',
     );
   }
-
 }

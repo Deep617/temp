@@ -1,26 +1,36 @@
-import '../../../../core/api/base_state.dart';
-import '../../../../core/errors/failure.dart';
+import 'package:equatable/equatable.dart';
+
+import '../../../../core/errors/app_error.dart';
 import '../../data/response_ml/register_response.dart';
 
-class LoginState extends BaseState {
+enum AuthStatus { initial, loading, authenticated, unauthenticated, onboarding }
+
+class AuthState extends Equatable {
+  const AuthState({this.status = AuthStatus.initial, this.user, this.error});
+
+  final AuthStatus status;
   final User? user;
+  final AppError? error;
 
-  const LoginState({super.status, super.error, this.user});
+  bool get isLoading => status == AuthStatus.loading;
 
-  LoginState copyWith({
-    ApiStatus? status,
-    ApiFailure? error,
+  bool get isAuthenticated => status == AuthStatus.authenticated;
+
+  bool get isUnauthenticated => status == AuthStatus.unauthenticated;
+
+  bool get isOnboarding => status == AuthStatus.onboarding;
+
+  AuthState copyWith({
+    AuthStatus? status,
     User? user,
+    AppError? error,
     bool clearError = false,
-    bool clearResponse = false,
-  }) {
-    return LoginState(
-      status: status ?? this.status,
-      error: clearError ? null : error ?? this.error,
-      user: clearResponse ? null : user ?? this.user,
-    );
-  }
+  }) => AuthState(
+    status: status ?? this.status,
+    user: user ?? this.user,
+    error: clearError ? null : error ?? this.error,
+  );
 
   @override
-  List<Object?> get props => [...super.props, user];
+  List<Object?> get props => [status, user, error];
 }

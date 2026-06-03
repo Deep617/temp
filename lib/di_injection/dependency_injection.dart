@@ -48,10 +48,10 @@ Future<void> setupDependencies() async {
   getIt.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(getIt(), getIt(), getIt()),
   );
-  getIt.registerLazySingleton(() => LoginUseCase(getIt()));
+  getIt.registerLazySingleton(() => LoginUseCase(getIt(), getIt(), getIt()));
   getIt.registerLazySingleton(() => RegisterUseCase(getIt()));
   getIt.registerLazySingleton<AuthBloc>(
-    () => AuthBloc(getIt(), getIt(), getIt(), getIt()),
+    () => AuthBloc(getIt(), getIt(), getIt(), getIt(), getIt()),
   );
 
   /// Profile

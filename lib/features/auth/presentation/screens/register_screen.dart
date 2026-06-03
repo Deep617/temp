@@ -45,7 +45,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     setState(() => _termsError = null);
     context.read<AuthBloc>().add(
-      RegisterSubmitted(
+      AuthRegisterRequested(
         registerRequest: RegisterRequest(
           firstName: _firstCtrl.text.trim(),
           lastName: _lastCtrl.text.trim(),
@@ -73,9 +73,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28),
-          child: BlocConsumer<AuthBloc, LoginState>(
+          child: BlocConsumer<AuthBloc, AuthState>(
             listener: (context, state) {
-              if (state.isSuccess) {
+              if (state.isAuthenticated) {
                 context.push(AppRoutes.onboarding);
               } // Router handles redirect to onboarding
               // on success

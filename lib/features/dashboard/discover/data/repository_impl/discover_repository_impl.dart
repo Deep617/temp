@@ -39,12 +39,13 @@ class DiscoverRepositoryImpl extends BaseRepository
 
   @override
   Future<bool> swipeRight(String userId) async {
-    final res = remote.swipeRight(userId).catchError((e) {
+    try {
+      final res = await remote.swipeRight(userId);
+      final data = res['data'] as Map<String, dynamic>?;
+      return data?['matched'] == true;
+    } catch (e) {
       throw AppError.fromException(e);
-    });
-    // accoure error here
-    //return res['data']?['matched'] == true;
-    return false;
+    }
   }
 
   @override

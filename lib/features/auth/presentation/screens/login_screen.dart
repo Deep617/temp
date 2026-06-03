@@ -47,7 +47,10 @@ class _LoginScreenState extends State<LoginScreen> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     context.read<AuthBloc>().add(
-      LoginSubmitted(email: _emailCtrl.text.trim(), password: _passCtrl.text),
+      AuthLoginRequested(
+        email: _emailCtrl.text.trim(),
+        password: _passCtrl.text,
+      ),
     );
   }
 
@@ -55,11 +58,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthBloc, LoginState>(
+    return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         // Navigation handled by GoRouter redirect — nothing to do here.
         // Errors are surfaced via BlocBuilder below.
-        if (state.isSuccess) {
+        if (state.isAuthenticated) {
           if (isOnBoarded) {
             context.push(AppRoutes.home);
           } else {
@@ -88,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
         body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: BlocBuilder<AuthBloc, LoginState>(
+            child: BlocBuilder<AuthBloc, AuthState>(
               builder: (context, state) {
                 return Form(
                   key: _formKey,

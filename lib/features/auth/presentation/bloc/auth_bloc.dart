@@ -2,10 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:seshlly/features/auth/domain/usecases/logout_usecase.dart';
 
-import '../../../../core/api/base_state.dart';
 import '../../../../core/errors/app_error.dart';
-import '../../../../core/errors/failure.dart';
 import '../../../../core/services/secure_storage_service.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../data/request_ml/login_request.dart';
 import '../../data/response_ml/register_response.dart';
 import '../../domain/usecases/login_usecase.dart';
@@ -13,28 +12,52 @@ import '../../domain/usecases/register_usecase.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
-class AuthBloc extends Bloc<AuthEvent, LoginState> {
+class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
   final RegisterUseCase registerUseCase;
   final LogoutUseCase _logoutUseCase;
   final SecureStorageService _sStorageService;
+  final StorageService _storageService;
 
   AuthBloc(
+    this._storageService,
     this._sStorageService,
     this.loginUseCase,
     this.registerUseCase,
     this._logoutUseCase,
-  ) : super(const LoginState()) {
-    on<LoginSubmitted>(_onLoginSubmitted);
-    on<RegisterSubmitted>(_onRegister);
-    on<LogoutSubmitted>(_onLogout);
+  ) : super(const AuthState()) {
+    on<AuthCheckRequested>(_onCheckRequested);
+    on<AuthLoginRequested>(_onLoginSubmitted);
+    on<AuthRegisterRequested>(_onRegister);
+    on<AuthOnboardingCompleted>(_onOnboardingCompleted);
+    on<AuthLogoutRequested>(_onLogoutRequested);
+    on<AuthUserUpdated>(_onUserUpdated);
+  }
+
+  Future<void> _onCheckRequested(
+    AuthCheckRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(state.copyWith(status: AuthStatus.loading, clearError: true));
+    final user = await loginUseCase.getCurrentUser();
+    if (user == null) {
+      emit(state.copyWith(status: AuthStatus.unauthenticated));
+      return;
+    }
+    bool onboarded = await _storageService.getOnboarding();
+    emit(
+      state.copyWith(
+        status: onboarded ? AuthStatus.authenticated : AuthStatus.onboarding,
+        user: user,
+      ),
+    );
   }
 
   Future<void> _onLoginSubmitted(
-    LoginSubmitted event,
-    Emitter<LoginState> emit,
+    AuthLoginRequested event,
+    Emitter<AuthState> emit,
   ) async {
-    emit(state.copyWith(status: ApiStatus.loading, clearError: true));
+    emit(state.copyWith(status: AuthStatus.loading, clearError: true));
     try {
       final RegisterResponse loginResponse = await loginUseCase.loginPerform(
         lgnRequest: LoginRequest(email: event.email, password: event.password),
@@ -42,23 +65,23 @@ class AuthBloc extends Bloc<AuthEvent, LoginState> {
 
       _sStorageService.saveAccessToken(loginResponse.accessToken!);
       _sStorageService.saveRefreshToken(loginResponse.refreshToken!);
-
-      emit(state.copyWith(status: ApiStatus.success, user: loginResponse.user));
-    } on AppError catch (e) {
-      final apiFailure = ApiFailure(
-        code: e.statusCode,
-        message: e.message,
-        data: e.toString(),
+      bool onboarded = await _storageService.getOnboarding();
+      emit(
+        state.copyWith(
+          status: onboarded ? AuthStatus.authenticated : AuthStatus.onboarding,
+          user: loginResponse.user,
+        ),
       );
-      emit(state.copyWith(status: ApiStatus.failure, error: apiFailure));
+    } on AppError catch (e) {
+      emit(state.copyWith(status: AuthStatus.unauthenticated, error: e));
     }
   }
 
   Future<void> _onRegister(
-    RegisterSubmitted event,
-    Emitter<LoginState> emit,
+    AuthRegisterRequested event,
+    Emitter<AuthState> emit,
   ) async {
-    emit(state.copyWith(status: ApiStatus.loading));
+    emit(state.copyWith(status: AuthStatus.loading, clearError: true));
     try {
       final RegisterResponse registerResponse = await registerUseCase
           .registerCase(registerRequest: event.registerRequest);
@@ -67,42 +90,37 @@ class AuthBloc extends Bloc<AuthEvent, LoginState> {
       _sStorageService.saveRefreshToken(registerResponse.refreshToken!);
 
       emit(
-        state.copyWith(status: ApiStatus.success, user: registerResponse.user),
+        state.copyWith(
+          status: AuthStatus.onboarding,
+          user: registerResponse.user,
+        ),
       );
     } on AppError catch (e) {
-      final apiFailure = ApiFailure(
-        code: e.statusCode,
-        message: e.message,
-        data: e.toString(),
-      );
-      emit(state.copyWith(status: ApiStatus.failure, error: apiFailure));
+      emit(state.copyWith(status: AuthStatus.unauthenticated, error: e));
     }
   }
 
-  Future<void> _onLogout(
-    LogoutSubmitted event,
-    Emitter<LoginState> emit,
+  Future<void> _onOnboardingCompleted(
+    AuthOnboardingCompleted event,
+    Emitter<AuthState> emit,
   ) async {
-    emit(state.copyWith(status: ApiStatus.loading));
-    try {
-      final Response logoutResponse = await _logoutUseCase.logoutPerform();
+    await _storageService.setOnboarding();
+    emit(state.copyWith(status: AuthStatus.authenticated));
+  }
 
-      if (logoutResponse.statusCode == 200) {
-        await _sStorageService.clearStorage();
-      }
-      /*      emit(
-        state.copyWith(
-          status: ApiStatus.success,
-          registerResponse: registerResponse,
-        ),
-      );*/
-    } on AppError catch (e) {
-      final apiFailure = ApiFailure(
-        code: e.statusCode,
-        message: e.message,
-        data: e.toString(),
-      );
-      emit(state.copyWith(status: ApiStatus.failure, error: apiFailure));
+  Future<void> _onLogoutRequested(
+    AuthLogoutRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    final Response logoutResponse = await _logoutUseCase.logoutPerform();
+
+    if (logoutResponse.statusCode == 200) {
+      await _sStorageService.clearStorage();
     }
+    emit(const AuthState(status: AuthStatus.unauthenticated));
+  }
+
+  void _onUserUpdated(AuthUserUpdated event, Emitter<AuthState> emit) {
+    emit(state.copyWith(user: event.user));
   }
 }
