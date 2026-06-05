@@ -30,12 +30,20 @@ class MyApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         /// GLOBAL BLOCS ONLY
-        // Example later:
         BlocProvider(
-          create: (_) => getIt<AuthBloc>()..add(const AuthCheckRequested()),
-        ),
+          lazy: false,
+          create: (_) {
+            print("*****************Provider create called");
 
-        //BlocProvider(create: (_) => getIt<ConnectivityCubit>()),
+            final bloc = getIt<AuthBloc>();
+
+            print("*******************Adding AuthCheckRequested");
+
+            bloc.add(const AuthCheckRequested());
+
+            return bloc;
+          },
+        ),
       ],
       child: MaterialApp.router(
         title: 'Seshlly',

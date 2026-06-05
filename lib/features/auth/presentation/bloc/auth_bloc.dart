@@ -26,7 +26,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     this.registerUseCase,
     this._logoutUseCase,
   ) : super(const AuthState()) {
-    on<AuthCheckRequested>(_onCheckRequested);
+    print('**************AuthBloc created');
+
+    on<AuthCheckRequested>((event, emit) {
+      print('****************Event received');
+      _onCheckRequested(event, emit);
+    });
     on<AuthLoginRequested>(_onLoginSubmitted);
     on<AuthRegisterRequested>(_onRegister);
     on<AuthOnboardingCompleted>(_onOnboardingCompleted);
@@ -38,11 +43,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthCheckRequested event,
     Emitter<AuthState> emit,
   ) async {
-    emit(state.copyWith(status: AuthStatus.loading, clearError: true));
+    print("***************AuthCheckRequested received");
+    // emit(state.copyWith(status: AuthStatus.loading, clearError: true));
     final user = await loginUseCase.getCurrentUser();
     if (user == null) {
+      print("***************user  not");
       emit(state.copyWith(status: AuthStatus.unauthenticated));
       return;
+    } else {
+      print("***************user  present");
     }
     bool onboarded = await _storageService.getOnboarding();
     emit(

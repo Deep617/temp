@@ -62,12 +62,10 @@ class _LoginScreenState extends State<LoginScreen> {
       listener: (context, state) {
         // Navigation handled by GoRouter redirect — nothing to do here.
         // Errors are surfaced via BlocBuilder below.
-        if (state.isAuthenticated) {
-          if (isOnBoarded) {
-            context.push(AppRoutes.home);
-          } else {
-            context.push(AppRoutes.onboarding);
-          }
+        if (isOnBoarded) {
+          context.push(AppRoutes.home);
+        } else if (state.isAuthenticated && !isOnBoarded) {
+          context.push(AppRoutes.onboarding);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -76,8 +74,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           );
-        }
+        } else {}
       },
+
       child: Scaffold(
         backgroundColor: AppColors.bg,
         appBar: AppBar(
