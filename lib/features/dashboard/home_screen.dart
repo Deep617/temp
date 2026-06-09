@@ -93,7 +93,7 @@ class _HomeShell extends StatelessWidget {
             BottomNavigationBarItem(
               icon: unread > 0
                   ? Badge(
-                      label: Text('\$unread'),
+                      label: Text('$unread'),
                       child: const Icon(Icons.chat_bubble_outline),
                     )
                   : const Icon(Icons.chat_bubble_outline),

@@ -5,16 +5,24 @@ import 'package:seshlly/features/auth/presentation/screens/onboarding_screen.dar
 import 'package:seshlly/features/auth/presentation/screens/register_screen.dart';
 import 'package:seshlly/features/auth/presentation/screens/welcome_screen.dart';
 import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_bloc.dart';
+import 'package:seshlly/features/dashboard/profile/presentation/screens/edit_profile_screen.dart';
+import 'package:seshlly/features/dashboard/session/presentation/bloc/session_bloc.dart';
 import 'package:seshlly/features/notification/presentation/bloc/notification_bloc.dart';
 import 'package:seshlly/features/notification/presentation/screen/notifications_screen.dart';
+import 'package:seshlly/features/subscription/presentation/bloc/subscription_bloc.dart';
+import 'package:seshlly/features/subscription/presentation/screen/subscription_screen.dart';
 import 'package:seshlly/splash_screen.dart';
 
 import '../di_injection/dependency_injection.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/dashboard/discover/presentation/screens/discover_screen.dart';
 import '../features/dashboard/home_screen.dart';
+import '../features/dashboard/profile/presentation/screens/buddy_profile_screen.dart';
 import '../features/dashboard/profile/presentation/screens/profile_screen.dart';
+import '../features/dashboard/session/presentation/screens/schedule_session_screen.dart';
 import '../features/dashboard/session/presentation/screens/sessions_screen.dart';
+import '../features/dashboard/session/presentation/screens/upload_proof_screen.dart';
+import '../features/match/match_screen.dart';
 
 class AppRouter {
   static final router = GoRouter(
@@ -51,11 +59,88 @@ class AppRouter {
       ),
 
       GoRoute(
+        path: AppRoutes.match,
+        builder: (context, state) {
+          return BlocProvider(
+            create: (_) => getIt<ProfileBloc>(),
+            child: MatchScreen(userId: state.pathParameters['userId']!),
+          );
+        },
+      ),
+
+      /*GoRoute(
+        path: AppRoutes.chat,
+        builder: (ctx, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return ChatScreen(
+            chatId:      state.pathParameters['chatId']!,
+            buddyName:   extra?['buddyName']   ?? '',
+            buddyAvatar: extra?['buddyAvatar'],
+          );
+        },
+      ),*/
+      GoRoute(
+        path: AppRoutes.buddyProfile,
+        builder: (context, state) {
+          return BlocProvider(
+            create: (_) => getIt<ProfileBloc>(),
+            child: BuddyProfileScreen(userId: state.pathParameters['userId']!),
+          );
+        },
+      ),
+
+      GoRoute(
+        path: AppRoutes.editProfile,
+        builder: (context, state) {
+          return BlocProvider(
+            create: (_) => getIt<ProfileBloc>(),
+            child: EditProfileScreen(),
+          );
+        },
+      ),
+
+      GoRoute(
+        path: AppRoutes.scheduleSession,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return BlocProvider(
+            create: (_) => getIt<SessionBloc>(),
+            child: ScheduleSessionScreen(
+              buddyId: extra?['buddyId'] ?? '',
+              buddyName: extra?['buddyName'] ?? '',
+            ),
+          );
+        },
+      ),
+
+      GoRoute(
+        path: AppRoutes.uploadProof,
+        builder: (context, state) {
+          return BlocProvider(
+            create: (_) => getIt<SessionBloc>(),
+            child: UploadProofScreen(
+              sessionId: state.pathParameters['sessionId']!,
+            ),
+          );
+        },
+      ),
+
+      GoRoute(
         path: AppRoutes.notifications,
         builder: (context, state) {
           return BlocProvider(
             create: (_) => getIt<NotificationBloc>(),
             child: const NotificationsScreen(),
+          );
+        },
+      ),
+
+      GoRoute(
+        path: AppRoutes.subscription,
+        builder: (context, state) {
+          return BlocProvider(
+            create: (_) => getIt<SubscriptionBloc>(),
+            child: const SubscriptionScreen(),
           );
         },
       ),
@@ -71,8 +156,7 @@ class AppRouter {
             path: AppRoutes.discover,
             builder: (context, state) => const DiscoverScreen(),
           ),
-          /* GoRoute(path: AppRoutesPath.chats,    builder: (_, __) => const ChatsListScreen()),
-          GoRoute(path: AppRoutesPath.sessions, builder: (_, __) => const SessionsScreen()),*/
+          /* GoRoute(path: AppRoutesPath.chats,    builder: (_, __) => const ChatsListScreen()),*/
           GoRoute(
             path: AppRoutes.chats,
             builder: (context, state) => const ProfileScreen(),
@@ -104,7 +188,7 @@ class AppRouter {
             ),
             const SizedBox(height: 8),
             Text(
-              'Page not found: \${state.uri}',
+              'Page not found: ${state.uri}',
               style: const TextStyle(color: Color(0xFF8F9870)),
             ),
             const SizedBox(height: 24),

@@ -14,10 +14,10 @@ class ProfileRemoteDatasource {
     return response;
   }
 
-  Future<Response> updateProfile(UploadProfileRequest registerRequest) async {
+  Future<Response> updateProfile(Map<String, dynamic> data  ) async {
     final response = await client.put(
       ApiEndpoints.updateProfile,
-      queryParameters: registerRequest.toJson(),
+      queryParameters: data,
     );
 
     return response;

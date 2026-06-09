@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:seshlly/core/errors/app_error.dart';
 
 import '../errors/failure.dart';
 
 class ErrorView extends StatelessWidget {
   final String message;
-  final ApiFailure apiFailure;
+  final AppError apiFailure;
   final String buttonText;
   final String image;
   final VoidCallback onRetry;

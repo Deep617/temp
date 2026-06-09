@@ -13,10 +13,16 @@ class ProfileLoaded extends ProfileEvent {
 }
 
 class ProfileUpdated extends ProfileEvent {
-  final UploadProfileRequest uploadProfileRequest;
-
-  const ProfileUpdated({required this.uploadProfileRequest});
-
+  const ProfileUpdated({required this.data, this.avatarPath});
+  final Map<String, dynamic> data;
+  final String?              avatarPath;
   @override
-  List<Object?> get props => [uploadProfileRequest];
+  List<Object?> get props => [data, avatarPath];
+}
+
+class BuddyProfileLoaded extends ProfileEvent {
+  const BuddyProfileLoaded({required this.userId});
+  final String userId;
+  @override
+  List<Object?> get props => [userId];
 }

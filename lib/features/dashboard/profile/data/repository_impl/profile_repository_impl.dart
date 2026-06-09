@@ -26,10 +26,10 @@ class ProfileRepositoryImpl extends BaseRepository
   }
 
   @override
-  Future<RegisterResponse> updateProfile(UploadProfileRequest request) async {
+  Future<User> updateProfile(Map<String, dynamic> data  ) async {
     return await safeApiCall(() async {
-      final response = await remote.updateProfile(request);
-      RegisterResponse registerResponse = RegisterResponse.fromJson(
+      final response = await remote.updateProfile(data);
+      User registerResponse = User.fromJson(
         response.data['data'],
       );
       return registerResponse;

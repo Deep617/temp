@@ -75,11 +75,11 @@ class ProfileScreen extends StatelessWidget {
                                       gradient: user.isPro
                                           ? AppColors.compatGradient
                                           : const LinearGradient(
-                                        colors: [
-                                          AppColors.border2,
-                                          AppColors.border,
-                                        ],
-                                      ),
+                                              colors: [
+                                                AppColors.border2,
+                                                AppColors.border,
+                                              ],
+                                            ),
                                     ),
                                     child: AppAvatar(
                                       name: user.fullName,
@@ -92,7 +92,7 @@ class ProfileScreen extends StatelessWidget {
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
@@ -115,7 +115,7 @@ class ProfileScreen extends StatelessWidget {
                                         if (user.username != null) ...[
                                           const SizedBox(height: 2),
                                           Text(
-                                            '@\${user.username}',
+                                            '@${user.username}',
                                             style: AppTextStyles.bodySM(
                                               color: AppColors.primary,
                                             ),
@@ -132,17 +132,17 @@ class ProfileScreen extends StatelessWidget {
                                               const SizedBox(width: 6),
                                               Container(
                                                 padding:
-                                                const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 3,
-                                                ),
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 3,
+                                                    ),
                                                 decoration: BoxDecoration(
                                                   gradient:
-                                                  AppColors.compatGradient,
+                                                      AppColors.compatGradient,
                                                   borderRadius:
-                                                  BorderRadius.circular(
-                                                    100,
-                                                  ),
+                                                      BorderRadius.circular(
+                                                        100,
+                                                      ),
                                                 ),
                                                 child: Text(
                                                   'PRO',
@@ -260,18 +260,18 @@ class ProfileScreen extends StatelessWidget {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            'Level \${user.level} · \${user.levelName}',
+                                            'Level ${user.level} · ${user.levelName}',
                                             style: AppTextStyles.subtitle(),
                                           ),
                                           Text(
-                                            '\${user.xpTotal} XP total',
+                                            '${user.xpTotal} XP total',
                                             style: AppTextStyles.caption(),
                                           ),
                                         ],
@@ -286,14 +286,14 @@ class ProfileScreen extends StatelessWidget {
                                           minHeight: 6,
                                           backgroundColor: AppColors.surface3,
                                           valueColor:
-                                          const AlwaysStoppedAnimation<
-                                              Color
-                                          >(AppColors.primary),
+                                              const AlwaysStoppedAnimation<
+                                                Color
+                                              >(AppColors.primary),
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        '\${user.xpTotal - xpMin} / \${xpMax - xpMin} XP to Level \${user.level + 1}',
+                                        '${user.xpTotal! - xpMin} ${xpMax - xpMin} XP to Level ${user.level + 1}',
                                         style: AppTextStyles.caption(),
                                       ),
                                     ],
@@ -335,35 +335,34 @@ class ProfileScreen extends StatelessWidget {
                         title: 'Activities',
                         child: user.activities!.isEmpty
                             ? GestureDetector(
-                          onTap: () =>
-                              context.push(AppRoutes.editProfile),
-                          child: Text(
-                            '+ Add your activities',
-                            style: AppTextStyles.bodySM(
-                              color: AppColors.primary,
-                            ).copyWith(fontWeight: FontWeight.w700),
-                          ),
-                        )
+                                onTap: () =>
+                                    context.push(AppRoutes.editProfile),
+                                child: Text(
+                                  '+ Add your activities',
+                                  style: AppTextStyles.bodySM(
+                                    color: AppColors.primary,
+                                  ).copyWith(fontWeight: FontWeight.w700),
+                                ),
+                              )
                             : Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: user.activities!.map((id) {
-                            final a = AppConstants.activities.firstWhere(
-                                  (x) => x['id'] == id,
-                              orElse: () =>
-                              {
-                                'id': id,
-                                'emoji': '💪',
-                                'label': id,
-                                'color': 0xFFBAEE0B,
-                              },
-                            );
-                            return ActivityChip(
-                              activity: a,
-                              selected: id == user.primaryActivity,
-                            );
-                          }).toList(),
-                        ),
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: user.activities!.map((id) {
+                                  final a = AppConstants.activities.firstWhere(
+                                    (x) => x['id'] == id,
+                                    orElse: () => {
+                                      'id': id,
+                                      'emoji': '💪',
+                                      'label': id,
+                                      'color': 0xFFBAEE0B,
+                                    },
+                                  );
+                                  return ActivityChip(
+                                    activity: a,
+                                    selected: id == user.primaryActivity,
+                                  );
+                                }).toList(),
+                              ),
                       ),
 
                       const SizedBox(height: 12),
@@ -385,7 +384,7 @@ class ProfileScreen extends StatelessWidget {
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Upgrade to Pro',
@@ -454,39 +453,38 @@ class ProfileScreen extends StatelessWidget {
   void _showSettings(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      builder: (_) =>
-          Container(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: AppColors.border2,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Text('Settings', style: AppTextStyles.h3()),
-                const SizedBox(height: 20),
-                const Divider(),
-                ListTile(
-                  leading: const Text('🚪', style: TextStyle(fontSize: 20)),
-                  title: Text(
-                    'Sign Out',
-                    style: AppTextStyles.subtitle(color: AppColors.error),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.read<AuthBloc>().add(const LogoutSubmitted());
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: AppColors.border2,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
+            Text('Settings', style: AppTextStyles.h3()),
+            const SizedBox(height: 20),
+            const Divider(),
+            ListTile(
+              leading: const Text('🚪', style: TextStyle(fontSize: 20)),
+              title: Text(
+                'Sign Out',
+                style: AppTextStyles.subtitle(color: AppColors.error),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                context.read<AuthBloc>().add(const LogoutSubmitted());
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -502,24 +500,22 @@ class _StatCard extends StatelessWidget {
   final String label, emoji;
 
   @override
-  Widget build(BuildContext context) =>
-      Expanded(
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.surface1,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            children: [
-              Text(emoji, style: const TextStyle(fontSize: 22)),
-              const SizedBox(height: 6),
-              Text(
-                  '\$value', style: AppTextStyles.h3(color: AppColors.primary)),
-              Text(label, style: AppTextStyles.caption()),
-            ],
-          ),
-        ),
-      );
+  Widget build(BuildContext context) => Expanded(
+    child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 22)),
+          const SizedBox(height: 6),
+          Text('$value', style: AppTextStyles.h3(color: AppColors.primary)),
+          Text(label, style: AppTextStyles.caption()),
+        ],
+      ),
+    ),
+  );
 }

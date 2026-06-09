@@ -82,7 +82,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Session scheduled with \${widget.buddyName}! 💪',
+                'Session scheduled with ${widget.buddyName}! 💪',
                 style: AppTextStyles.body(),
               ),
             ),
@@ -133,7 +133,7 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        'Session with \${widget.buddyName}',
+                        'Session with ${widget.buddyName}',
                         style: AppTextStyles.subtitle(color: AppColors.primary),
                       ),
                     ],

@@ -283,7 +283,7 @@ class _SessionCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  'With \${session.buddyName}',
+                  'With ${session.buddyName}',
                   style: AppTextStyles.bodySM(),
                 ),
                 if (session.gymName != null) ...[
@@ -306,7 +306,7 @@ class _SessionCard extends StatelessWidget {
                 const Icon(Icons.star, color: AppColors.warning, size: 15),
                 const SizedBox(width: 4),
                 Text(
-                  '+\${session.xpEarned} XP earned',
+                  '+${session.xpEarned} XP earned',
                   style: AppTextStyles.bodySM(
                     color: AppColors.warning,
                   ).copyWith(fontWeight: FontWeight.w700),

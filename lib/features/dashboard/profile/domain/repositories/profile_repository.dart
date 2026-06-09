@@ -6,7 +6,7 @@ abstract class ProfileRepository {
 
   Future<User> getMe();
 
-  Future<RegisterResponse> updateProfile(UploadProfileRequest request);
+  Future<User> updateProfile(Map<String, dynamic> data  );
 
   Future<String> uploadAvatar(String request);
 }

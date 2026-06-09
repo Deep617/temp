@@ -14,7 +14,6 @@ import '../../../../core/widgets/common/common_widgets.dart';
 import '../../../../core/widgets/error_widget.dart';
 import '../../../../di_injection/dependency_injection.dart';
 import '../../../dashboard/profile/presentation/bloc/profile_state.dart';
-import '../../data/request_ml/upload_profile_request.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -67,12 +66,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _finish() async {
     context.read<ProfileBloc>().add(
       ProfileUpdated(
-        uploadProfileRequest: UploadProfileRequest(
-          primaryActivity: _selectedActivity,
-          experienceLevel: _selectedLevel,
-          goals: _selectedGoals,
-          city: _cityCtrl.text.trim().isNotEmpty ? _cityCtrl.text.trim() : null,
-        ),
+        data: {
+          'primaryActivity': _selectedActivity,
+          'experienceLevel': _selectedLevel,
+          'goals': _selectedGoals,
+          'city': _cityCtrl.text.trim().isNotEmpty
+              ? _cityCtrl.text.trim()
+              : null,
+        },
       ),
     );
   }
@@ -84,7 +85,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: SafeArea(
         child: BlocConsumer<ProfileBloc, ProfileState>(
           listener: (context, state) {
-            if (state.isSuccess) {
+            if (state.isUpdated) {
               storageService.setOnboarding();
               context.go(AppRoutes.home);
               ScaffoldMessenger.of(context).showSnackBar(
@@ -111,18 +112,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         message: state.error!.message!,
         apiFailure: state.error!,
         onRetry: () {
-          context.read<ProfileBloc>().add(
-            ProfileUpdated(
-              uploadProfileRequest: UploadProfileRequest(
-                primaryActivity: _selectedActivity,
-                experienceLevel: _selectedLevel,
-                goals: _selectedGoals,
-                city: _cityCtrl.text.trim().isNotEmpty
-                    ? _cityCtrl.text.trim()
-                    : null,
-              ),
-            ),
-          );
+          _finish();
         },
       );
     } else {
@@ -153,7 +143,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               const SizedBox(width: 12),
               Text(
-                '\${_page + 1}/\$_totalPages',
+                '${_page + 1}$_totalPages',
                 style: AppTextStyles.caption(),
               ),
             ],
@@ -356,7 +346,7 @@ class _LevelPage extends StatelessWidget {
                               ),
                               child: Center(
                                 child: Text(
-                                  '\${e.key + 1}',
+                                  '${e.key + 1}',
                                   style: AppTextStyles.h3(
                                     color: isSelected
                                         ? AppColors.primary

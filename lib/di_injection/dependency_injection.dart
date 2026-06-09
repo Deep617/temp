@@ -8,6 +8,9 @@ import 'package:seshlly/features/notification/data/datasource/notification_remot
 import 'package:seshlly/features/notification/data/repositories/notification_repositorie.dart';
 import 'package:seshlly/features/notification/data/repositories_impl/notification_repositories_impl.dart';
 import 'package:seshlly/features/notification/presentation/bloc/notification_bloc.dart';
+import 'package:seshlly/features/subscription/data/datasource/subscription_remote_datasource.dart';
+import 'package:seshlly/features/subscription/data/repositories/subscription_repository.dart';
+import 'package:seshlly/features/subscription/presentation/bloc/subscription_bloc.dart';
 
 import '../core/api/dio_client.dart';
 import '../core/network/connectivity_service.dart';
@@ -29,6 +32,7 @@ import '../features/dashboard/profile/data/repository_impl/profile_repository_im
 import '../features/dashboard/profile/domain/repositories/profile_repository.dart';
 import '../features/dashboard/profile/domain/usecases/update_profile_usecase.dart';
 import '../features/dashboard/profile/presentation/bloc/profile_bloc.dart';
+import '../features/subscription/data/repositories/subscription_repositories_impl.dart';
 
 final getIt = GetIt.instance;
 
@@ -67,11 +71,13 @@ Future<void> setupDependencies() async {
   );
 
   getIt.registerFactory<ProfileBloc>(
-    () => ProfileBloc(getIt(), getIt(), getIt()),
+    () => ProfileBloc(getIt(), getIt(), getIt(), getIt()),
   );
   getIt.registerLazySingleton(() => UpdateProfileUseCase(getIt()));
   getIt.registerLazySingleton(() => OnloadProfileUseCase(getIt()));
   getIt.registerLazySingleton(() => LogoutUseCase(getIt()));
+  getIt.registerLazySingleton(() => GetBuddyProfileUseCase(getIt()));
+  getIt.registerLazySingleton(() => UpdateProfileAvatarUseCase(getIt()));
 
   /// Discover
   getIt.registerLazySingleton<DiscoverRemoteDatasource>(
@@ -105,5 +111,16 @@ Future<void> setupDependencies() async {
   );
   getIt.registerFactory<NotificationBloc>(
     () => NotificationBloc(notificationRepository: getIt()),
+  );
+
+  ///Subscription
+  getIt.registerLazySingleton<SubscriptionRemoteDataSource>(
+    () => SubscriptionRemoteDataSource(getIt()),
+  );
+  getIt.registerLazySingleton<SubscriptionRepository>(
+    () => SubscriptionRepositoriesImpl(getIt(), getIt()),
+  );
+  getIt.registerFactory<SubscriptionBloc>(
+    () => SubscriptionBloc(subscriptionRepository: getIt()),
   );
 }

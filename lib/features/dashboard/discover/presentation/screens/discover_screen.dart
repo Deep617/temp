@@ -421,7 +421,7 @@ class _BuddyCard extends StatelessWidget {
                           child: Row(
                             children: [
                               Text(
-                                '\${profile.firstName}, \${profile.level}',
+                                '${profile.firstName}, ${profile.level}',
                                 style: AppTextStyles.h2(),
                               ),
                               if (profile.idVerified) ...[
@@ -467,7 +467,7 @@ class _BuddyCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 3),
                           Text(
-                            '\${profile.distanceKm!.toStringAsFixed(1)} km',
+                            '${profile.distanceKm!.toStringAsFixed(1)} km',
                             style: AppTextStyles.bodySM(),
                           ),
                         ],
@@ -678,7 +678,7 @@ class _MatchDialog extends StatelessWidget {
           ).animate().fadeIn(delay: 200.ms),
           const SizedBox(height: 8),
           Text(
-            'You and \${profile.firstName} both want to train together!',
+            'You and ${profile.firstName} both want to train together!',
             style: AppTextStyles.body(),
             textAlign: TextAlign.center,
           ).animate(delay: 300.ms).fadeIn(),
