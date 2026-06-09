@@ -75,7 +75,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: BlocConsumer<AuthBloc, AuthState>(
             listener: (context, state) {
-              if (state.isAuthenticated) {
+              if (state.isOnboarding) {
                 context.push(AppRoutes.onboarding);
               } // Router handles redirect to onboarding
               // on success

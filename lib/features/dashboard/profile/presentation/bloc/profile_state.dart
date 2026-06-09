@@ -1,17 +1,16 @@
-
 import '../../../../../core/api/base_state.dart';
 import '../../../../../core/errors/failure.dart';
 import '../../../../auth/data/response_ml/register_response.dart';
 
 class ProfileState extends BaseState {
-  final RegisterResponse? updateProfileResponse;
+  final User? updateProfileResponse;
 
   const ProfileState({super.status, super.error, this.updateProfileResponse});
 
   ProfileState copyWith({
     ApiStatus? status,
     ApiFailure? error,
-    RegisterResponse? updateProfileResponse,
+    User? updateProfileResponse,
 
     bool clearError = false,
     bool clearResponse = false,

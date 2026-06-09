@@ -4,7 +4,7 @@ import '../../../../auth/data/response_ml/register_response.dart';
 abstract class ProfileRepository {
   ProfileRepository();
 
-  Future<RegisterResponse> getMe();
+  Future<User> getMe();
 
   Future<RegisterResponse> updateProfile(UploadProfileRequest request);
 

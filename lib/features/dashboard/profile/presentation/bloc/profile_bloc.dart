@@ -30,12 +30,12 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   ) async {
     emit(state.copyWith(status: ApiStatus.loading, clearError: true));
     try {
-      final RegisterResponse updateProfileResponse = await _onloadProfileUseCase
+      final User updateProfileResponse = await _onloadProfileUseCase
           .getMe();
 
-      if (kDebugMode) {
+     /* if (kDebugMode) {
         print("Token on login: ${(updateProfileResponse.accessToken)}");
-      }
+      }*/
 
       emit(
         state.copyWith(
@@ -69,7 +69,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       emit(
         state.copyWith(
           status: ApiStatus.success,
-          updateProfileResponse: updateProfileResponse,
+          updateProfileResponse: updateProfileResponse.user,
         ),
       );
     } on AppError catch (e) {

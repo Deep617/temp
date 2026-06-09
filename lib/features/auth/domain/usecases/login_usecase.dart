@@ -25,14 +25,13 @@ class LoginUseCase {
     try {
       final token = await _secureStorageService.getAccessToken();
       if (token == null) return null;
-      RegisterResponse registerResponse = await _profileRepository.getMe();
-
-      return registerResponse.user;
+      User user = await _profileRepository.getMe();
+      return user;
     } on AppError {
-      _secureStorageService.clearStorage();
+      await   _secureStorageService.clearStorage();
       rethrow;
     } catch (e) {
-      _secureStorageService.clearStorage();
+      await  _secureStorageService.clearStorage();
       throw AppError.fromException(e);
     }
   }

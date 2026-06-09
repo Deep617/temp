@@ -17,11 +17,12 @@ class ProfileRepositoryImpl extends BaseRepository
   );
 
   @override
-  Future<RegisterResponse> getMe() async {
+  Future<User> getMe() async {
     return await safeApiCall(() async {
       final response = await remote.getMe();
       print("user  getMe call");
-      RegisterResponse registerResponse = RegisterResponse.fromJson(
+      print("user  getMe reponse ${response.data}");
+      User registerResponse = User.fromJson(
         response.data['data'],
       );
       return registerResponse;

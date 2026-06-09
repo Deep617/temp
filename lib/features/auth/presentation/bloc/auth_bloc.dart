@@ -28,9 +28,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) : super(const AuthState()) {
     print('**************AuthBloc created');
 
-    on<AuthCheckRequested>((event, emit) {
+    on<AuthCheckRequested>((event, emit) async {
       print('****************Event received');
-      _onCheckRequested(event, emit);
+      await _onCheckRequested(event, emit);
     });
     on<AuthLoginRequested>(_onLoginSubmitted);
     on<AuthRegisterRequested>(_onRegister);
@@ -45,21 +45,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     print("***************AuthCheckRequested received");
     // emit(state.copyWith(status: AuthStatus.loading, clearError: true));
-    final user = await loginUseCase.getCurrentUser();
-    if (user == null) {
-      print("***************user  not");
-      emit(state.copyWith(status: AuthStatus.unauthenticated));
-      return;
-    } else {
-      print("***************user  present");
+    try {
+      final user = await loginUseCase.getCurrentUser();
+      if (user == null) {
+        print("***************user  not");
+        emit(state.copyWith(status: AuthStatus.unauthenticated));
+        return;
+      } else {
+        print("***************user  present");
+      }
+      bool onboarded = await _storageService.getOnboarding();
+      emit(
+        state.copyWith(
+          status: onboarded ? AuthStatus.authenticated : AuthStatus.onboarding,
+          user: user,
+        ),
+      );
+    } on AppError catch (e) {
+      print("exceptin on getcurrent user${e.toString()}");
     }
-    bool onboarded = await _storageService.getOnboarding();
-    emit(
-      state.copyWith(
-        status: onboarded ? AuthStatus.authenticated : AuthStatus.onboarding,
-        user: user,
-      ),
-    );
   }
 
   Future<void> _onLoginSubmitted(

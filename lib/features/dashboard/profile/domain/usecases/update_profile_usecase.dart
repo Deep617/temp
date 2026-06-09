@@ -17,7 +17,7 @@ class UpdateProfileUseCase {
 class OnloadProfileUseCase {
   final ProfileRepository repository;
   OnloadProfileUseCase(this.repository);
-  Future<RegisterResponse> getMe() {
+  Future<User> getMe() {
     return repository.getMe( );
   }
 }
