@@ -15,6 +15,9 @@ class ApiEndpoints {
   static const String authMe = '/auth/me';
   static const String updateProfile = '/users/me';
   static const String uploadAvatar = '/upload';
+  static const String notifications = '/notifications';
+  static const String notificationsReadAll = '/notifications/read-all';
+
 
 
 

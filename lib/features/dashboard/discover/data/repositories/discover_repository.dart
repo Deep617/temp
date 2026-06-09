@@ -12,7 +12,6 @@ abstract class DiscoverRepository {
     int page = 1,
   });
 
-  /// Returns true if a match was made.
   Future<bool> swipeRight(String userId);
 
   Future<void> swipeLeft(String userId);

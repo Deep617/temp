@@ -5,12 +5,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:seshlly/routes/app_router.dart';
 
-import '../core/services/secure_storage_service.dart';
-import '../core/services/storage_service.dart';
-import '../core/theme/app_colors.dart';
-import '../core/theme/app_text_styles.dart';
-import '../core/theme/app_theme.dart';
-import '../di_injection/dependency_injection.dart';
+import 'core/services/secure_storage_service.dart';
+import 'core/services/storage_service.dart';
+import 'core/theme/app_colors.dart';
+import 'core/theme/app_text_styles.dart';
+import 'core/theme/app_theme.dart';
+import 'di_injection/dependency_injection.dart';
 
 // Pure UI — GoRouter redirect driven by AuthBloc handles navigation
 class SplashScreen extends StatefulWidget {

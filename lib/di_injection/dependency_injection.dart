@@ -4,6 +4,10 @@ import 'package:seshlly/features/dashboard/session/data/datasource/session_remot
 import 'package:seshlly/features/dashboard/session/data/repositories/session_repository.dart';
 import 'package:seshlly/features/dashboard/session/data/repositories_impl/session_repository_impl.dart';
 import 'package:seshlly/features/dashboard/session/presentation/bloc/session_bloc.dart';
+import 'package:seshlly/features/notification/data/datasource/notification_remote_datasource.dart';
+import 'package:seshlly/features/notification/data/repositories/notification_repositorie.dart';
+import 'package:seshlly/features/notification/data/repositories_impl/notification_repositories_impl.dart';
+import 'package:seshlly/features/notification/presentation/bloc/notification_bloc.dart';
 
 import '../core/api/dio_client.dart';
 import '../core/network/connectivity_service.dart';
@@ -90,5 +94,16 @@ Future<void> setupDependencies() async {
   );
   getIt.registerFactory<SessionBloc>(
     () => SessionBloc(sessionRepository: getIt()),
+  );
+
+  ///Notifications
+  getIt.registerLazySingleton<NotificationRemoteDataSource>(
+    () => NotificationRemoteDataSource(getIt()),
+  );
+  getIt.registerLazySingleton<NotificationRepository>(
+    () => NotificationRepositoryImpl(getIt(), getIt()),
+  );
+  getIt.registerFactory<NotificationBloc>(
+    () => NotificationBloc(notificationRepository: getIt()),
   );
 }

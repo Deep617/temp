@@ -39,11 +39,11 @@ class ApiInterceptor extends Interceptor {
       try {
         const encoder = JsonEncoder.withIndent('  ');
         log(
-          name: "Api ApiInterceptor Request:=",
+          name: "${options.uri}= Api Request:=",
           encoder.convert(options.data),
         );
       } catch (e) {
-        log(name: "Log Request Exception:=", options.data);
+        log(name: "Request Exception:=", options.data);
       }
       print("╚═════════════════════════════════════════");
     }
@@ -61,11 +61,11 @@ class ApiInterceptor extends Interceptor {
       try {
         const encoder = JsonEncoder.withIndent('  ');
         log(
-          name: "Api ApiInterceptor Response:=",
+          name: "${response.requestOptions.uri}= Api Response:=",
           encoder.convert(response.data),
         );
       } catch (e) {
-        log(name: "Log Response Exception:=", response.data);
+        log(name: "Response Exception:=", response.data);
       }
       print("╚═════════════════════════════════════════");
     }
@@ -106,11 +106,11 @@ class ApiInterceptor extends Interceptor {
         try {
           const encoder = JsonEncoder.withIndent('  ');
           log(
-            name: "Api ApiInterceptor Error Response:=",
-            encoder.convert(err.response?.data),
+            name:
+                "${err.requestOptions.uri}= Api Error Response:=",encoder.convert(err.response?.data),
           );
         } catch (e) {
-          log(name: "Log Error Exception:=", err.response?.data);
+          log(name: "Error Exception:=", err.response?.data);
         }
       }
       print("╚════════════════════════════════════════");

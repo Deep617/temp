@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:seshlly/features/auth/domain/usecases/logout_usecase.dart';
 
@@ -26,10 +27,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     this.registerUseCase,
     this._logoutUseCase,
   ) : super(const AuthState()) {
-    print('**************AuthBloc created');
-
+    if (kDebugMode) {
+      print('****** AuthBloc created');
+    }
     on<AuthCheckRequested>((event, emit) async {
-      print('****************Event received');
+      if (kDebugMode) {
+        print('****** Event received');
+      }
       await _onCheckRequested(event, emit);
     });
     on<AuthLoginRequested>(_onLoginSubmitted);
@@ -43,16 +47,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthCheckRequested event,
     Emitter<AuthState> emit,
   ) async {
-    print("***************AuthCheckRequested received");
-    // emit(state.copyWith(status: AuthStatus.loading, clearError: true));
+    if (kDebugMode) {
+      print("****** onCheckRequested received");
+    }
+
     try {
       final user = await loginUseCase.getCurrentUser();
       if (user == null) {
-        print("***************user  not");
+        if (kDebugMode) {
+          print("******* user not");
+        }
         emit(state.copyWith(status: AuthStatus.unauthenticated));
         return;
       } else {
-        print("***************user  present");
+        if (kDebugMode) {
+          print("******* user present");
+        }
       }
       bool onboarded = await _storageService.getOnboarding();
       emit(
@@ -62,7 +72,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         ),
       );
     } on AppError catch (e) {
-      print("exceptin on getcurrent user${e.toString()}");
+      if (kDebugMode) {
+        print("exception on current user${e.toString()}");
+      }
     }
   }
 

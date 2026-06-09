@@ -5,7 +5,9 @@ import 'package:seshlly/features/auth/presentation/screens/onboarding_screen.dar
 import 'package:seshlly/features/auth/presentation/screens/register_screen.dart';
 import 'package:seshlly/features/auth/presentation/screens/welcome_screen.dart';
 import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_bloc.dart';
-import 'package:seshlly/features/splash_screen.dart';
+import 'package:seshlly/features/notification/presentation/bloc/notification_bloc.dart';
+import 'package:seshlly/features/notification/presentation/screen/notifications_screen.dart';
+import 'package:seshlly/splash_screen.dart';
 
 import '../di_injection/dependency_injection.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
@@ -44,6 +46,16 @@ class AppRouter {
           return BlocProvider(
             create: (_) => getIt<ProfileBloc>(),
             child: const OnboardingScreen(),
+          );
+        },
+      ),
+
+      GoRoute(
+        path: AppRoutes.notifications,
+        builder: (context, state) {
+          return BlocProvider(
+            create: (_) => getIt<NotificationBloc>(),
+            child: const NotificationsScreen(),
           );
         },
       ),
