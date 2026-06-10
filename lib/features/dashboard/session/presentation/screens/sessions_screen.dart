@@ -8,6 +8,7 @@ import 'package:seshlly/routes/app_router.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/widgets/common/common_widgets.dart';
+import '../../../../../core/widgets/error_widget.dart';
 import '../../data/response_ml/workout_session.dart';
 import '../bloc/session_bloc.dart';
 import '../bloc/session_event.dart';
@@ -134,6 +135,17 @@ class _SessionList extends StatelessWidget {
         if (state.isLoading) {
           return const Center(
             child: CircularProgressIndicator(color: AppColors.primary),
+          );
+        }
+
+        // Error View with action
+        if (state.status == SessionStatus.failure) {
+          ErrorView(
+            message: state.error!.message,
+            apiFailure: state.error!,
+            onRetry: () {
+              context.read<SessionBloc>().add(const SessionsLoaded());
+            },
           );
         }
 

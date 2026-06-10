@@ -35,11 +35,11 @@ class ApiInterceptor extends Interceptor {
           print("║ $key: $value");
         }
       });
-      print("║ BODY:");
+      //print("║ BODY:");
       try {
         const encoder = JsonEncoder.withIndent('  ');
         log(
-          name: "${options.uri}= Api Request:=",
+          name: "║ BODY: ${options.uri}= Api Request:=",
           encoder.convert(options.data),
         );
       } catch (e) {
@@ -57,11 +57,11 @@ class ApiInterceptor extends Interceptor {
       print("╔════════════════ RESPONSE ══════════════");
       print("║ URL: ${response.requestOptions.uri}");
       print("║ STATUS CODE: ${response.statusCode}");
-      print("║ RESPONSE:");
+     // print("║ RESPONSE:");
       try {
         const encoder = JsonEncoder.withIndent('  ');
         log(
-          name: "${response.requestOptions.uri}= Api Response:=",
+          name: "║ RESPONSE: ${response.requestOptions.uri}= Api Response:=",
           encoder.convert(response.data),
         );
       } catch (e) {
@@ -90,8 +90,8 @@ class ApiInterceptor extends Interceptor {
         _refreshing = false;
         return handler.resolve(retryResponse);
       } catch (e) {
-        // StorageService service = getIt<StorageService>();
-        //  await service.clearStorage();
+        SecureStorageService service = getIt<SecureStorageService>();
+         await service.clearStorage();
         return handler.next(err);
       }
     }

@@ -39,7 +39,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLoginRequested>(_onLoginSubmitted);
     on<AuthRegisterRequested>(_onRegister);
     on<AuthOnboardingCompleted>(_onOnboardingCompleted);
-    on<AuthLogoutRequested>(_onLogoutRequested);
+    on<LogoutSubmitted>(_onLogoutRequested);
     on<AuthUserUpdated>(_onUserUpdated);
   }
 
@@ -134,13 +134,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogoutRequested(
-    AuthLogoutRequested event,
+    LogoutSubmitted event,
     Emitter<AuthState> emit,
   ) async {
     final Response logoutResponse = await _logoutUseCase.logoutPerform();
 
     if (logoutResponse.statusCode == 200) {
       await _sStorageService.clearStorage();
+      await _storageService.clearStorage();
     }
     emit(const AuthState(status: AuthStatus.unauthenticated));
   }

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 
 // ─────────────────────────────────────────────────────────
 //  AppError — single error model used across all BLoCs
@@ -16,6 +17,14 @@ class AppError extends Equatable {
   });
 
   static AppError fromException(dynamic e) {
+    if (kDebugMode) {
+      print("AppError Top Level Exception ${e.toString()}");
+      print("TYPE: ${e.type}");
+      print("MESSAGE: ${e.message}");
+      print("ERROR: ${e.error}");
+      print("RESPONSE: ${e.response?.data}");
+    }
+
     if (e is DioException) {
       switch (e.type) {
         case DioExceptionType.connectionTimeout:
@@ -40,11 +49,7 @@ class AppError extends Equatable {
               e.message ??
               'Request failed';
           if (code == 401) {
-            return AppError(
-              message: message,
-              statusCode: 401,
-              type: 'auth',
-            );
+            return AppError(message: message, statusCode: 401, type: 'auth');
           }
           if (code == 403) {
             return AppError(
@@ -60,11 +65,7 @@ class AppError extends Equatable {
               type: 'validation',
             );
           }
-          return AppError(
-            message: message,
-            statusCode: code,
-            type: 'server',
-          );
+          return AppError(message: message, statusCode: code, type: 'server');
         default:
           return AppError(
             message: e.message ?? 'Network error.',

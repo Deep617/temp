@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:seshlly/core/errors/app_error.dart';
 
-import '../errors/failure.dart';
-
 class ErrorView extends StatelessWidget {
   final String message;
   final AppError apiFailure;
@@ -40,8 +38,8 @@ class ErrorView extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               SizedBox(
-                width: double.infinity,
-                height: 50,
+                width: MediaQuery.of(context).size.width / 4,
+                height: 35,
                 child: ElevatedButton(
                   onPressed: onRetry,
                   child: Text(buttonText),

@@ -75,8 +75,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: BlocConsumer<AuthBloc, AuthState>(
             listener: (context, state) {
-              if (state.isOnboarding) {
-                context.push(AppRoutes.onboarding);
+              if (state.isAuthenticated) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Register Successfully 💪',
+                      style: AppTextStyles.body(),
+                    ),
+                  ),
+                );
               } // Router handles redirect to onboarding
               // on success
             },

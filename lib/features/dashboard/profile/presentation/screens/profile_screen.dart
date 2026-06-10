@@ -20,6 +20,7 @@ class ProfileScreen extends StatelessWidget {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, authState) {
         final user = authState.user;
+
         if (user == null) {
           return const Center(
             child: CircularProgressIndicator(color: AppColors.primary),

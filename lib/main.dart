@@ -20,37 +20,32 @@ Future<void> main() async {
 
   /// STEP 1: INIT DI
   await setupDependencies();
-  runApp(const MyApp());
+
+  runApp(  MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
 
+  const MyApp({
+    super.key,
+
+  });
   @override
   Widget build(BuildContext context) {
+    final authBloc = getIt<AuthBloc>();
+    authBloc.add(const AuthCheckRequested());
     return MultiBlocProvider(
       providers: [
         /// GLOBAL BLOCS ONLY
-        BlocProvider(
-          lazy: false,
-          create: (_) {
-            if (kDebugMode) {
-              print("****** Provider create called");
-            }
-            final bloc = getIt<AuthBloc>();
-            if (kDebugMode) {
-              print("****** Adding AuthCheckRequested");
-            }
-            bloc.add(const AuthCheckRequested());
-            return bloc;
-          },
+        BlocProvider.value(
+          value: authBloc,
         ),
       ],
       child: MaterialApp.router(
         title: 'Seshlly',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
-        routerConfig: AppRouter.router,
+        routerConfig: buildRouter(authBloc),
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(

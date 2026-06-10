@@ -38,9 +38,7 @@ class AuthOnboardingCompleted extends AuthEvent {
   const AuthOnboardingCompleted();
 }
 
-class AuthLogoutRequested extends AuthEvent {
-  const AuthLogoutRequested();
-}
+
 
 class AuthUserUpdated extends AuthEvent {
   const AuthUserUpdated({required this.user});

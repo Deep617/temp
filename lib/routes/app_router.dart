@@ -14,6 +14,8 @@ import 'package:seshlly/features/subscription/presentation/screen/subscription_s
 import 'package:seshlly/splash_screen.dart';
 
 import '../di_injection/dependency_injection.dart';
+import '../features/auth/presentation/bloc/auth_bloc.dart';
+import '../features/auth/presentation/bloc/auth_state.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/dashboard/discover/presentation/screens/discover_screen.dart';
 import '../features/dashboard/home_screen.dart';
@@ -24,9 +26,44 @@ import '../features/dashboard/session/presentation/screens/sessions_screen.dart'
 import '../features/dashboard/session/presentation/screens/upload_proof_screen.dart';
 import '../features/match/match_screen.dart';
 
-class AppRouter {
-  static final router = GoRouter(
+GoRouter buildRouter(AuthBloc authBloc) {
+  return GoRouter(
     initialLocation: AppRoutes.splash,
+    refreshListenable: GoRouterAuthNotifier(authBloc),
+    redirect: (context, state) {
+      final status = authBloc.state.status;
+      final location = state.matchedLocation;
+
+      final isAuthPage = [
+        AppRoutes.welcome,
+        AppRoutes.login,
+        AppRoutes.register,
+      ].contains(location);
+
+      // Initial loading
+      if (status == AuthStatus.initial) {
+        return location == AppRoutes.splash ? null : AppRoutes.splash;
+      }
+
+      // Not logged in
+      if (status == AuthStatus.unauthenticated) {
+        return isAuthPage ? null : AppRoutes.welcome;
+      }
+
+      // Onboarding
+      if (status == AuthStatus.onboarding) {
+        return location == AppRoutes.onboarding ? null : AppRoutes.onboarding;
+      }
+
+      // Logged in
+      if (status == AuthStatus.authenticated) {
+        if (isAuthPage || location == AppRoutes.splash) {
+          return AppRoutes.home;
+        }
+      }
+
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/',
@@ -201,6 +238,21 @@ class AppRouter {
       ),
     ),
   );
+}
+
+// ── Bridges GoRouter refresh with AuthBloc stream ─────────
+class GoRouterAuthNotifier extends ChangeNotifier {
+  GoRouterAuthNotifier(AuthBloc authBloc) {
+    _subscription = authBloc.stream.listen((_) => notifyListeners());
+  }
+
+  late final dynamic _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
 }
 
 class AppRoutes {

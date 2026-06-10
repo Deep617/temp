@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:seshlly/core/services/storage_service.dart';
 import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_bloc.dart';
 import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_event.dart';
-import 'package:seshlly/routes/app_router.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -14,6 +12,8 @@ import '../../../../core/widgets/common/common_widgets.dart';
 import '../../../../core/widgets/error_widget.dart';
 import '../../../../di_injection/dependency_injection.dart';
 import '../../../dashboard/profile/presentation/bloc/profile_state.dart';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_event.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -25,6 +25,7 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _pageCtrl = PageController();
   int _page = 0;
+  bool _saving = false;
 
   String? _selectedActivity;
   String? _selectedLevel;
@@ -64,6 +65,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   StorageService storageService = getIt<StorageService>();
 
   Future<void> _finish() async {
+    setState(() => _saving = true);
     context.read<ProfileBloc>().add(
       ProfileUpdated(
         data: {
@@ -76,6 +78,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         },
       ),
     );
+    if (mounted) context.read<AuthBloc>().add(const AuthOnboardingCompleted());
+    setState(() => _saving = false);
   }
 
   @override
@@ -86,8 +90,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         child: BlocConsumer<ProfileBloc, ProfileState>(
           listener: (context, state) {
             if (state.isUpdated) {
-              storageService.setOnboarding();
-              context.go(AppRoutes.home);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
@@ -142,10 +144,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              Text(
-                '${_page + 1}$_totalPages',
-                style: AppTextStyles.caption(),
-              ),
+              Text('${_page + 1}$_totalPages', style: AppTextStyles.caption()),
             ],
           ),
         ),
@@ -190,7 +189,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 label: _page == _totalPages - 1
                     ? 'Start Matching!'
                     : 'Continue',
-                loading: state.isLoading,
+                loading: _saving,
                 disabled: !_canProceed,
                 onPressed: _next,
               ),
