@@ -57,7 +57,8 @@ GoRouter buildRouter(AuthBloc authBloc) {
 
       // Logged in
       if (status == AuthStatus.authenticated) {
-        if (isAuthPage || location == AppRoutes.splash) {
+        if (isAuthPage || location == AppRoutes.splash ||
+            location == AppRoutes.onboarding) {
           return AppRoutes.home;
         }
       }

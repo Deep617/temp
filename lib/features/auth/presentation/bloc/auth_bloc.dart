@@ -41,6 +41,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthOnboardingCompleted>(_onOnboardingCompleted);
     on<LogoutSubmitted>(_onLogoutRequested);
     on<AuthUserUpdated>(_onUserUpdated);
+    on<UserTokeExpire>(_onUserTokenNot);
   }
 
   Future<void> _onCheckRequested(
@@ -149,4 +150,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   void _onUserUpdated(AuthUserUpdated event, Emitter<AuthState> emit) {
     emit(state.copyWith(user: event.user));
   }
+
+  Future<void> _onUserTokenNot(
+      UserTokeExpire event,
+      Emitter<AuthState> emit,
+      ) async {
+
+    emit(state.copyWith(status: AuthStatus.unauthenticated));
+  }
 }
+

@@ -19,10 +19,10 @@ class AppError extends Equatable {
   static AppError fromException(dynamic e) {
     if (kDebugMode) {
       print("AppError Top Level Exception ${e.toString()}");
-      print("TYPE: ${e.type}");
-      print("MESSAGE: ${e.message}");
-      print("ERROR: ${e.error}");
-      print("RESPONSE: ${e.response?.data}");
+      print("AppError TYPE: ${e.type}");
+      print("AppError MESSAGE: ${e.message}");
+      print("AppError ERROR: ${e.error}");
+      print("AppError RESPONSE: ${e.response?.data}");
     }
 
     if (e is DioException) {

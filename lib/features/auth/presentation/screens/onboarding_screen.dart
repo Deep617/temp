@@ -111,8 +111,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       return mainUI(state);
     } else if (state.isFailure) {
       return ErrorView(
-        message: state.error!.message!,
-        apiFailure: state.error!,
+        appError: state.error!,
         onRetry: () {
           _finish();
         },

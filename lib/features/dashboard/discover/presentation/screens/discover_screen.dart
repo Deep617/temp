@@ -327,8 +327,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   // Error View with action
                   if (state.status == DiscoverStatus.failure)
                     ErrorView(
-                      message: state.error!.message,
-                      apiFailure: state.error!,
+                      appError: state.error!,
                       onRetry: () {
                         context.read<DiscoverBloc>().add(
                           const DiscoverProfilesLoaded(),

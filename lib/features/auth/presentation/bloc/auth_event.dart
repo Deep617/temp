@@ -38,8 +38,6 @@ class AuthOnboardingCompleted extends AuthEvent {
   const AuthOnboardingCompleted();
 }
 
-
-
 class AuthUserUpdated extends AuthEvent {
   const AuthUserUpdated({required this.user});
 
@@ -47,4 +45,8 @@ class AuthUserUpdated extends AuthEvent {
 
   @override
   List<Object?> get props => [user];
+}
+
+class UserTokeExpire extends AuthEvent {
+  const UserTokeExpire();
 }

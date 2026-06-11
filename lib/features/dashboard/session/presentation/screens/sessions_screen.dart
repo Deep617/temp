@@ -141,8 +141,7 @@ class _SessionList extends StatelessWidget {
         // Error View with action
         if (state.status == SessionStatus.failure) {
           ErrorView(
-            message: state.error!.message,
-            apiFailure: state.error!,
+            appError: state.error!,
             onRetry: () {
               context.read<SessionBloc>().add(const SessionsLoaded());
             },

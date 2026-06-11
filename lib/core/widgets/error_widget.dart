@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:seshlly/core/errors/app_error.dart';
 
+import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/presentation/bloc/auth_event.dart';
+
 class ErrorView extends StatelessWidget {
-  final String message;
-  final AppError apiFailure;
+  final AppError appError;
   final String buttonText;
   final String image;
   final VoidCallback onRetry;
 
   const ErrorView({
     super.key,
-    required this.apiFailure,
-    required this.message,
+    required this.appError,
     required this.onRetry,
     this.buttonText = "Retry",
     this.image = "assets/images/error.png",
@@ -29,7 +31,7 @@ class ErrorView extends StatelessWidget {
               // Image.asset(image, height: 180),
               const SizedBox(height: 24),
               Text(
-                message,
+                appError.message,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 16,
@@ -41,7 +43,14 @@ class ErrorView extends StatelessWidget {
                 width: MediaQuery.of(context).size.width / 4,
                 height: 35,
                 child: ElevatedButton(
-                  onPressed: onRetry,
+                  onPressed: () {
+                    if (appError.statusCode == 401 &&
+                        appError.message == 'Token expired') {
+                      context.read<AuthBloc>().add(const UserTokeExpire());
+                    } else {
+                      onRetry();
+                    }
+                  },
                   child: Text(buttonText),
                 ),
               ),

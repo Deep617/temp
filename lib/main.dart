@@ -17,10 +17,8 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
   SystemChrome.setSystemUIOverlayStyle(AppTheme.overlayStyle);
-
   /// STEP 1: INIT DI
   await setupDependencies();
-
   runApp(  MyApp());
 }
 
