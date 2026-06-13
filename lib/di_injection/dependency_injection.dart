@@ -1,5 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:seshlly/features/dashboard/chat/data/datasource/chat_remote_datasource.dart';
+import 'package:seshlly/features/dashboard/chat/data/repositories/chat_repository.dart';
+import 'package:seshlly/features/dashboard/chat/data/repositories/chat_repository_impl.dart';
+import 'package:seshlly/features/dashboard/chat/presentation/bloc/chat_bloc.dart';
 import 'package:seshlly/features/dashboard/session/data/datasource/session_remote_datasource.dart';
 import 'package:seshlly/features/dashboard/session/data/repositories/session_repository.dart';
 import 'package:seshlly/features/dashboard/session/data/repositories_impl/session_repository_impl.dart';
@@ -123,4 +127,13 @@ Future<void> setupDependencies() async {
   getIt.registerFactory<SubscriptionBloc>(
     () => SubscriptionBloc(subscriptionRepository: getIt()),
   );
+
+  ///Chat
+  getIt.registerLazySingleton<ChatRemoteDatasource>(
+    () => ChatRemoteDatasource(getIt()),
+  );
+  getIt.registerLazySingleton<ChatRepository>(
+    () => ChatRepositoryImpl(getIt(), getIt()),
+  );
+  getIt.registerFactory<ChatBloc>(() => ChatBloc(chatRepository: getIt()));
 }

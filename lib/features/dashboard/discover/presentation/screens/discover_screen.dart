@@ -177,102 +177,103 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   const SizedBox(height: 12),
 
                   // Card Stack
-                  Expanded(
-                    child: state.isLoading && state.profiles.isEmpty
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.primary,
-                            ),
-                          )
-                        : state.profiles.isEmpty &&
-                              state.status == DiscoverStatus.success
-                        ? EmptyState(
-                            emoji: '🔍',
-                            title: 'No more profiles',
-                            subtitle: 'Change filters or check back later',
-                            action: 'Change Filters',
-                            onAction: () => _showFilters(context),
-                          )
-                        : state.isExhausted
-                        ? EmptyState(
-                            emoji: '✨',
-                            title: 'You\'ve seen everyone!',
-                            subtitle: 'Come back tomorrow for fresh matches',
-                            action: 'Refresh',
-                            onAction: () => context.read<DiscoverBloc>().add(
-                              const DiscoverProfilesLoaded(refresh: true),
-                            ),
-                          )
-                        : Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              ...List.generate(2, (i) {
-                                final idx = state.currentIndex + 2 - i;
-                                if (idx >= state.profiles.length)
-                                  return const SizedBox.shrink();
-                                return Positioned(
-                                  top: 8.0 * (2 - i),
-                                  child: Transform.scale(
-                                    scale: 0.94 + 0.03 * (2 - i),
-                                    child: SizedBox(
-                                      width: size.width - 56,
-                                      height: size.height * 0.62,
-                                      child: _BuddyCard(
-                                        profile: state.profiles[idx],
+                  if (state.status != DiscoverStatus.failure)
+                    Expanded(
+                      child: state.isLoading && state.profiles.isEmpty
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.primary,
+                              ),
+                            )
+                          : state.profiles.isEmpty &&
+                                state.status == DiscoverStatus.success
+                          ? EmptyState(
+                              emoji: '🔍',
+                              title: 'No more profiles',
+                              subtitle: 'Change filters or check back later',
+                              action: 'Change Filters',
+                              onAction: () => _showFilters(context),
+                            )
+                          : state.isExhausted
+                          ? EmptyState(
+                              emoji: '✨',
+                              title: 'You\'ve seen everyone!',
+                              subtitle: 'Come back tomorrow for fresh matches',
+                              action: 'Refresh',
+                              onAction: () => context.read<DiscoverBloc>().add(
+                                const DiscoverProfilesLoaded(refresh: true),
+                              ),
+                            )
+                          : Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                ...List.generate(2, (i) {
+                                  final idx = state.currentIndex + 2 - i;
+                                  if (idx >= state.profiles.length)
+                                    return const SizedBox.shrink();
+                                  return Positioned(
+                                    top: 8.0 * (2 - i),
+                                    child: Transform.scale(
+                                      scale: 0.94 + 0.03 * (2 - i),
+                                      child: SizedBox(
+                                        width: size.width - 56,
+                                        height: size.height * 0.62,
+                                        child: _BuddyCard(
+                                          profile: state.profiles[idx],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                                GestureDetector(
+                                  onPanStart: (d) => setState(() {
+                                    _dragStart = d.globalPosition;
+                                  }),
+                                  onPanUpdate: (d) => setState(
+                                    () => _dragCurrent =
+                                        d.globalPosition - _dragStart,
+                                  ),
+                                  onPanEnd: (d) => _onDragEnd(d, state),
+                                  child: Transform.translate(
+                                    offset: _dragCurrent,
+                                    child: Transform.rotate(
+                                      angle: _dragCurrent.dx * 0.001,
+                                      child: Stack(
+                                        children: [
+                                          SizedBox(
+                                            width: size.width - 40,
+                                            height: size.height * 0.62,
+                                            child: _BuddyCard(
+                                              profile: state
+                                                  .profiles[state.currentIndex],
+                                            ),
+                                          ),
+                                          if (_dragCurrent.dx > 30)
+                                            Positioned(
+                                              top: 24,
+                                              left: 24,
+                                              child: _SwipeLabel(
+                                                label: 'CONNECT!',
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
+                                          if (_dragCurrent.dx < -30)
+                                            Positioned(
+                                              top: 24,
+                                              right: 24,
+                                              child: _SwipeLabel(
+                                                label: 'SKIP',
+                                                color: AppColors.error,
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ),
                                   ),
-                                );
-                              }),
-                              GestureDetector(
-                                onPanStart: (d) => setState(() {
-                                  _dragStart = d.globalPosition;
-                                }),
-                                onPanUpdate: (d) => setState(
-                                  () => _dragCurrent =
-                                      d.globalPosition - _dragStart,
                                 ),
-                                onPanEnd: (d) => _onDragEnd(d, state),
-                                child: Transform.translate(
-                                  offset: _dragCurrent,
-                                  child: Transform.rotate(
-                                    angle: _dragCurrent.dx * 0.001,
-                                    child: Stack(
-                                      children: [
-                                        SizedBox(
-                                          width: size.width - 40,
-                                          height: size.height * 0.62,
-                                          child: _BuddyCard(
-                                            profile: state
-                                                .profiles[state.currentIndex],
-                                          ),
-                                        ),
-                                        if (_dragCurrent.dx > 30)
-                                          Positioned(
-                                            top: 24,
-                                            left: 24,
-                                            child: _SwipeLabel(
-                                              label: 'CONNECT!',
-                                              color: AppColors.primary,
-                                            ),
-                                          ),
-                                        if (_dragCurrent.dx < -30)
-                                          Positioned(
-                                            top: 24,
-                                            right: 24,
-                                            child: _SwipeLabel(
-                                              label: 'SKIP',
-                                              color: AppColors.error,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
+                              ],
+                            ),
+                    ),
 
                   // Action Buttons
                   if (state.profiles.isNotEmpty && !state.isExhausted)

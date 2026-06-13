@@ -7,6 +7,8 @@ import 'package:seshlly/routes/app_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../di_injection/dependency_injection.dart';
+import '../notification/presentation/bloc/notification_bloc.dart';
+import 'chat/presentation/bloc/chat_bloc.dart';
 import 'discover/presentation/bloc/discover_bloc.dart';
 import 'discover/presentation/bloc/discover_event.dart';
 import 'profile/presentation/bloc/profile_bloc.dart';
@@ -27,13 +29,11 @@ class HomeScreen extends StatelessWidget {
               getIt<DiscoverBloc>()..add(const DiscoverProfilesLoaded()),
         ),
         BlocProvider(
+          create: (ctx) => getIt<ChatBloc>()..add(const ChatListLoaded()),
+        ),
+        BlocProvider(
           create: (ctx) => getIt<SessionBloc>()..add(const SessionsLoaded()),
         ),
-        /*  BlocProvider(
-          create: (ctx) => ChatBloc(
-            chatRepository: ctx.read<ChatRepository>(),
-          )..add(const ChatListLoaded()),
-        ),*/
         BlocProvider(
           create: (ctx) => getIt<ProfileBloc>()..add(const ProfileLoaded()),
         ),
@@ -50,8 +50,7 @@ class _HomeShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // final unread = context.watch<NotificationBloc>().state.unreadCount;
-    final unread = 3;
+    final unread = getIt<NotificationBloc>().state.unreadCount;
     final location = GoRouterState.of(context).uri.toString();
 
     int currentIndex = 0;

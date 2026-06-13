@@ -17,6 +17,8 @@ import '../di_injection/dependency_injection.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/auth/presentation/bloc/auth_state.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
+import '../features/dashboard/chat/presentation/screen/chat_screen.dart';
+import '../features/dashboard/chat/presentation/screen/chats_list_screen.dart';
 import '../features/dashboard/discover/presentation/screens/discover_screen.dart';
 import '../features/dashboard/home_screen.dart';
 import '../features/dashboard/profile/presentation/screens/buddy_profile_screen.dart';
@@ -57,7 +59,8 @@ GoRouter buildRouter(AuthBloc authBloc) {
 
       // Logged in
       if (status == AuthStatus.authenticated) {
-        if (isAuthPage || location == AppRoutes.splash ||
+        if (isAuthPage ||
+            location == AppRoutes.splash ||
             location == AppRoutes.onboarding) {
           return AppRoutes.home;
         }
@@ -106,17 +109,17 @@ GoRouter buildRouter(AuthBloc authBloc) {
         },
       ),
 
-      /*GoRoute(
+      GoRoute(
         path: AppRoutes.chat,
         builder: (ctx, state) {
           final extra = state.extra as Map<String, dynamic>?;
           return ChatScreen(
-            chatId:      state.pathParameters['chatId']!,
-            buddyName:   extra?['buddyName']   ?? '',
+            chatId: state.pathParameters['chatId']!,
+            buddyName: extra?['buddyName'] ?? '',
             buddyAvatar: extra?['buddyAvatar'],
           );
         },
-      ),*/
+      ),
       GoRoute(
         path: AppRoutes.buddyProfile,
         builder: (context, state) {
@@ -194,10 +197,9 @@ GoRouter buildRouter(AuthBloc authBloc) {
             path: AppRoutes.discover,
             builder: (context, state) => const DiscoverScreen(),
           ),
-          /* GoRoute(path: AppRoutesPath.chats,    builder: (_, __) => const ChatsListScreen()),*/
           GoRoute(
             path: AppRoutes.chats,
-            builder: (context, state) => const ProfileScreen(),
+            builder: (context, state) => const ChatsListScreen(),
           ),
           GoRoute(
             path: AppRoutes.sessions,

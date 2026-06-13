@@ -43,7 +43,15 @@ class ApiInterceptor extends Interceptor {
           encoder.convert(options.data),
         );
       } catch (e) {
-        log(name: "Request Exception:=", options.data);
+        if (options.data is FormData) {
+          final formData = options.data as FormData;
+
+          log('Request Exception:= ${formData.fields}');
+          log('Request Exception:= ${formData.files}');
+        } else {
+          log('Request Exception:= ${options.data}');
+        }
+
       }
       print("╚═════════════════════════════════════════");
     }
@@ -57,7 +65,7 @@ class ApiInterceptor extends Interceptor {
       print("╔════════════════ RESPONSE ══════════════");
       print("║ URL: ${response.requestOptions.uri}");
       print("║ STATUS CODE: ${response.statusCode}");
-     // print("║ RESPONSE:");
+      // print("║ RESPONSE:");
       try {
         const encoder = JsonEncoder.withIndent('  ');
         log(
@@ -91,7 +99,7 @@ class ApiInterceptor extends Interceptor {
         return handler.resolve(retryResponse);
       } catch (e) {
         SecureStorageService service = getIt<SecureStorageService>();
-         await service.clearStorage();
+        await service.clearStorage();
         return handler.next(err);
       }
     }
@@ -106,8 +114,8 @@ class ApiInterceptor extends Interceptor {
         try {
           const encoder = JsonEncoder.withIndent('  ');
           log(
-            name:
-                "${err.requestOptions.uri}= Api Error Response:=",encoder.convert(err.response?.data),
+            name: "${err.requestOptions.uri}= Api Error Response:=",
+            encoder.convert(err.response?.data),
           );
         } catch (e) {
           log(name: "Error Exception:=", err.response?.data);
