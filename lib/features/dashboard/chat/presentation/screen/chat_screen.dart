@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:timeago/timeago.dart' as timeago;
 
+import '../../../../../core/api/api_endpoints.dart';
 import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
@@ -53,7 +54,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _initSocket() {
-    _socket = IO.io(AppConstants.socketUrl, <String, dynamic>{
+    _socket = IO.io(ApiEndpoints.socketUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': false,
     });

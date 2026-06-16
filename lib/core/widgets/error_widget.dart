@@ -44,8 +44,8 @@ class ErrorView extends StatelessWidget {
                 height: 35,
                 child: ElevatedButton(
                   onPressed: () {
-                    if (appError.statusCode == 401 &&
-                        appError.message == 'Token expired') {
+                    if (appError.statusCode == 401 /*&&
+                       ( appError.message == 'Token expired' ||   appError.message == 'No token provided')*/) {
                       context.read<AuthBloc>().add(const UserTokeExpire());
                     } else {
                       onRetry();

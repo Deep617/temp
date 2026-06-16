@@ -4,10 +4,6 @@ class AppConstants {
 
   static const int apiTimeout = 30;
 
-  //static const String apiBaseUrl = 'https://api.fitconnect.app/api/v1';
-  static const String apiBaseUrl = 'https://social-api-5kko.onrender.com/api/v1';
-  static const String socketUrl  = 'https://api.fitconnect.app';
-
 
   // Storage keys
   static const String kAccessToken   = 'access_token';

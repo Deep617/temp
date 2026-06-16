@@ -197,25 +197,30 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
                             ),
                           ),
                           child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
                                 Icons.calendar_today_outlined,
                                 color: _date != null
                                     ? AppColors.primary
                                     : AppColors.textMuted,
-                                size: 18,
+                                size: 15,
                               ),
                               const SizedBox(width: 10),
-                              Text(
-                                _date != null
-                                    ? DateFormat(
-                                        'EEE, dd MMM yyyy',
-                                      ).format(_date!)
-                                    : 'Select date',
-                                style: AppTextStyles.body(
-                                  color: _date != null
-                                      ? AppColors.textPrimary
-                                      : AppColors.textDim,
+                              Flexible(
+                                child: Text(
+                                  _date != null
+                                      ? DateFormat(
+                                          'EEE,dd MMM yyyy',
+                                        ).format(_date!)
+                                      : 'Select date',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.body(
+                                    color: _date != null
+                                        ? AppColors.textPrimary
+                                        : AppColors.textDim,
+                                  ),
                                 ),
                               ),
                             ],

@@ -1,9 +1,8 @@
 class ApiEndpoints {
-
   //static const String apiBaseUrl = 'https://api.fitconnect.app/api/v1';
-  static const String apiBaseUrl = 'https://social-api-5kko.onrender.com/api/v1';
-  static const String socketUrl  = 'https://api.fitconnect.app';
-
+  static const String apiBaseUrl =
+      'https://social-api-5kko.onrender.com/api/v1';
+  static const String socketUrl = 'https://api.fitconnect.app';
 
   //static const String baseUrl = 'https://dummyjson.com';
   //static const String recipes = '/recipes';
@@ -17,8 +16,4 @@ class ApiEndpoints {
   static const String uploadAvatar = '/upload';
   static const String notifications = '/notifications';
   static const String notificationsReadAll = '/notifications/read-all';
-
-
-
-
 }
