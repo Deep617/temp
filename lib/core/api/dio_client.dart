@@ -50,9 +50,9 @@ class DioClient {
 
   Future<Response> put(
     String path, {
-    Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? data,
   }) async {
-    Response response = await dio.put(path, queryParameters: queryParameters);
+    Response response = await dio.put(path, data: data);
     if (response.statusCode != null &&
         response.statusCode! >= 200 &&
         response.statusCode! < 300) {

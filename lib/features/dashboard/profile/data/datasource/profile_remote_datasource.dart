@@ -17,7 +17,7 @@ class ProfileRemoteDatasource {
   Future<Response> updateProfile(Map<String, dynamic> data  ) async {
     final response = await client.put(
       ApiEndpoints.updateProfile,
-      queryParameters: data,
+      data: data,
     );
 
     return response;
