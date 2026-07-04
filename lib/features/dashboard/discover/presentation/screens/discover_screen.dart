@@ -209,8 +209,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               children: [
                                 ...List.generate(2, (i) {
                                   final idx = state.currentIndex + 2 - i;
-                                  if (idx >= state.profiles.length)
+                                  if (idx >= state.profiles.length) {
                                     return const SizedBox.shrink();
+                                  }
                                   return Positioned(
                                     top: 8.0 * (2 - i),
                                     child: Transform.scale(
@@ -248,7 +249,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                                                   .profiles[state.currentIndex],
                                             ),
                                           ),
-                                          if (_dragCurrent.dx > 30)
+                                          if (_dragCurrent.dx > 40)
                                             Positioned(
                                               top: 24,
                                               left: 24,
@@ -257,7 +258,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                                                 color: AppColors.primary,
                                               ),
                                             ),
-                                          if (_dragCurrent.dx < -30)
+                                          if (_dragCurrent.dx < -40)
                                             Positioned(
                                               top: 24,
                                               right: 24,
@@ -282,7 +283,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          _ActionBtn(
+                          ActionBtn(
                             icon: Icons.close,
                             color: AppColors.error,
                             size: 56,
@@ -292,13 +293,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               ),
                             ),
                           ),
-                          _ActionBtn(
+                          ActionBtn(
                             icon: Icons.star,
                             color: AppColors.warning,
                             size: 44,
                             onTap: () {},
                           ),
-                          _ActionBtn(
+                          ActionBtn(
                             icon: Icons.favorite,
                             color: AppColors.primary,
                             size: 64,
@@ -308,13 +309,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                               ),
                             ),
                           ),
-                          _ActionBtn(
+                          ActionBtn(
                             icon: Icons.bolt,
                             color: AppColors.teal,
                             size: 44,
                             onTap: () {},
                           ),
-                          _ActionBtn(
+                          ActionBtn(
                             icon: Icons.refresh,
                             color: AppColors.blue,
                             size: 56,
@@ -347,7 +348,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   void _showMatchDialog(BuddyProfile profile) {
     showDialog(
       context: context,
-      builder: (_) => _MatchDialog(profile: profile),
+      builder: (_) => MatchDialog(profile: profile),
     );
   }
 }
@@ -372,209 +373,218 @@ class _BuddyCard extends StatelessWidget {
           )
         : AppColors.primary;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(23),
-        child: Stack(
-          children: [
-            profile.avatarUrl != null
-                ? Positioned.fill(
-                    child: Image.network(
-                      profile.avatarUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          _Placeholder(profile: profile),
+    return InkWell(
+      onTap: () {
+        context.push(AppRoutes.buddyView, extra: {'buddyProfile': profile});
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface1,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(23),
+          child: Stack(
+            children: [
+              profile.avatarUrl != null
+                  ? Positioned.fill(
+                      child: Image.network(
+                        profile.avatarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            _Placeholder(profile: profile),
+                      ),
+                    )
+                  : _Placeholder(profile: profile),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 220,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.92),
+                      ],
                     ),
-                  )
-                : _Placeholder(profile: profile),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                height: 220,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.92),
-                    ],
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Text(
-                                '${profile.firstName}, ${profile.level}',
-                                style: AppTextStyles.h2(),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Text(
+                                  '${profile.firstName}, ${profile.level}',
+                                  style: AppTextStyles.h2(),
+                                ),
+                                if (profile.idVerified) ...[
+                                  const SizedBox(width: 6),
+                                  const Icon(
+                                    Icons.verified,
+                                    color: AppColors.blue,
+                                    size: 18,
+                                  ),
+                                ],
+                                if (profile.isInfluencer) ...[
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.star,
+                                    color: AppColors.gold,
+                                    size: 18,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          CompatRing(
+                            score: profile.compatibilityScore,
+                            size: 64,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          if (profile.city != null) ...[
+                            const Icon(
+                              Icons.location_on,
+                              color: AppColors.textMuted,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(profile.city!, style: AppTextStyles.bodySM()),
+                            const SizedBox(width: 12),
+                          ],
+                          if (profile.distanceKm != null) ...[
+                            const Icon(
+                              Icons.near_me,
+                              color: AppColors.textMuted,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${profile.distanceKm!.toStringAsFixed(1)} km',
+                              style: AppTextStyles.bodySM(),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          if (profile.primaryActivity != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
                               ),
-                              if (profile.idVerified) ...[
-                                const SizedBox(width: 6),
-                                const Icon(
-                                  Icons.verified,
-                                  color: AppColors.blue,
-                                  size: 18,
+                              decoration: BoxDecoration(
+                                color: actColor.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(100),
+                                border: Border.all(
+                                  color: actColor.withOpacity(0.4),
                                 ),
-                              ],
-                              if (profile.isInfluencer) ...[
-                                const SizedBox(width: 4),
-                                const Icon(
-                                  Icons.star,
-                                  color: AppColors.gold,
-                                  size: 18,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        CompatRing(score: profile.compatibilityScore, size: 64),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        if (profile.city != null) ...[
-                          const Icon(
-                            Icons.location_on,
-                            color: AppColors.textMuted,
-                            size: 14,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(profile.city!, style: AppTextStyles.bodySM()),
-                          const SizedBox(width: 12),
-                        ],
-                        if (profile.distanceKm != null) ...[
-                          const Icon(
-                            Icons.near_me,
-                            color: AppColors.textMuted,
-                            size: 14,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            '${profile.distanceKm!.toStringAsFixed(1)} km',
-                            style: AppTextStyles.bodySM(),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        if (profile.primaryActivity != null)
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    AppConstants.activities.firstWhere(
+                                          (a) =>
+                                              a['id'] ==
+                                              profile.primaryActivity,
+                                          orElse: () => {'emoji': '💪'},
+                                        )['emoji']
+                                        as String,
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    profile.primaryActivity!,
+                                    style: AppTextStyles.bodySM(
+                                      color: actColor,
+                                    ).copyWith(fontWeight: FontWeight.w700),
+                                  ),
+                                ],
+                              ),
+                            ),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: actColor.withOpacity(0.2),
+                              color: Colors.white.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(100),
                               border: Border.all(
-                                color: actColor.withOpacity(0.4),
+                                color: Colors.white.withOpacity(0.2),
                               ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  AppConstants.activities.firstWhere(
-                                        (a) =>
-                                            a['id'] == profile.primaryActivity,
-                                        orElse: () => {'emoji': '💪'},
-                                      )['emoji']
-                                      as String,
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  profile.primaryActivity!,
-                                  style: AppTextStyles.bodySM(
-                                    color: actColor,
-                                  ).copyWith(fontWeight: FontWeight.w700),
-                                ),
-                              ],
-                            ),
-                          ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(100),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.2),
-                            ),
-                          ),
-                          child: Text(
-                            profile.levelName,
-                            style: AppTextStyles.bodySM(
-                              color: AppColors.textSecondary,
-                            ).copyWith(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        if (profile.isPro)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: AppColors.compatGradient,
-                              borderRadius: BorderRadius.circular(100),
-                            ),
                             child: Text(
-                              'PRO',
-                              style: AppTextStyles.label(color: Colors.black),
+                              profile.levelName,
+                              style: AppTextStyles.bodySM(
+                                color: AppColors.textSecondary,
+                              ).copyWith(fontWeight: FontWeight.w600),
                             ),
                           ),
-                      ],
-                    ),
-                    if (profile.bio != null && profile.bio!.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        profile.bio!,
-                        style: AppTextStyles.bodySM(),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                          if (profile.isPro)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: AppColors.compatGradient,
+                                borderRadius: BorderRadius.circular(100),
+                              ),
+                              child: Text(
+                                'PRO',
+                                style: AppTextStyles.label(color: Colors.black),
+                              ),
+                            ),
+                        ],
                       ),
+                      if (profile.bio != null && profile.bio!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          profile.bio!,
+                          style: AppTextStyles.bodySM(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -627,8 +637,8 @@ class _SwipeLabel extends StatelessWidget {
   );
 }
 
-class _ActionBtn extends StatelessWidget {
-  const _ActionBtn({
+class ActionBtn extends StatelessWidget {
+  const ActionBtn({
     required this.icon,
     required this.color,
     required this.size,
@@ -657,8 +667,8 @@ class _ActionBtn extends StatelessWidget {
   );
 }
 
-class _MatchDialog extends StatelessWidget {
-  const _MatchDialog({required this.profile});
+class MatchDialog extends StatelessWidget {
+  const MatchDialog({required this.profile});
 
   final BuddyProfile profile;
 
@@ -725,7 +735,10 @@ class _MatchDialog extends StatelessWidget {
           const SizedBox(height: 28),
           PrimaryButton(
             label: '💬 Send First Message',
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(context);
+              context.push(AppRoutes.chat);
+            },
             height: 48,
           ).animate(delay: 500.ms).fadeIn(),
           const SizedBox(height: 12),

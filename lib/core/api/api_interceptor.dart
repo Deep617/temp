@@ -98,8 +98,8 @@ class ApiInterceptor extends Interceptor {
         _refreshing = false;
         return handler.resolve(retryResponse);
       } catch (e) {
-        SecureStorageService service = getIt<SecureStorageService>();
-        await service.clearStorage();
+       // SecureStorageService service = getIt<SecureStorageService>();
+       // await service.clearStorage();
         return handler.next(err);
       }
     }

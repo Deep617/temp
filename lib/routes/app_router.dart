@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:seshlly/features/auth/presentation/screens/onboarding_screen.dart';
 import 'package:seshlly/features/auth/presentation/screens/register_screen.dart';
 import 'package:seshlly/features/auth/presentation/screens/welcome_screen.dart';
+import 'package:seshlly/features/dashboard/chat/presentation/bloc/chat_bloc.dart';
+import 'package:seshlly/features/dashboard/discover/presentation/screens/buddy_view_screen.dart';
 import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_bloc.dart';
 import 'package:seshlly/features/dashboard/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:seshlly/features/dashboard/session/presentation/bloc/session_bloc.dart';
@@ -19,6 +21,7 @@ import '../features/auth/presentation/bloc/auth_state.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/dashboard/chat/presentation/screen/chat_screen.dart';
 import '../features/dashboard/chat/presentation/screen/chats_list_screen.dart';
+import '../features/dashboard/discover/presentation/bloc/discover_bloc.dart';
 import '../features/dashboard/discover/presentation/screens/discover_screen.dart';
 import '../features/dashboard/home_screen.dart';
 import '../features/dashboard/profile/presentation/screens/buddy_profile_screen.dart';
@@ -113,10 +116,13 @@ GoRouter buildRouter(AuthBloc authBloc) {
         path: AppRoutes.chat,
         builder: (ctx, state) {
           final extra = state.extra as Map<String, dynamic>?;
-          return ChatScreen(
-            chatId: state.pathParameters['chatId']!,
-            buddyName: extra?['buddyName'] ?? '',
-            buddyAvatar: extra?['buddyAvatar'],
+          return BlocProvider(
+            create: (_) => getIt<ChatBloc>(),
+            child: ChatScreen(
+              chatId: state.pathParameters['chatId']!,
+              buddyName: extra?['buddyName'] ?? '',
+              buddyAvatar: extra?['buddyAvatar'],
+            ),
           );
         },
       ),
@@ -182,6 +188,17 @@ GoRouter buildRouter(AuthBloc authBloc) {
           return BlocProvider(
             create: (_) => getIt<SubscriptionBloc>(),
             child: const SubscriptionScreen(),
+          );
+        },
+      ),
+
+      GoRoute(
+        path: AppRoutes.buddyView,
+        builder: (ctx, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return BlocProvider(
+            create: (_) => getIt<DiscoverBloc>(),
+            child: BuddyViewScreen(buddyProfile: extra?['buddyProfile']),
           );
         },
       ),
@@ -277,4 +294,5 @@ class AppRoutes {
   static const uploadProof = '/sessions/:sessionId/proof';
   static const subscription = '/subscription';
   static const notifications = '/notifications';
+  static const buddyView = '/buddy_view';
 }
