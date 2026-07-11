@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:seshlly/features/dashboard/challanges/presentation/bloc/challenge_bloc.dart';
 import 'package:seshlly/features/dashboard/session/presentation/bloc/session_bloc.dart';
 import 'package:seshlly/features/dashboard/session/presentation/bloc/session_event.dart';
 import 'package:seshlly/routes/app_router.dart';
@@ -8,6 +9,7 @@ import 'package:seshlly/routes/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../di_injection/dependency_injection.dart';
 import '../notification/presentation/bloc/notification_bloc.dart';
+import 'challanges/presentation/bloc/challenge_event.dart';
 import 'chat/presentation/bloc/chat_bloc.dart';
 import 'discover/presentation/bloc/discover_bloc.dart';
 import 'discover/presentation/bloc/discover_event.dart';
@@ -35,6 +37,10 @@ class HomeScreen extends StatelessWidget {
           create: (ctx) => getIt<SessionBloc>()..add(const SessionsLoaded()),
         ),
         BlocProvider(
+          create: (ctx) =>
+              getIt<ChallengeBloc>()..add(const ChallengesLoaded()),
+        ),
+        BlocProvider(
           create: (ctx) => getIt<ProfileBloc>()..add(const ProfileLoaded()),
         ),
       ],
@@ -56,7 +62,8 @@ class _HomeShell extends StatelessWidget {
     int currentIndex = 0;
     if (location.startsWith('/chats')) currentIndex = 1;
     if (location.startsWith('/sessions')) currentIndex = 2;
-    if (location.startsWith('/profile')) currentIndex = 3;
+    if (location.startsWith('/challenges')) currentIndex = 3;
+    if (location.startsWith('/profile')) currentIndex = 4;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -79,6 +86,9 @@ class _HomeShell extends StatelessWidget {
                 context.go(AppRoutes.sessions);
                 break;
               case 3:
+                context.go(AppRoutes.challenges);
+                break;
+              case 4:
                 context.go(AppRoutes.profile);
                 break;
             }
@@ -103,6 +113,11 @@ class _HomeShell extends StatelessWidget {
               icon: Icon(Icons.fitness_center_outlined),
               activeIcon: Icon(Icons.fitness_center),
               label: 'Sessions',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.electric_bolt_outlined),
+              activeIcon: Icon(Icons.electric_bolt),
+              label: 'Challenges',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),

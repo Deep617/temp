@@ -1,5 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:seshlly/features/dashboard/challanges/data/datasource/challenge_remote_datasource.dart';
+import 'package:seshlly/features/dashboard/challanges/data/repositories/challenge_repository.dart';
+import 'package:seshlly/features/dashboard/challanges/data/repositories/challenge_repository_impl.dart';
+import 'package:seshlly/features/dashboard/challanges/presentation/bloc/challenge_bloc.dart';
 import 'package:seshlly/features/dashboard/chat/data/datasource/chat_remote_datasource.dart';
 import 'package:seshlly/features/dashboard/chat/data/repositories/chat_repository.dart';
 import 'package:seshlly/features/dashboard/chat/data/repositories/chat_repository_impl.dart';
@@ -136,4 +140,15 @@ Future<void> setupDependencies() async {
     () => ChatRepositoryImpl(getIt(), getIt()),
   );
   getIt.registerFactory<ChatBloc>(() => ChatBloc(chatRepository: getIt()));
+
+  ///Challenges
+  getIt.registerLazySingleton<ChallengeRemoteDatasource>(
+    () => ChallengeRemoteDatasource(getIt()),
+  );
+  getIt.registerLazySingleton<ChallengeRepository>(
+    () => ChallengeRepositoryImpl(getIt(), getIt()),
+  );
+  getIt.registerFactory<ChallengeBloc>(
+    () => ChallengeBloc(challengeRepository: getIt()),
+  );
 }

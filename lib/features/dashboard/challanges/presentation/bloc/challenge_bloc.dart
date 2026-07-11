@@ -11,8 +11,9 @@
 //   - buddy nudge
 // ─────────────────────────────────────────────────────────
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../models/models.dart';
-import '../../repositories/challenge_repository.dart';
+import '../../data/repositories/challenge_repository.dart';
+import '../../data/response_ml/challange_model.dart';
+
 import 'challenge_event.dart';
 import 'challenge_state.dart';
 

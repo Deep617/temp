@@ -19,6 +19,8 @@ import '../di_injection/dependency_injection.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/auth/presentation/bloc/auth_state.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
+import '../features/dashboard/challanges/presentation/screen/challenge_detail_screen.dart';
+import '../features/dashboard/challanges/presentation/screen/challenges_screen.dart';
 import '../features/dashboard/chat/presentation/screen/chat_screen.dart';
 import '../features/dashboard/chat/presentation/screen/chats_list_screen.dart';
 import '../features/dashboard/discover/presentation/bloc/discover_bloc.dart';
@@ -202,6 +204,12 @@ GoRouter buildRouter(AuthBloc authBloc) {
           );
         },
       ),
+      GoRoute(
+        path: AppRoutes.challengeDetail,
+        builder: (ctx, state) => ChallengeDetailScreen(
+          challengeId: state.pathParameters['challengeId']!,
+        ),
+      ),
 
       ShellRoute(
         builder: (context, state, child) => HomeScreen(child: child),
@@ -221,6 +229,10 @@ GoRouter buildRouter(AuthBloc authBloc) {
           GoRoute(
             path: AppRoutes.sessions,
             builder: (context, state) => const SessionsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.challenges,
+            builder: (_, __) => const ChallengesScreen(),
           ),
           GoRoute(
             path: AppRoutes.profile,
@@ -295,4 +307,8 @@ class AppRoutes {
   static const subscription = '/subscription';
   static const notifications = '/notifications';
   static const buddyView = '/buddy_view';
+
+  // V2
+  static const challenges = '/challenges';
+  static const challengeDetail = '/challenges/:challengeId';
 }

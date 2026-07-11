@@ -4,6 +4,8 @@
 // ─────────────────────────────────────────────────────────
 import 'package:equatable/equatable.dart';
 
+import '../../data/response_ml/challange_model.dart';
+
 enum ChallengeStatus { initial, loading, success, error }
 
 class ChallengeState extends Equatable {

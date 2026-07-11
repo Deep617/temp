@@ -16,7 +16,10 @@ import 'package:go_router/go_router.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../routes/app_router.dart';
+import '../../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../data/response_ml/challange_model.dart';
 import '../bloc/challenge_bloc.dart';
+import '../bloc/challenge_event.dart';
 import '../bloc/challenge_state.dart';
 
 class ChallengesScreen extends StatefulWidget {
@@ -112,7 +115,7 @@ class _Header extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
+              gradient: AppColors.cardGymGradient,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
