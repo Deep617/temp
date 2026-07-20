@@ -61,7 +61,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       'key': order['razorpayKeyId'] ?? 'rzp_test_xxxxxxxxxx',
       'amount': order['amount'],
       'currency': order['currency'] ?? 'INR',
-      'name': 'FitConnect',
+      'name': 'Seshlly',
       'description': description,
       'order_id': order['id'],
       'prefill': {'name': user?.fullName ?? '', 'email': user?.email ?? ''},

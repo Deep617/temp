@@ -82,7 +82,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   ),
                   child: const Center(
                     child: Text(
-                      'F',
+                      'S',
                       style: TextStyle(
                         fontSize: 40,
                         fontWeight: FontWeight.w800,
@@ -94,7 +94,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
 
                 const SizedBox(height: 20),
-                Text('FitConnect', style: AppTextStyles.h1())
+                Text('Seshlly', style: AppTextStyles.h1())
                     .animate(delay: 200.ms)
                     .fadeIn(duration: 400.ms)
                     .slideY(begin: 0.3),

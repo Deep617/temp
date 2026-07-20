@@ -114,7 +114,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           ),
                           child: const Center(
                             child: Text(
-                              'F',
+                              'S',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,

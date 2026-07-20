@@ -61,7 +61,7 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                     child: const Center(
                       child: Text(
-                        'F',
+                        'S',
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
