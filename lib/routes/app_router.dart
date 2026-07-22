@@ -19,6 +19,7 @@ import '../di_injection/dependency_injection.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/auth/presentation/bloc/auth_state.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
+import '../features/dashboard/challanges/presentation/bloc/challenge_bloc.dart';
 import '../features/dashboard/challanges/presentation/screen/challenge_detail_screen.dart';
 import '../features/dashboard/challanges/presentation/screen/challenges_screen.dart';
 import '../features/dashboard/chat/presentation/screen/chat_screen.dart';
@@ -206,9 +207,14 @@ GoRouter buildRouter(AuthBloc authBloc) {
       ),
       GoRoute(
         path: AppRoutes.challengeDetail,
-        builder: (ctx, state) => ChallengeDetailScreen(
-          challengeId: state.pathParameters['challengeId']!,
-        ),
+        builder: (ctx, state) {
+          return BlocProvider(
+            create: (_) => getIt<ChallengeBloc>(),
+            child: ChallengeDetailScreen(
+              challengeId: state.pathParameters['challengeId']!,
+            ),
+          );
+        },
       ),
 
       ShellRoute(
