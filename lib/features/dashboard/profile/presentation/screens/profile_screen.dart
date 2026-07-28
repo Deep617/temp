@@ -355,7 +355,7 @@ class ProfileScreen extends StatelessWidget {
                                       'id': id,
                                       'emoji': '💪',
                                       'label': id,
-                                      'color': 0xFFBAEE0B,
+                                      'color': 0xFF0A84FF,
                                     },
                                   );
                                   return ActivityChip(

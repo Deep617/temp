@@ -22,7 +22,7 @@ abstract final class AppImages {
 
   // ── Brand ─────────────────────────────────────────────
   /// FitConnect wordmark PNG (full colour, for light + dark)
-  static const String logo        = '$_base/logo.png';
+  static const String logo        = '$_base/small_logo.png';
 
   /// Square app icon used in splash & about screens
   static const String appIcon     = '$_base/app_icon.png';

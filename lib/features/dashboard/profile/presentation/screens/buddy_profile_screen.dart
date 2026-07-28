@@ -14,8 +14,10 @@ import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
 
 class BuddyProfileScreen extends StatefulWidget {
-  const BuddyProfileScreen({super.key, required this.userId});
+  const BuddyProfileScreen({super.key, required this.userId,required this
+      .buddyId});
   final String userId;
+  final String buddyId;
   @override
   State<BuddyProfileScreen> createState() => _BuddyProfileScreenState();
 }
@@ -44,7 +46,7 @@ class _BuddyProfileScreenState extends State<BuddyProfileScreen> {
         final actColor = p.primaryActivity != null
             ? Color(AppConstants.activities.firstWhere(
                 (a) => a['id'] == p.primaryActivity,
-                orElse: () => {'color': 0xFFBAEE0B})['color'] as int)
+                orElse: () => {'color': 0xFF0A84FF})['color'] as int)
             : AppColors.primary;
 
         return Scaffold(
@@ -120,7 +122,7 @@ class _BuddyProfileScreenState extends State<BuddyProfileScreen> {
                     Expanded(child: PrimaryButton(
                       label: '💬 Message', height: 44,
                       onPressed: () => context.push(
-                        AppRoutes.chat.replaceAll(':chatId', widget.userId),
+                        AppRoutes.chat.replaceAll(':chatId', widget.buddyId),
                         extra: {'buddyName': p.firstName, 'buddyAvatar': p.avatarUrl},
                       ),
                     )),

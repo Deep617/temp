@@ -19,10 +19,11 @@ class ChatScreen extends StatefulWidget {
   const ChatScreen({
     super.key,
     required this.chatId,
+    required this.buddyId,
     required this.buddyName,
     this.buddyAvatar,
   });
-  final String  chatId;
+  final String  chatId,buddyId;
   final String  buddyName;
   final String? buddyAvatar;
 
@@ -160,7 +161,8 @@ class _ChatScreenState extends State<ChatScreen> {
           titleSpacing: 0,
           title: GestureDetector(
             onTap: () => context.push(
-                AppRoutes.buddyProfile.replaceAll(':userId', widget.chatId)),
+                AppRoutes.buddyProfile.replaceAll(':userId', widget.buddyId,),
+              extra: {'buddyId': widget.chatId,},),
             child: Row(children: [
               AppAvatar(
                 name:     widget.buddyName,
@@ -253,7 +255,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 // Session shortcut
                 GestureDetector(
                   onTap: () => context.push(AppRoutes.scheduleSession,
-                      extra: {'buddyId': widget.chatId, 'buddyName': widget.buddyName}),
+                      extra: {'buddyId': widget.buddyId, 'buddyName': widget.buddyName}),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     margin: const EdgeInsets.only(right: 8),

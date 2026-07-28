@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:seshlly/routes/app_router.dart';
 
+import '../../../../../core/constants/app_assets.dart';
 import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
@@ -109,18 +110,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           width: 32,
                           height: 32,
                           decoration: BoxDecoration(
-                            color: AppColors.primary,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Center(
-                            child: Text(
-                              'S',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.black,
-                              ),
-                            ),
+                          child:   Center(
+                            child: Image.asset(AppImages.logo,height: 45,
+                                width: 45,)
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -367,7 +361,7 @@ class _BuddyCard extends StatelessWidget {
         ? Color(
             AppConstants.activities.firstWhere(
                   (a) => a['id'] == profile.primaryActivity,
-                  orElse: () => {'color': 0xFFBAEE0B},
+                  orElse: () => {'color': 0xFF0A84FF},
                 )['color']
                 as int,
           )

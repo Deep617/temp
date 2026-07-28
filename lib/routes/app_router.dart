@@ -123,6 +123,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
             create: (_) => getIt<ChatBloc>(),
             child: ChatScreen(
               chatId: state.pathParameters['chatId']!,
+              buddyId: extra?['buddyId'] ?? '',
               buddyName: extra?['buddyName'] ?? '',
               buddyAvatar: extra?['buddyAvatar'],
             ),
@@ -132,9 +133,11 @@ GoRouter buildRouter(AuthBloc authBloc) {
       GoRoute(
         path: AppRoutes.buddyProfile,
         builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
           return BlocProvider(
             create: (_) => getIt<ProfileBloc>(),
-            child: BuddyProfileScreen(userId: state.pathParameters['userId']!),
+            child: BuddyProfileScreen(userId: state.pathParameters['userId']!,
+              buddyId: extra?['buddyId'] ?? '',),
           );
         },
       ),
@@ -257,7 +260,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
               '404',
               style: TextStyle(
                 fontSize: 64,
-                color: Color(0xFFBAEE0B),
+                color: Color(0xFF0A84FF),
                 fontWeight: FontWeight.w800,
               ),
             ),

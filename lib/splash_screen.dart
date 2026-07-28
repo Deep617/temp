@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:seshlly/routes/app_router.dart';
 
+import 'core/constants/app_assets.dart';
 import 'core/services/secure_storage_service.dart';
 import 'core/services/storage_service.dart';
 import 'core/theme/app_colors.dart';
@@ -70,7 +71,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
@@ -80,16 +81,9 @@ class _SplashScreenState extends State<SplashScreen> {
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Text(
-                      'S',
-                      style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black,
-                        fontFamily: 'Syne',
-                      ),
-                    ),
+                  child:   Center(
+                    child:  Image.asset(AppImages.logo,height: 80,
+                      width: 80,),
                   ),
                 ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
 
@@ -100,7 +94,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     .slideY(begin: 0.3),
                 const SizedBox(height: 8),
                 Text(
-                  'Find Your Gym Buddy',
+                  'Sync Your Pulse',
                   style: AppTextStyles.body(),
                 ).animate(delay: 400.ms).fadeIn(duration: 400.ms),
                 const SizedBox(height: 60),

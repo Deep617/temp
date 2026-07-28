@@ -69,7 +69,7 @@ class _BuddyViewScreenState extends State<BuddyViewScreen> {
             ? Color(
                 AppConstants.activities.firstWhere(
                       (a) => a['id'] == p.primaryActivity,
-                      orElse: () => {'color': 0xFFBAEE0B},
+                      orElse: () => {'color': 0xFF0A84FF},
                     )['color']
                     as int,
               )

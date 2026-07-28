@@ -79,7 +79,7 @@ class WelcomeScreen extends StatelessWidget {
                       .fadeIn(duration: 400.ms)
                       .slideX(begin: -0.2),
                   Text(
-                        'Gym Buddy.',
+                        'Workout Buddy.',
                         style: AppTextStyles.display(color: AppColors.primary),
                       )
                       .animate(delay: 200.ms)

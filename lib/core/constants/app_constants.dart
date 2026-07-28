@@ -27,7 +27,7 @@ class AppConstants {
 
   // Activities
   static const List<Map<String,dynamic>> activities = [
-    { 'id':'gym',      'label':'Gym',      'emoji':'🏋️', 'color':0xFFBAEE0B },
+    { 'id':'gym',      'label':'Gym',      'emoji':'🏋️', 'color':0xFF0A84FF },
     { 'id':'running',  'label':'Running',  'emoji':'🏃', 'color':0xFF4DAAFF },
     { 'id':'cycling',  'label':'Cycling',  'emoji':'🚴', 'color':0xFFFFB020 },
     { 'id':'swimming', 'label':'Swimming', 'emoji':'🏊', 'color':0xFF0ABFCE },

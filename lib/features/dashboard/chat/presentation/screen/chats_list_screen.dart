@@ -213,6 +213,7 @@ class ChatsListScreen extends StatelessWidget {
                             onTap: () => context.push(
                               AppRoutes.chat.replaceAll(':chatId', chat['id']),
                               extra: {
+                                'buddyId': chat['buddyId'],
                                 'buddyName': chat['buddyName'],
                                 'buddyAvatar': chat['buddyAvatar'],
                               },

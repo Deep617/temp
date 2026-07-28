@@ -34,6 +34,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
   void initState() {
     super.initState();
     _tabs = TabController(length: 3, vsync: this);
+
     context.read<ChallengeBloc>()
       ..add(ChallengeDetailLoaded(widget.challengeId))
       ..add(ChallengeFeedLoaded(widget.challengeId))
@@ -823,9 +824,7 @@ class _JoinBar extends StatelessWidget {
                 child: GhostButton(
                   label: 'Invite Buddy',
                   // variant: AppButtonVariant.secondary,
-                  onPressed: (locked || trustLocked)
-                      ? null
-                      : () => _showBuddyPicker(context),
+                  onPressed: (locked || trustLocked) ? null : () => _showBuddyPicker(context),
                 ),
               ),
             ],

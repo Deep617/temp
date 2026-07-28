@@ -230,7 +230,7 @@ class AppAvatar extends StatelessWidget {
 
   Color get _bgColor {
     final colors = [
-      AppColors.primary, AppColors.blue, AppColors.teal,
+      AppColors.primary, AppColors.blue, AppColors.gold,
       AppColors.purple, AppColors.orange,
     ];
     return colors[name.codeUnitAt(0) % colors.length];
@@ -442,7 +442,7 @@ class CompatRing extends StatelessWidget {
         children: [
           CircularProgressIndicator(
             value:            pct,
-            strokeWidth:      size * 0.08,
+            strokeWidth:      size * 0.04,
             backgroundColor:  AppColors.surface3,
             valueColor:       AlwaysStoppedAnimation<Color>(color),
             strokeCap:        StrokeCap.round,
@@ -470,7 +470,7 @@ class TokenBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFFBAEE0B), Color(0xFF0ABFCE)]),
+        gradient: AppColors.primaryGradient,
         borderRadius: BorderRadius.circular(100),
       ),
       child: Row(
