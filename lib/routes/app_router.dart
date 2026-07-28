@@ -22,6 +22,7 @@ import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/dashboard/challanges/presentation/bloc/challenge_bloc.dart';
 import '../features/dashboard/challanges/presentation/screen/challenge_detail_screen.dart';
 import '../features/dashboard/challanges/presentation/screen/challenges_screen.dart';
+import '../features/dashboard/challanges/presentation/screen/global_leaderboard_screen.dart';
 import '../features/dashboard/chat/presentation/screen/chat_screen.dart';
 import '../features/dashboard/chat/presentation/screen/chats_list_screen.dart';
 import '../features/dashboard/discover/presentation/bloc/discover_bloc.dart';
@@ -220,6 +221,11 @@ GoRouter buildRouter(AuthBloc authBloc) {
         },
       ),
 
+      GoRoute(
+        path: AppRoutes.globalLeaderboard,
+        builder: (_, __) => const GlobalLeaderboardScreen(),
+      ),
+
       ShellRoute(
         builder: (context, state, child) => HomeScreen(child: child),
         routes: [
@@ -320,4 +326,5 @@ class AppRoutes {
   // V2
   static const challenges = '/challenges';
   static const challengeDetail = '/challenges/:challengeId';
+  static const globalLeaderboard  = '/leaderboard/global';
 }

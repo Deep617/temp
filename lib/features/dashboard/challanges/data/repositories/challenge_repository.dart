@@ -16,6 +16,7 @@ abstract class ChallengeRepository {
     int? tier,
     String? city,
     String? type,
+    String? environment,
   });
 
   // GET /challenges/:id  — detail + stations + leaderboard
@@ -49,6 +50,11 @@ abstract class ChallengeRepository {
     String? challengeId,
     String? city,
   });
+
+  Future<List<GlobalLeaderboardEntry>> getGlobalLeaderboard({
+    String period = 'alltime',
+    String? city,
+  }) ;
 
   // POST /match/nudge/:buddyId
   Future<void> nudgeBuddy(String buddyId);

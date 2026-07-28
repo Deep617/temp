@@ -10,6 +10,9 @@ class ChallengeStation {
     required this.stationNum,
     required this.title,
     required this.description,
+    this.exerciseName     = '',
+    this.setsReps         = '',
+    this.proofInstruction = 'Upload a photo or video of your workout',
     required this.verifyType,
     required this.targetValue,
     required this.buddyRequired,
@@ -21,22 +24,28 @@ class ChallengeStation {
   final int    stationNum;
   final String title;
   final String description;
-  final String verifyType; // count/streak/timestamp/trust/referral/buddy
+  final String exerciseName;      // e.g. "Push-ups"
+  final String setsReps;          // e.g. "3 sets × 20 reps"
+  final String proofInstruction;  // exact proof guidance shown to user
+  final String verifyType;
   final int    targetValue;
   final bool   buddyRequired;
   final int    xpReward;
 
   factory ChallengeStation.fromJson(Map<String, dynamic> j) =>
       ChallengeStation(
-        id:           j['id']          as String,
-        challengeId:  j['challengeId'] as String,
-        stationNum:   j['stationNum']  as int,
-        title:        j['title']       as String,
-        description:  j['description'] as String,
-        verifyType:   j['verifyType']  as String,
-        targetValue:  j['targetValue'] as int,
-        buddyRequired: j['buddyRequired'] as bool? ?? false,
-        xpReward:     j['xpReward']    as int,
+        id:               j['id']               as String,
+        challengeId:      j['challengeId']      as String,
+        stationNum:       j['stationNum']        as int,
+        title:            j['title']             as String,
+        description:      j['description']       as String,
+        exerciseName:     j['exerciseName']      as String? ?? '',
+        setsReps:         j['setsReps']          as String? ?? '',
+        proofInstruction: j['proofInstruction']  as String? ?? 'Upload a photo or video of your workout',
+        verifyType:       j['verifyType']        as String,
+        targetValue:      j['targetValue']       as int,
+        buddyRequired:    j['buddyRequired']     as bool? ?? false,
+        xpReward:         j['xpReward']          as int,
       );
 }
 
@@ -129,6 +138,7 @@ class ChallengeEntry {
 }
 
 // ── Challenge ─────────────────────────────────────────────
+// ── Challenge ─────────────────────────────────────────────
 class Challenge {
   const Challenge({
     required this.id,
@@ -136,6 +146,9 @@ class Challenge {
     required this.description,
     required this.type,
     required this.tier,
+    required this.activityType,
+    required this.activityTag,
+    this.environment = 'any',
     required this.startAt,
     required this.endAt,
     required this.xpPool,
@@ -152,8 +165,11 @@ class Challenge {
   final String   id;
   final String   title;
   final String   description;
-  final String   type;   // solo/duel/pack
-  final int      tier;   // 1/2/3/4
+  final String   type;         // solo/duel/pack
+  final int      tier;         // 1/2/3/4
+  final String   activityType; // gym|outdoor|running|cycling|swimming|boxing|yoga|any
+  final String   activityTag;  // e.g. "🏋️ Gym", "🏃 Running", "🏅 Any activity"
+  final String   environment;  // gym | outdoor | no_gym | any
   final String?  cityId;
   final DateTime startAt;
   final DateTime endAt;
@@ -185,6 +201,9 @@ class Challenge {
         description:         j['description']         as String,
         type:                j['type']                as String,
         tier:                j['tier']                as int,
+        activityType:        j['activityType']        as String? ?? 'any',
+        activityTag:         j['activityTag']         as String? ?? '🏅 Any activity',
+        environment:         j['environment']         as String? ?? 'any',
         cityId:              j['cityId']              as String?,
         startAt:             DateTime.parse(j['startAt'] as String),
         endAt:               DateTime.parse(j['endAt']   as String),
@@ -285,5 +304,40 @@ class ChallengeFeedPost {
         collabUserName:  j['collabUserName']  as String?,
         collabAvatarUrl: j['collabAvatarUrl'] as String?,
         activitySlug:    j['activitySlug']    as String?,
+      );
+}
+
+// ── GlobalLeaderboardEntry ────────────────────────────────
+class GlobalLeaderboardEntry {
+  const GlobalLeaderboardEntry({
+    required this.rank,
+    required this.userId,
+    required this.displayName,
+    required this.xpTotal,
+    required this.level,
+    this.avatarUrl,
+    this.city,
+    this.primaryActivity,
+  });
+
+  final int     rank;
+  final String  userId;
+  final String  displayName;
+  final int     xpTotal;
+  final int     level;
+  final String? avatarUrl;
+  final String? city;
+  final String? primaryActivity;
+
+  factory GlobalLeaderboardEntry.fromJson(Map<String, dynamic> j) =>
+      GlobalLeaderboardEntry(
+        rank:            j['rank']            as int,
+        userId:          j['userId']          as String,
+        displayName:     j['displayName']     as String,
+        xpTotal:         j['xpTotal']         as int,
+        level:           j['level']           as int,
+        avatarUrl:       j['avatarUrl']       as String?,
+        city:            j['city']            as String?,
+        primaryActivity: j['primaryActivity'] as String?,
       );
 }

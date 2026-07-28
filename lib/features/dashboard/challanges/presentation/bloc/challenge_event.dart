@@ -11,11 +11,12 @@ abstract class ChallengeEvent extends Equatable {
 
 // Load active challenges list (Challenges Tab)
 class ChallengesLoaded extends ChallengeEvent {
-  const ChallengesLoaded({this.tier, this.city, this.type});
+  const ChallengesLoaded({this.tier, this.city, this.type, this.environment});
   final int?    tier;
   final String? city;
   final String? type;
-  @override List<Object?> get props => [tier, city, type];
+  final String? environment; // gym | outdoor | no_gym | any | null (all)
+  @override List<Object?> get props => [tier, city, type, environment];
 }
 
 // Load detail for a single challenge
@@ -78,6 +79,15 @@ class LeaderboardLoaded extends ChallengeEvent {
   final String? challengeId;
   final String? city;
   @override List<Object?> get props => [challengeId, city];
+}
+
+
+// Load leaderboard
+class GetGlobleLeaderboardLoaded extends ChallengeEvent {
+  const GetGlobleLeaderboardLoaded({this.period, this.city});
+  final String? period;
+  final String? city;
+  @override List<Object?> get props => [period, city];
 }
 
 // Send a nudge to a buddy

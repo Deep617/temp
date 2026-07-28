@@ -24,7 +24,6 @@ import '../bloc/challenge_state.dart';
 
 class ChallengesScreen extends StatefulWidget {
   const ChallengesScreen({super.key});
-
   @override
   State<ChallengesScreen> createState() => _ChallengesScreenState();
 }
@@ -32,14 +31,42 @@ class ChallengesScreen extends StatefulWidget {
 class _ChallengesScreenState extends State<ChallengesScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabs;
+  String? _environment; // null = All
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 3, vsync: this);
+    // Smart default — set environment based on user's primary activity
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<AuthBloc>().state.user;
+      final env  = _envForActivity(user?.primaryActivity);
+      setState(() => _environment = env);
+      _loadChallenges(env);
+    });
+  }
+
+  /// Map primary activity → default environment filter
+  String? _envForActivity(String? activity) {
+    if (activity == null) return null;
+    const gymActivities = ['gym', 'powerlifting', 'bodybuilding', 'kettlebell'];
+    const outdoorActivities = ['running', 'cycling', 'triathlon', 'rowing'];
+    const noGymActivities = ['hiit', 'calisthenics', 'yoga', 'pilates', 'mma', 'boxing'];
+    if (gymActivities.contains(activity))    return 'gym';
+    if (outdoorActivities.contains(activity)) return 'outdoor';
+    if (noGymActivities.contains(activity))  return 'no_gym';
+    return null; // hyrox, crossfit, climbing, tennis, dance_fit → show all
+  }
+
+  void _loadChallenges(String? env) {
     context.read<ChallengeBloc>()
-      ..add(const ChallengesLoaded())
+      ..add(ChallengesLoaded(environment: env))
       ..add(const MyChallengesLoaded());
+  }
+
+  void _onFilterTap(String? env) {
+    setState(() => _environment = env);
+    context.read<ChallengeBloc>().add(ChallengesLoaded(environment: env));
   }
 
   @override
@@ -52,7 +79,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   Widget build(BuildContext context) {
     return BlocListener<ChallengeBloc, ChallengeState>(
       listenWhen: (p, c) =>
-          c.successMessage != null && c.successMessage != p.successMessage,
+      c.successMessage != null && c.successMessage != p.successMessage,
       listener: (context, state) {
         if (state.successMessage != null) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -72,11 +99,16 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             children: [
               _Header(),
               _TierTabs(controller: _tabs),
+              // Environment filter chips
+              _EnvironmentFilter(
+                selected:  _environment,
+                onSelect:  _onFilterTap,
+              ),
               Expanded(
                 child: TabBarView(
                   controller: _tabs,
                   children: [
-                    _ChallengesList(tier: null), // All
+                    _ChallengesList(tier: null),
                     _ChallengesList(tier: 1),
                     _MyEntriesTab(),
                   ],
@@ -103,7 +135,8 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Seshlly Hyrox', style: AppTextStyles.h2()),
+                Text('Seshlly Hyrox',
+                    style: AppTextStyles.h2()),
                 Text(
                   'Level ${user?.level ?? 1} · ${user?.xpTotal ?? 0} XP total',
                   style: AppTextStyles.bodySM(color: AppColors.textMuted),
@@ -115,7 +148,7 @@ class _Header extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              gradient: AppColors.cardGymGradient,
+              gradient: AppColors.primaryGradient,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -136,10 +169,86 @@ class _Header extends StatelessWidget {
   }
 }
 
+// ── Environment Filter ────────────────────────────────────
+class _EnvironmentFilter extends StatelessWidget {
+  const _EnvironmentFilter({required this.selected, required this.onSelect});
+  final String?                    selected;
+  final ValueChanged<String?> onSelect;
+
+  static const _filters = [
+    {'id': null,       'label': 'All',        'emoji': '⚡'},
+    {'id': 'gym',      'label': 'Gym',        'emoji': '🏋️'},
+    {'id': 'outdoor',  'label': 'Outdoor',    'emoji': '🌿'},
+    {'id': 'no_gym',   'label': 'No Gym',     'emoji': '🤸'},
+    {'id': 'any',      'label': 'Any',        'emoji': '⭐'},
+  ];
+
+  Color _color(String? id) {
+    switch (id) {
+      case 'gym':     return AppColors.primary;
+      case 'outdoor': return AppColors.teal;
+      case 'no_gym':  return AppColors.purple;
+      case 'any':     return AppColors.warning;
+      default:        return AppColors.primary;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection:  Axis.horizontal,
+        padding:          const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        itemCount:        _filters.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          final f        = _filters[i];
+          final fid      = f['id'] as String?;
+          final isActive = selected == fid;
+          final color    = _color(fid);
+          return GestureDetector(
+            onTap: () => onSelect(fid),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? color.withOpacity(0.12)
+                    : AppColors.surface2,
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(
+                  color: isActive
+                      ? color.withOpacity(0.45)
+                      : AppColors.border,
+                  width: isActive ? 1.5 : 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(f['emoji'] as String,
+                      style: const TextStyle(fontSize: 12)),
+                  const SizedBox(width: 5),
+                  Text(
+                    f['label'] as String,
+                    style: AppTextStyles.label(
+                      color: isActive ? color : AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 // ── Tier Tabs ─────────────────────────────────────────────
 class _TierTabs extends StatelessWidget {
   const _TierTabs({required this.controller});
-
   final TabController controller;
 
   @override
@@ -174,7 +283,6 @@ class _TierTabs extends StatelessWidget {
 // ── Challenges List ───────────────────────────────────────
 class _ChallengesList extends StatelessWidget {
   const _ChallengesList({this.tier});
-
   final int? tier;
 
   @override
@@ -184,8 +292,7 @@ class _ChallengesList extends StatelessWidget {
         if (state.status == ChallengeStatus.loading &&
             state.challenges.isEmpty) {
           return const Center(
-            child: CircularProgressIndicator(color: AppColors.primary),
-          );
+              child: CircularProgressIndicator(color: AppColors.primary));
         }
 
         final list = tier == null
@@ -220,49 +327,34 @@ class _ChallengesList extends StatelessWidget {
 // ── Challenge Card ────────────────────────────────────────
 class _ChallengeCard extends StatelessWidget {
   const _ChallengeCard({required this.challenge});
-
   final Challenge challenge;
 
   Color get _tierColor {
     switch (challenge.tier) {
-      case 1:
-        return AppColors.textMuted;
-      case 2:
-        return AppColors.primary;
-      case 3:
-        return AppColors.teal;
-      case 4:
-        return AppColors.gold;
-      default:
-        return AppColors.primary;
+      case 1: return AppColors.textMuted;
+      case 2: return AppColors.primary;
+      case 3: return AppColors.teal;
+      case 4: return AppColors.gold;
+      default: return AppColors.primary;
     }
   }
 
   String get _tierLabel {
     switch (challenge.tier) {
-      case 1:
-        return 'OPEN';
-      case 2:
-        return 'CONTENDER';
-      case 3:
-        return 'ELITE';
-      case 4:
-        return 'GOAT';
-      default:
-        return 'OPEN';
+      case 1: return 'OPEN';
+      case 2: return 'CONTENDER';
+      case 3: return 'ELITE';
+      case 4: return 'GOAT';
+      default: return 'OPEN';
     }
   }
 
   String get _typeLabel {
     switch (challenge.type) {
-      case 'solo':
-        return 'Solo Sprint';
-      case 'duel':
-        return 'Buddy Duel';
-      case 'pack':
-        return 'Pack Event';
-      default:
-        return challenge.type;
+      case 'solo':  return 'Solo Sprint';
+      case 'duel':  return 'Buddy Duel';
+      case 'pack':  return 'Pack Event';
+      default:      return challenge.type;
     }
   }
 
@@ -272,9 +364,7 @@ class _ChallengeCard extends StatelessWidget {
     final progress = challenge.progressPercent;
 
     return GestureDetector(
-      onTap: () => context.push(
-        AppRoutes.challengeDetail.replaceAll(':challengeId', challenge.id),
-      ),
+      onTap: () => context.push('/challenges/\${challenge.id}'),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface2,
@@ -294,20 +384,18 @@ class _ChallengeCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: _tierColor.withOpacity(0.06),
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
+                    top: Radius.circular(16)),
               ),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
+                        horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: _tierColor.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: _tierColor.withOpacity(0.3)),
+                      border: Border.all(
+                          color: _tierColor.withOpacity(0.3)),
                     ),
                     child: Text(
                       _tierLabel,
@@ -317,25 +405,22 @@ class _ChallengeCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
+                        horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: AppColors.surface3,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       _typeLabel,
-                      style: AppTextStyles.label(color: AppColors.textMuted),
+                      style: AppTextStyles.label(
+                          color: AppColors.textMuted),
                     ),
                   ),
                   const Spacer(),
                   if (enrolled)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: AppColors.success.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
@@ -343,28 +428,24 @@ class _ChallengeCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.check_circle,
-                            size: 11,
-                            color: AppColors.success,
-                          ),
+                          Icon(Icons.check_circle,
+                              size: 11, color: AppColors.success),
                           const SizedBox(width: 4),
-                          Text(
-                            'Enrolled',
-                            style: AppTextStyles.label(
-                              color: AppColors.success,
-                            ),
-                          ),
+                          Text('Enrolled',
+                              style: AppTextStyles.label(
+                                  color: AppColors.success)),
                         ],
                       ),
                     ),
                   // Days left
                   if (!enrolled) ...[
-                    Icon(Icons.schedule, size: 12, color: AppColors.textMuted),
+                    Icon(Icons.schedule,
+                        size: 12, color: AppColors.textMuted),
                     const SizedBox(width: 4),
                     Text(
                       '${challenge.daysLeft}d left',
-                      style: AppTextStyles.label(color: AppColors.textMuted),
+                      style: AppTextStyles.label(
+                          color: AppColors.textMuted),
                     ),
                   ],
                 ],
@@ -380,11 +461,15 @@ class _ChallengeCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     challenge.description,
-                    style: AppTextStyles.bodySM(color: AppColors.textMuted),
+                    style: AppTextStyles.bodySM(
+                        color: AppColors.textMuted),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
+                  // Environment tag — color coded
+                  _EnvironmentTag(environment: challenge.environment),
+                  const SizedBox(height: 10),
 
                   // Stats row
                   Row(
@@ -431,13 +516,13 @@ class _ChallengeCard extends StatelessWidget {
                         Text(
                           '${challenge.myEntry!.completions.length}/${challenge.stations.length} stations',
                           style: AppTextStyles.label(
-                            color: AppColors.textMuted,
-                          ),
+                              color: AppColors.textMuted),
                         ),
                         const Spacer(),
                         Text(
                           '${(progress * 100).toInt()}%',
-                          style: AppTextStyles.label(color: AppColors.primary),
+                          style: AppTextStyles.label(
+                              color: AppColors.primary),
                         ),
                       ],
                     ),
@@ -466,6 +551,45 @@ class _ChallengeCard extends StatelessWidget {
   }
 }
 
+// ── Environment Tag ───────────────────────────────────────
+class _EnvironmentTag extends StatelessWidget {
+  const _EnvironmentTag({required this.environment});
+  final String environment;
+
+  _EnvMeta get _meta {
+    switch (environment) {
+      case 'gym':
+        return _EnvMeta('🏋️ Gym only', AppColors.primary);
+      case 'outdoor':
+        return _EnvMeta('🌿 Outdoor', AppColors.teal);
+      case 'no_gym':
+        return _EnvMeta('🤸 No gym needed', AppColors.purple);
+      default:
+        return _EnvMeta('⭐ Any activity', AppColors.warning);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final m = _meta;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color:        m.color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border:       Border.all(color: m.color.withOpacity(0.25)),
+      ),
+      child: Text(m.label, style: AppTextStyles.label(color: m.color)),
+    );
+  }
+}
+
+class _EnvMeta {
+  const _EnvMeta(this.label, this.color);
+  final String label;
+  final Color  color;
+}
+
 class _Stat extends StatelessWidget {
   const _Stat({
     required this.icon,
@@ -473,11 +597,10 @@ class _Stat extends StatelessWidget {
     required this.label,
     required this.color,
   });
-
   final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
+  final String   value;
+  final String   label;
+  final Color    color;
 
   @override
   Widget build(BuildContext context) {
@@ -489,16 +612,11 @@ class _Stat extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              value,
-              style: AppTextStyles.label(color: AppColors.textPrimary),
-            ),
-            Text(
-              label,
-              style: AppTextStyles.label(
-                color: AppColors.textMuted,
-              ).copyWith(fontSize: 9),
-            ),
+            Text(value,
+                style: AppTextStyles.label(color: AppColors.textPrimary)),
+            Text(label,
+                style: AppTextStyles.label(color: AppColors.textMuted)
+                    .copyWith(fontSize: 9)),
           ],
         ),
       ],
@@ -516,7 +634,8 @@ class _MyEntriesTab extends StatelessWidget {
           return _EmptyState(
             icon: Icons.emoji_events_outlined,
             title: 'No active challenges',
-            subtitle: 'Join a Pack Event or Solo Sprint to start earning XP.',
+            subtitle:
+            'Join a Pack Event or Solo Sprint to start earning XP.',
           );
         }
         return ListView.separated(
@@ -529,10 +648,9 @@ class _MyEntriesTab extends StatelessWidget {
             final challenge = state.challenges
                 .where((c) => c.id == entry.challengeId)
                 .firstOrNull;
-            return _MyEntryCard(
-              entry: entry,
-              challenge: challenge,
-            ).animate().fadeIn(delay: Duration(milliseconds: i * 60));
+            return _MyEntryCard(entry: entry, challenge: challenge)
+                .animate()
+                .fadeIn(delay: Duration(milliseconds: i * 60));
           },
         );
       },
@@ -542,20 +660,19 @@ class _MyEntriesTab extends StatelessWidget {
 
 class _MyEntryCard extends StatelessWidget {
   const _MyEntryCard({required this.entry, this.challenge});
-
   final ChallengeEntry entry;
-  final Challenge? challenge;
+  final Challenge?     challenge;
 
   @override
   Widget build(BuildContext context) {
     final stationsDone = entry.completions.length;
     final stationsTotal = challenge?.stations.length ?? 8;
-    final progress = stationsTotal > 0 ? stationsDone / stationsTotal : 0.0;
+    final progress = stationsTotal > 0
+        ? stationsDone / stationsTotal
+        : 0.0;
 
     return GestureDetector(
-      onTap: () => context.push(
-        AppRoutes.challengeDetail.replaceAll(':challengeId', entry.challengeId),
-      ),
+      onTap: () => context.push('/challenges/\${entry.challengeId}'),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -571,7 +688,7 @@ class _MyEntryCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     challenge?.title ?? 'Challenge',
-                    style: AppTextStyles.caption(),
+                    style: AppTextStyles.bodySM(),
                   ),
                 ),
                 Text(
@@ -615,7 +732,8 @@ class _MyEntryCard extends StatelessWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Icon(Icons.people_outline, size: 13, color: AppColors.teal),
+                  Icon(Icons.people_outline,
+                      size: 13, color: AppColors.teal),
                   const SizedBox(width: 4),
                   Text(
                     'Buddy challenge',
@@ -638,10 +756,9 @@ class _EmptyState extends StatelessWidget {
     required this.title,
     required this.subtitle,
   });
-
   final IconData icon;
-  final String title;
-  final String subtitle;
+  final String   title;
+  final String   subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -653,13 +770,13 @@ class _EmptyState extends StatelessWidget {
           children: [
             Icon(icon, size: 56, color: AppColors.textDim),
             const SizedBox(height: 16),
-            Text(title, style: AppTextStyles.h3(), textAlign: TextAlign.center),
+            Text(title,
+                style: AppTextStyles.h3(),
+                textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: AppTextStyles.bodySM(color: AppColors.textMuted),
-              textAlign: TextAlign.center,
-            ),
+            Text(subtitle,
+                style: AppTextStyles.bodySM(color: AppColors.textMuted),
+                textAlign: TextAlign.center),
           ],
         ),
       ),

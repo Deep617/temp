@@ -35,15 +35,16 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
   final ChallengeRepository challengeRepository;
 
   Future<void> _onChallengesLoaded(
-    ChallengesLoaded event,
-    Emitter<ChallengeState> emit,
-  ) async {
+      ChallengesLoaded event,
+      Emitter<ChallengeState> emit,
+      ) async {
     emit(state.copyWith(status: ChallengeStatus.loading));
     try {
       final challenges = await challengeRepository.getChallenges(
-        tier: event.tier,
-        city: event.city,
-        type: event.type,
+        tier:        event.tier,
+        city:        event.city,
+        type:        event.type,
+        environment: event.environment,
       );
       emit(state.copyWith(
         status:     ChallengeStatus.success,
@@ -58,9 +59,9 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
   }
 
   Future<void> _onChallengeDetailLoaded(
-    ChallengeDetailLoaded event,
-    Emitter<ChallengeState> emit,
-  ) async {
+      ChallengeDetailLoaded event,
+      Emitter<ChallengeState> emit,
+      ) async {
     emit(state.copyWith(status: ChallengeStatus.loading));
     try {
       final challenge = await challengeRepository.getChallenge(event.challengeId);
@@ -77,9 +78,9 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
   }
 
   Future<void> _onMyChallengesLoaded(
-    MyChallengesLoaded event,
-    Emitter<ChallengeState> emit,
-  ) async {
+      MyChallengesLoaded event,
+      Emitter<ChallengeState> emit,
+      ) async {
     try {
       final entries = await challengeRepository.getMyChallenges();
       emit(state.copyWith(myEntries: entries));
@@ -87,9 +88,9 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
   }
 
   Future<void> _onChallengeJoined(
-    ChallengeJoined event,
-    Emitter<ChallengeState> emit,
-  ) async {
+      ChallengeJoined event,
+      Emitter<ChallengeState> emit,
+      ) async {
     emit(state.copyWith(isJoining: true));
     try {
       final entry = await challengeRepository.joinChallenge(
@@ -99,32 +100,32 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
       // Update the selected challenge's myEntry
       final updated = state.selectedChallenge != null
           ? Challenge.fromJson({
-              ...{
-                'id':                 state.selectedChallenge!.id,
-                'title':              state.selectedChallenge!.title,
-                'description':        state.selectedChallenge!.description,
-                'type':               state.selectedChallenge!.type,
-                'tier':               state.selectedChallenge!.tier,
-                'startAt':            state.selectedChallenge!.startAt.toIso8601String(),
-                'endAt':              state.selectedChallenge!.endAt.toIso8601String(),
-                'xpPool':             state.selectedChallenge!.xpPool,
-                'entryLevelRequired': state.selectedChallenge!.entryLevelRequired,
-                'trustRequired':      state.selectedChallenge!.trustRequired,
-                'isActive':           state.selectedChallenge!.isActive,
-                'participantCount':   state.selectedChallenge!.participantCount + 1,
-                'myEntry': {
-                  'id':             entry.id,
-                  'challengeId':    entry.challengeId,
-                  'userId':         entry.userId,
-                  'buddyId':        entry.buddyId,
-                  'status':         entry.status,
-                  'currentStation': entry.currentStation,
-                  'totalXpEarned':  entry.totalXpEarned,
-                  'joinedAt':       entry.joinedAt.toIso8601String(),
-                  'completions':    [],
-                },
-              }
-            })
+        ...{
+          'id':                 state.selectedChallenge!.id,
+          'title':              state.selectedChallenge!.title,
+          'description':        state.selectedChallenge!.description,
+          'type':               state.selectedChallenge!.type,
+          'tier':               state.selectedChallenge!.tier,
+          'startAt':            state.selectedChallenge!.startAt.toIso8601String(),
+          'endAt':              state.selectedChallenge!.endAt.toIso8601String(),
+          'xpPool':             state.selectedChallenge!.xpPool,
+          'entryLevelRequired': state.selectedChallenge!.entryLevelRequired,
+          'trustRequired':      state.selectedChallenge!.trustRequired,
+          'isActive':           state.selectedChallenge!.isActive,
+          'participantCount':   state.selectedChallenge!.participantCount + 1,
+          'myEntry': {
+            'id':             entry.id,
+            'challengeId':    entry.challengeId,
+            'userId':         entry.userId,
+            'buddyId':        entry.buddyId,
+            'status':         entry.status,
+            'currentStation': entry.currentStation,
+            'totalXpEarned':  entry.totalXpEarned,
+            'joinedAt':       entry.joinedAt.toIso8601String(),
+            'completions':    [],
+          },
+        }
+      })
           : null;
       emit(state.copyWith(
         isJoining:         false,
@@ -142,9 +143,9 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
   }
 
   Future<void> _onChallengeFeedLoaded(
-    ChallengeFeedLoaded event,
-    Emitter<ChallengeState> emit,
-  ) async {
+      ChallengeFeedLoaded event,
+      Emitter<ChallengeState> emit,
+      ) async {
     emit(state.copyWith(isFeedLoading: true));
     try {
       final posts = await challengeRepository.getChallengeFeed(
@@ -164,9 +165,9 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
   }
 
   Future<void> _onChallengeProofSubmitted(
-    ChallengeProofSubmitted event,
-    Emitter<ChallengeState> emit,
-  ) async {
+      ChallengeProofSubmitted event,
+      Emitter<ChallengeState> emit,
+      ) async {
     emit(state.copyWith(isSubmittingProof: true));
     try {
       await challengeRepository.submitProof(
@@ -193,9 +194,9 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
   }
 
   Future<void> _onCollabProofAdded(
-    CollabProofAdded event,
-    Emitter<ChallengeState> emit,
-  ) async {
+      CollabProofAdded event,
+      Emitter<ChallengeState> emit,
+      ) async {
     try {
       await challengeRepository.addCollabProof(
         event.challengeId,
@@ -208,9 +209,9 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
   }
 
   Future<void> _onLeaderboardLoaded(
-    LeaderboardLoaded event,
-    Emitter<ChallengeState> emit,
-  ) async {
+      LeaderboardLoaded event,
+      Emitter<ChallengeState> emit,
+      ) async {
     try {
       final board = await challengeRepository.getLeaderboard(
         challengeId: event.challengeId,
@@ -220,10 +221,27 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
     } catch (_) {}
   }
 
+
+  Future<void> getGlobalLeaderboard(
+      GetGlobleLeaderboardLoaded event,
+      Emitter<ChallengeState> emit,
+      ) async {
+    try {
+      final board = await challengeRepository.getGlobalLeaderboard(
+        period: event.period!,
+        city:        event.city,
+      );
+      emit(state.copyWith(globalLeaderBoard: board));
+    } catch (_) {}
+  }
+
+
+
+
   Future<void> _onBuddyNudgeSent(
-    BuddyNudgeSent event,
-    Emitter<ChallengeState> emit,
-  ) async {
+      BuddyNudgeSent event,
+      Emitter<ChallengeState> emit,
+      ) async {
     try {
       await challengeRepository.nudgeBuddy(event.buddyId);
       emit(state.copyWith(successMessage: 'Nudge sent!'));
@@ -233,9 +251,9 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
   }
 
   void _onStatusCleared(
-    ChallengeStatusCleared event,
-    Emitter<ChallengeState> emit,
-  ) {
+      ChallengeStatusCleared event,
+      Emitter<ChallengeState> emit,
+      ) {
     emit(state.copyWith(clearError: true, clearSuccess: true));
   }
 }

@@ -13,7 +13,7 @@ import '../../../../../core/api/base_repository.dart';
 import '../../../../../core/errors/app_error.dart';
 import '../response_ml/challange_model.dart';
 
-  class ChallengeRepositoryImpl extends BaseRepository
+class ChallengeRepositoryImpl extends BaseRepository
     implements ChallengeRepository {
   final ChallengeRemoteDatasource remote;
 
@@ -25,11 +25,13 @@ import '../response_ml/challange_model.dart';
     int? tier,
     String? city,
     String? type,
+    String? environment,
   }) async {
     final params = <String, dynamic>{};
     if (tier != null) params['tier'] = tier;
     if (city != null) params['city'] = city;
     if (type != null) params['type'] = type;
+    if (environment != null) params['environment'] = environment;
     return remote.getChallenges(params).catchError((e) {
       throw AppError.fromException(e);
     });
@@ -118,6 +120,18 @@ import '../response_ml/challange_model.dart';
   @override
   Future<void> nudgeBuddy(String buddyId) async {
     return remote.nudgeBuddy(buddyId).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  @override
+  Future<List<GlobalLeaderboardEntry>> getGlobalLeaderboard({
+    String period = 'alltime',
+    String? city,
+  }) async {
+    return remote.getGlobalLeaderboard(period: period!, city: city).catchError((
+      e,
+    ) {
       throw AppError.fromException(e);
     });
   }

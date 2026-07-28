@@ -115,8 +115,8 @@ class _HomeShell extends StatelessWidget {
               label: 'Sessions',
             ),
             const BottomNavigationBarItem(
-              icon: Icon(Icons.electric_bolt_outlined),
-              activeIcon: Icon(Icons.electric_bolt),
+              icon: Icon(Icons.emoji_events_outlined),
+              activeIcon: Icon(Icons.emoji_events),
               label: 'Challenges',
             ),
             const BottomNavigationBarItem(

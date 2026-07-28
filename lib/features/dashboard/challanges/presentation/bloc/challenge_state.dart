@@ -3,6 +3,7 @@
 //  lib/bloc/challenge/challenge_state.dart
 // ─────────────────────────────────────────────────────────
 import 'package:equatable/equatable.dart';
+import 'package:seshlly/features/dashboard/challanges/presentation/bloc/challenge_event.dart';
 
 import '../../data/response_ml/challange_model.dart';
 
@@ -16,6 +17,7 @@ class ChallengeState extends Equatable {
     this.selectedChallenge,
     this.feedPosts         = const [],
     this.leaderboard       = const [],
+    this.globalLeaderBoard       = const [],
     this.errorMessage,
     this.successMessage,
     this.isFeedLoading     = false,
@@ -29,6 +31,7 @@ class ChallengeState extends Equatable {
   final Challenge?           selectedChallenge;
   final List<ChallengeFeedPost> feedPosts;
   final List<LeaderboardEntry>  leaderboard;
+  final List<GlobalLeaderboardEntry>  globalLeaderBoard;
   final String?              errorMessage;
   final String?              successMessage;
   final bool                 isFeedLoading;
@@ -42,6 +45,7 @@ class ChallengeState extends Equatable {
     Challenge?                selectedChallenge,
     List<ChallengeFeedPost>?  feedPosts,
     List<LeaderboardEntry>?   leaderboard,
+    List<GlobalLeaderboardEntry>?   globalLeaderBoard,
     String?                   errorMessage,
     String?                   successMessage,
     bool?                     isFeedLoading,
@@ -57,6 +61,7 @@ class ChallengeState extends Equatable {
       selectedChallenge: selectedChallenge ?? this.selectedChallenge,
       feedPosts:         feedPosts         ?? this.feedPosts,
       leaderboard:       leaderboard       ?? this.leaderboard,
+      globalLeaderBoard:       globalLeaderBoard       ?? this.globalLeaderBoard,
       errorMessage:      clearError   ? null : (errorMessage   ?? this.errorMessage),
       successMessage:    clearSuccess ? null : (successMessage ?? this.successMessage),
       isFeedLoading:     isFeedLoading     ?? this.isFeedLoading,
@@ -68,7 +73,7 @@ class ChallengeState extends Equatable {
   @override
   List<Object?> get props => [
     status, challenges, myEntries, selectedChallenge,
-    feedPosts, leaderboard, errorMessage, successMessage,
+    feedPosts, leaderboard,globalLeaderBoard, errorMessage, successMessage,
     isFeedLoading, isJoining, isSubmittingProof,
   ];
 }

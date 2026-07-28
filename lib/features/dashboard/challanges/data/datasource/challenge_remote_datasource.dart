@@ -96,6 +96,21 @@ class ChallengeRemoteDatasource {
         .toList();
   }
 
+
+  Future<List<GlobalLeaderboardEntry>> getGlobalLeaderboard({
+    String period = 'alltime',
+    String? city,
+  }) async {
+    final params = <String, dynamic>{'period': period};
+    if (city != null) params['city'] = city;
+    final res  = await _dio.get('/global-leaderboard', queryParameters: params);
+    final data = _data(res);
+    return (data['entries'] as List<dynamic>)
+        .map((e) => GlobalLeaderboardEntry.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+
   Future<void> nudgeBuddy(String buddyId) async {
     await _dio.post('/match/nudge/$buddyId');
   }
