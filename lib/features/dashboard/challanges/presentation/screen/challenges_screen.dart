@@ -364,7 +364,7 @@ class _ChallengeCard extends StatelessWidget {
     final progress = challenge.progressPercent;
 
     return GestureDetector(
-      onTap: () => context.push('/challenges/\${challenge.id}'),
+      onTap: () => context.push('/challenges/${challenge.id}'),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.surface2,
@@ -672,7 +672,7 @@ class _MyEntryCard extends StatelessWidget {
         : 0.0;
 
     return GestureDetector(
-      onTap: () => context.push('/challenges/\${entry.challengeId}'),
+      onTap: () => context.push('/challenges/${entry.challengeId}'),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(

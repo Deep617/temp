@@ -63,7 +63,7 @@ class SessionRemoteDatasource {
     if (res.statusCode != null &&
         res.statusCode! >= 200 &&
         res.statusCode! < 300) {
-      return res.data as Map<String, dynamic>;
+      return res.data  ;
     }
     throw Exception(
       (res.data as Map<String, dynamic>?)?['message'] ?? 'Request failed',

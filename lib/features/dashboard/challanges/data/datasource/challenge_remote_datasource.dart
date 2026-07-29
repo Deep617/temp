@@ -115,18 +115,17 @@ class ChallengeRemoteDatasource {
     await _dio.post('/match/nudge/$buddyId');
   }
 
+
   dynamic _data(Response res) {
     final body = res.data;
-    if (body is Map) {
-      return body;
+    if (body is Map && body['success'] == true) {
+      return body['data'];
     }
     throw DioException(
       requestOptions: res.requestOptions,
-      response: res,
-      type: DioExceptionType.badResponse,
-      message:
-          (body is Map ? body['message'] as String? : null) ??
-          'Unexpected response',
+      response:       res,
+      type:           DioExceptionType.badResponse,
+      message:        (body is Map ? body['message'] as String? : null) ?? 'Unexpected response',
     );
   }
 }

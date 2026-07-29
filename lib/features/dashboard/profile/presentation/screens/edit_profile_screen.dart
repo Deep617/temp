@@ -113,7 +113,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       },
       builder: (context, state) {
         final user = context.watch<AuthBloc>().state.user;
-
+        if (state.isUpdated) {
+          // Navigate back to Profile screen
+          context.pop();
+        }
         return Scaffold(
           backgroundColor: AppColors.bg,
           appBar: AppBar(
