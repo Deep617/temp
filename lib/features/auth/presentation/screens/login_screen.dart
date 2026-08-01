@@ -101,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.2),
                       const SizedBox(height: 8),
                       Text(
-                        'Sign in to your FitConnect account',
+                        'Sign in to your Seshlly account',
                         style: AppTextStyles.body(),
                       ).animate(delay: 100.ms).fadeIn(),
                       const SizedBox(height: 40),

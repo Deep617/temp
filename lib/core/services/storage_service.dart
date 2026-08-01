@@ -16,12 +16,12 @@ class StorageService {
 
   Future<void> setWalkThrogh() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(kOnboarded, true);
+    await prefs.setBool(kWalkthroughSeen, true);
   }
 
   Future<bool> getWalkThrogh() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(kOnboarded) ?? false;
+    return prefs.getBool(kWalkthroughSeen) ?? false;
   }
 
   Future<void> clearStorage() async {

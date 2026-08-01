@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:seshlly/core/services/storage_service.dart';
 import 'package:seshlly/features/auth/presentation/screens/onboarding_screen.dart';
+import 'package:seshlly/features/auth/presentation/screens/onboarding_screen_s.dart';
 import 'package:seshlly/features/auth/presentation/screens/register_screen.dart';
 import 'package:seshlly/features/auth/presentation/screens/welcome_screen.dart';
 import 'package:seshlly/features/dashboard/chat/presentation/bloc/chat_bloc.dart';
@@ -39,40 +41,53 @@ GoRouter buildRouter(AuthBloc authBloc) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
     refreshListenable: GoRouterAuthNotifier(authBloc),
-    redirect: (context, state) {
-      final status = authBloc.state.status;
-      final location = state.matchedLocation;
+    redirect: (context, state) async {
+      final authState = authBloc.state;
+      final isLoading =
+          authState.status == AuthStatus.initial ||
+              authState.status == AuthStatus.loading;
+      final isAuthenticated = authState.status == AuthStatus.authenticated;
+      final isOnboarding = authState.status == AuthStatus.onboarding;
+      final isUnauthenticated = authState.status == AuthStatus.unauthenticated;
 
-      final isAuthPage = [
+      // Read from storage
+     // final hasSeenWalkthrough = getIt<StorageService>().getWalkThrogh();
+
+      final authRoutes = [
         AppRoutes.welcome,
         AppRoutes.login,
         AppRoutes.register,
-      ].contains(location);
+        AppRoutes.splash,
+      ];
+      final isOnAuthPage = authRoutes.contains(state.matchedLocation);
 
-      // Initial loading
-      if (status == AuthStatus.initial) {
-        return location == AppRoutes.splash ? null : AppRoutes.splash;
+      if (isLoading) {
+        return state.matchedLocation == AppRoutes.splash
+            ? null
+            : AppRoutes.splash;
       }
 
-      // Not logged in
-      if (status == AuthStatus.unauthenticated) {
-        return isAuthPage ? null : AppRoutes.welcome;
+      // If authenticated but profile not set up — show onboarding
+      // Check backend data (primaryActivity) not just SharedPreferences
+      // This handles: new device, reinstall, first login
+      final needsOnboarding = isOnboarding || (isAuthenticated && authState.user != null && (authState.user!.primaryActivity == null || authState.user!.primaryActivity!.isEmpty));
+
+      if (needsOnboarding && state.matchedLocation != AppRoutes.onboarding) {
+        return AppRoutes.onboarding;
       }
 
-      // Onboarding
-      if (status == AuthStatus.onboarding) {
-        return location == AppRoutes.onboarding ? null : AppRoutes.onboarding;
-      }
+      // Walkthrough (only once)
+     /* if (isAuthenticated &&
+          hasSeenWalkthrough == false &&
+          state.matchedLocation != AppRoutes.walkthroughOverlay) {
+        return AppRoutes.walkthroughOverlay;
+      }*/
 
-      // Logged in
-      if (status == AuthStatus.authenticated) {
-        if (isAuthPage ||
-            location == AppRoutes.splash ||
-            location == AppRoutes.onboarding) {
-          return AppRoutes.home;
-        }
-      }
+      if (isUnauthenticated && !isOnAuthPage) return AppRoutes.welcome;
 
+      if ((isAuthenticated || isOnboarding) && isOnAuthPage) {
+        return AppRoutes.home;
+      }
       return null;
     },
     routes: [
@@ -101,7 +116,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
         builder: (context, state) {
           return BlocProvider(
             create: (_) => getIt<ProfileBloc>(),
-            child: const OnboardingScreen(),
+            child: const OnboardingScreenS(),
           );
         },
       ),
@@ -327,4 +342,5 @@ class AppRoutes {
   static const challenges = '/challenges';
   static const challengeDetail = '/challenges/:challengeId';
   static const globalLeaderboard  = '/leaderboard/global';
+  static const walkthroughOverlay  = '/walkthroughOverlay';
 }

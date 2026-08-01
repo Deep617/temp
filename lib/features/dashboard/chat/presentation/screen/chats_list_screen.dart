@@ -54,7 +54,7 @@ class ChatsListScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '\${user.chatTokens} tokens remaining',
+                            '${user.chatTokens} tokens remaining',
                             style: AppTextStyles.subtitle(
                               color: AppColors.warning,
                             ),
@@ -200,7 +200,7 @@ class ChatsListScreen extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(100),
                                     ),
                                     child: Text(
-                                      '\$unread',
+                                      '$unread',
                                       style: const TextStyle(
                                         fontSize: 11,
                                         color: Colors.black,
