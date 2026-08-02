@@ -17,7 +17,6 @@ class ApiInterceptor extends Interceptor {
     RequestInterceptorHandler handler,
   ) async {
     final token = await getIt<SecureStorageService>().getAccessToken();
-
     if (kDebugMode) {
       print("Token ApiInterceptor onRequest $token");
     }
@@ -27,15 +26,12 @@ class ApiInterceptor extends Interceptor {
     if (kDebugMode) {
       print("");
       print("╔════════════════ REQUEST ════════════════");
-      print("║ URL: ${options.uri}");
-      print("║ METHOD: ${options.method}");
       print("║ HEADERS:");
       options.headers.forEach((key, value) {
         if (kDebugMode) {
           print("║ $key: $value");
         }
       });
-      //print("║ BODY:");
       try {
         const encoder = JsonEncoder.withIndent('  ');
         log(
@@ -45,7 +41,6 @@ class ApiInterceptor extends Interceptor {
       } catch (e) {
         if (options.data is FormData) {
           final formData = options.data as FormData;
-
           log('Request Exception:  ${formData.fields}');
           log('Request Exception:  ${formData.files}');
         } else {
@@ -62,9 +57,7 @@ class ApiInterceptor extends Interceptor {
     if (kDebugMode) {
       print("");
       print("╔════════════════ RESPONSE ══════════════");
-      print("║ URL: ${response.requestOptions.uri}");
       print("║ STATUS CODE: ${response.statusCode}");
-      // print("║ RESPONSE:");
       try {
         const encoder = JsonEncoder.withIndent('  ');
         log(

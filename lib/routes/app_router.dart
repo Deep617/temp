@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:seshlly/core/services/storage_service.dart';
-import 'package:seshlly/features/auth/presentation/screens/onboarding_screen.dart';
 import 'package:seshlly/features/auth/presentation/screens/onboarding_screen_s.dart';
 import 'package:seshlly/features/auth/presentation/screens/register_screen.dart';
 import 'package:seshlly/features/auth/presentation/screens/welcome_screen.dart';
@@ -42,18 +40,18 @@ GoRouter buildRouter(AuthBloc authBloc) {
     initialLocation: AppRoutes.splash,
     refreshListenable: GoRouterAuthNotifier(authBloc),
     redirect: (context, state) async {
+      final appCurrentLocation = state.matchedLocation;
       final authState = authBloc.state;
-      final isLoading =
+      final isUserLoading =
           authState.status == AuthStatus.initial ||
-              authState.status == AuthStatus.loading;
-      final isAuthenticated = authState.status == AuthStatus.authenticated;
-      final isOnboarding = authState.status == AuthStatus.onboarding;
-      final isUnauthenticated = authState.status == AuthStatus.unauthenticated;
-
-
+          authState.status == AuthStatus.loading;
+      final isUserAuthenticated = authState.status == AuthStatus.authenticated;
+      final isUserOnboarding = authState.status == AuthStatus.onboarding;
+      final isUserUnauthenticated =
+          authState.status == AuthStatus.unauthenticated;
 
       // Read from storage
-     // final hasSeenWalkthrough = getIt<StorageService>().getWalkThrogh();
+      // final hasSeenWalkthrough = getIt<StorageService>().getWalkThrogh();
 
       final authRoutes = [
         AppRoutes.welcome,
@@ -61,39 +59,43 @@ GoRouter buildRouter(AuthBloc authBloc) {
         AppRoutes.register,
         AppRoutes.splash,
       ];
-      final isOnAuthPage = authRoutes.contains(state.matchedLocation);
+      final isOnAuthPage = authRoutes.contains(appCurrentLocation);
 
-      if (isLoading) {
-        return state.matchedLocation == AppRoutes.splash
-            ? null
-            : AppRoutes.splash;
+      if (isUserLoading) {
+        return appCurrentLocation == AppRoutes.splash ? null : AppRoutes.splash;
       }
 
       // If authenticated but profile not set up — show onboarding
       // Check backend data (primaryActivity) not just SharedPreferences
       // This handles: new device, reinstall, first login
-      final needsOnboarding = isOnboarding || (isAuthenticated && authState.user != null && (authState.user!.primaryActivity == null || authState.user!.primaryActivity!.isEmpty));
+      final needsOnboarding =
+          isUserOnboarding ||
+          (isUserAuthenticated &&
+              authState.user != null &&
+              (authState.user!.primaryActivity == null ||
+                  authState.user!.primaryActivity!.isEmpty));
 
-      if (needsOnboarding && state.matchedLocation != AppRoutes.onboarding) {
+      if (needsOnboarding && appCurrentLocation != AppRoutes.onboarding) {
         return AppRoutes.onboarding;
       }
 
       // Walkthrough (only once)
-     /* if (isAuthenticated &&
+      /* if (isAuthenticated &&
           hasSeenWalkthrough == false &&
-          state.matchedLocation != AppRoutes.walkthroughOverlay) {
+          appCurrentLocation != AppRoutes.walkthroughOverlay) {
         return AppRoutes.walkthroughOverlay;
       }*/
+
       debugPrint("status = ${authState.status}");
-      debugPrint("primaryActivity = ${authState.user?.primaryActivity}");
       debugPrint("needsOnboarding = $needsOnboarding");
-      debugPrint("location = ${state.matchedLocation}");
+      debugPrint("appCurrentLocation = $appCurrentLocation");
+      debugPrint("***********************");
 
-      if (isUnauthenticated && !isOnAuthPage) return AppRoutes.welcome;
+      if (isUserUnauthenticated && !isOnAuthPage) return AppRoutes.welcome;
 
-      if (isAuthenticated &&
+      if (isUserAuthenticated &&
           !needsOnboarding &&
-          state.matchedLocation == AppRoutes.onboarding) {
+          appCurrentLocation == AppRoutes.onboarding) {
         return AppRoutes.home;
       }
       return null;
@@ -160,8 +162,10 @@ GoRouter buildRouter(AuthBloc authBloc) {
           final extra = state.extra as Map<String, dynamic>?;
           return BlocProvider(
             create: (_) => getIt<ProfileBloc>(),
-            child: BuddyProfileScreen(userId: state.pathParameters['userId']!,
-              buddyId: extra?['buddyId'] ?? '',),
+            child: BuddyProfileScreen(
+              userId: state.pathParameters['userId']!,
+              buddyId: extra?['buddyId'] ?? '',
+            ),
           );
         },
       ),
@@ -349,6 +353,6 @@ class AppRoutes {
   // V2
   static const challenges = '/challenges';
   static const challengeDetail = '/challenges/:challengeId';
-  static const globalLeaderboard  = '/leaderboard/global';
-  static const walkthroughOverlay  = '/walkthroughOverlay';
+  static const globalLeaderboard = '/leaderboard/global';
+  static const walkthroughOverlay = '/walkthroughOverlay';
 }

@@ -176,6 +176,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     children: [
                       // ── Hero Banner ─────────────────
                       Container(
+
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           gradient: AppColors.membershipGradient,
@@ -185,7 +186,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                           ),
                         ),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
                               '🏆 Unlock Your Full Potential',
