@@ -108,6 +108,7 @@ class AppInput extends StatelessWidget {
     this.enabled     = true,
     this.autofocus   = false,
     this.textCapitalization = TextCapitalization.none,
+    this.textInputAction = TextInputAction.next,
   });
   final String   label;
   final String?  hint;
@@ -122,6 +123,7 @@ class AppInput extends StatelessWidget {
   final bool     enabled;
   final bool     autofocus;
   final TextCapitalization textCapitalization;
+  final TextInputAction? textInputAction;
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +142,7 @@ class AppInput extends StatelessWidget {
           enabled:            enabled,
           autofocus:          autofocus,
           textCapitalization: textCapitalization,
+          textInputAction: textInputAction,
           style: AppTextStyles.body(color: AppColors.textPrimary),
           decoration: InputDecoration(
             hintText: hint,

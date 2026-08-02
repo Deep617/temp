@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:seshlly/core/services/storage_service.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/common/common_widgets.dart';
-import '../../../../di_injection/dependency_injection.dart';
 import '../../../dashboard/profile/presentation/bloc/profile_bloc.dart';
 import '../../../dashboard/profile/presentation/bloc/profile_event.dart';
 import '../../../dashboard/profile/presentation/bloc/profile_state.dart';
@@ -63,6 +61,8 @@ class _OnboardingScreenState extends State<OnboardingScreenS> {
   Future<void> _finish() async {
     final data = <String, dynamic>{
       'primaryActivity': _selectedActivity,
+      // activities array — include primaryActivity so it shows in profile
+      'activities': _selectedActivity != null ? [_selectedActivity] : [],
       'experienceLevel': _selectedLevel,
       'goals': _selectedGoals,
       'gender': _selectedGender,
@@ -77,16 +77,18 @@ class _OnboardingScreenState extends State<OnboardingScreenS> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<ProfileBloc, ProfileState>(
-    //  listenWhen: (prev, curr) => prev.status != curr.status,
+      //  listenWhen: (prev, curr) => prev.status != curr.status,
       listener: (context, state) async {
         if (state.isUpdated) {
-          context.read<AuthBloc>().add(const AuthOnboardingCompleted());
-          await getIt<StorageService>().setOnboarding();
-          SnackBar(
-            content: Text('Save successfully'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
+          if (state.user != null) {
+            context.read<AuthBloc>().add(AuthUserUpdated(user: state.user!));
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Profile updated! ✅', style: AppTextStyles.body()),
+            ),
           );
+          context.read<AuthBloc>().add(const AuthOnboardingCompleted());
         }
         if (state.status == ProfileStatus.failure && state.error != null) {
           /*  ScaffoldMessenger.of(context).showSnackBar(
@@ -137,7 +139,7 @@ class _OnboardingScreenState extends State<OnboardingScreenS> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        '${_page + 1}/$_totalPages',
+                        '\${_page + 1}/\$_totalPages',
                         style: AppTextStyles.caption(),
                       ),
                     ],
@@ -373,7 +375,7 @@ class _LevelPage extends StatelessWidget {
                               ),
                               child: Center(
                                 child: Text(
-                                  '${e.key + 1}',
+                                  '\${e.key + 1}',
                                   style: AppTextStyles.h3(
                                     color: isSelected
                                         ? AppColors.primary

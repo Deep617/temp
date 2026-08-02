@@ -50,6 +50,8 @@ GoRouter buildRouter(AuthBloc authBloc) {
       final isOnboarding = authState.status == AuthStatus.onboarding;
       final isUnauthenticated = authState.status == AuthStatus.unauthenticated;
 
+
+
       // Read from storage
      // final hasSeenWalkthrough = getIt<StorageService>().getWalkThrogh();
 
@@ -82,10 +84,16 @@ GoRouter buildRouter(AuthBloc authBloc) {
           state.matchedLocation != AppRoutes.walkthroughOverlay) {
         return AppRoutes.walkthroughOverlay;
       }*/
+      debugPrint("status = ${authState.status}");
+      debugPrint("primaryActivity = ${authState.user?.primaryActivity}");
+      debugPrint("needsOnboarding = $needsOnboarding");
+      debugPrint("location = ${state.matchedLocation}");
 
       if (isUnauthenticated && !isOnAuthPage) return AppRoutes.welcome;
 
-      if ((isAuthenticated || isOnboarding) && isOnAuthPage) {
+      if (isAuthenticated &&
+          !needsOnboarding &&
+          state.matchedLocation == AppRoutes.onboarding) {
         return AppRoutes.home;
       }
       return null;

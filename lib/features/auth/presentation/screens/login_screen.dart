@@ -144,6 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _emailCtrl,
                         keyboardType: TextInputType.emailAddress,
                         prefixIcon: Icons.email_outlined,
+
                         validator: (v) {
                           if (v == null || v.isEmpty)
                             return 'Email is required';
@@ -160,8 +161,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         hint: '••••••••',
                         controller: _passCtrl,
                         obscure: !_showPass,
-                        keyboardType: TextInputType.visiblePassword,
+                        keyboardType: TextInputType.emailAddress,
                         prefixIcon: Icons.lock_outline,
+                        textInputAction: TextInputAction.done,
                         suffix: GestureDetector(
                           onTap: () => setState(() => _showPass = !_showPass),
                           child: Padding(
