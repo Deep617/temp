@@ -336,11 +336,11 @@ class ProfileScreen extends StatelessWidget {
                         label: 'Trust Score',
                         color: AppColors.teal,
                       ),
-/*                      _StatCard(
+                      _StatCard(
                         value: '${user.challengeCount! ?? 0}',
                         label: 'Challenges',
                         color: AppColors.purple,
-                      ),*/
+                      ),
                     ],
                   ).animate().fadeIn(duration: 400.ms),
 

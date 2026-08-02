@@ -15,7 +15,7 @@ class ProfileState extends Equatable {
   });
 
   final ProfileStatus  status;
-  final User?     user;
+  final UserModel?     user;
   final BuddyProfile?  buddyProfile;
   final AppError?      error;
 
@@ -27,7 +27,7 @@ class ProfileState extends Equatable {
 
   ProfileState copyWith({
     ProfileStatus? status,
-    User?     user,
+    UserModel?     user,
     BuddyProfile?  buddyProfile,
     AppError?      error,
     bool           clearError = false,

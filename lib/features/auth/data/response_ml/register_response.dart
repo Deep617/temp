@@ -4,26 +4,25 @@
 
 import 'dart:convert';
 
-RegisterResponse registerResponseFromJson(String str) => RegisterResponse.fromJson(json.decode(str));
+RegisterResponse registerResponseFromJson(String str) =>
+    RegisterResponse.fromJson(json.decode(str));
 
-String registerResponseToJson(RegisterResponse data) => json.encode(data.toJson());
+String registerResponseToJson(RegisterResponse data) =>
+    json.encode(data.toJson());
 
 class RegisterResponse {
-  User? user;
+  UserModel? user;
   String? accessToken;
   String? refreshToken;
 
-  RegisterResponse({
-    this.user,
-    this.accessToken,
-    this.refreshToken,
-  });
+  RegisterResponse({this.user, this.accessToken, this.refreshToken});
 
-  factory RegisterResponse.fromJson(Map<String, dynamic> json) => RegisterResponse(
-    user: json["user"] == null ? null : User.fromJson(json["user"]),
-    accessToken: json["accessToken"],
-    refreshToken: json["refreshToken"],
-  );
+  factory RegisterResponse.fromJson(Map<String, dynamic> json) =>
+      RegisterResponse(
+        user: json["user"] == null ? null : UserModel.fromJson(json["user"]),
+        accessToken: json["accessToken"],
+        refreshToken: json["refreshToken"],
+      );
 
   Map<String, dynamic> toJson() => {
     "user": user?.toJson(),
@@ -32,60 +31,27 @@ class RegisterResponse {
   };
 }
 
-class User {
-  String? id;
-  String? email;
-  String? firstName;
-  String? lastName;
-  String? username;
-  String? avatarUrl;
-  String? phone;
-  dynamic bio;
-  dynamic country;
-  dynamic city;
-  dynamic latitude;
-  dynamic longitude;
-  String? status;
-  bool? emailVerified;
-  bool? isBanned;
-  int? loginCount;
-  DateTime? lastLoginAt;
-  DateTime? createdAt;
-  dynamic primaryActivity;
-  List<dynamic>? activities;
-  dynamic experienceLevel;
-  List<dynamic>? goals;
-  dynamic primaryGym;
-  int? xpTotal;
-  int level;
-  int? chatTokens;
-  int trustScore;
-  bool? idVerified;
-  bool? isInfluencer;
-  dynamic instagramHandle;
-  dynamic instagramFollowers;
-  String? subscriptionPlan;
-  dynamic subscriptionExpiry;
-  int? buddyCount;
-  int? sessionCount;
-
-  User({
+// ═════════════════════════════════════════════════════════
+class UserModel {
+  const UserModel({
     required this.id,
     required this.email,
     required this.firstName,
     required this.lastName,
+    required this.createdAt,
     this.avatarUrl,
     this.phone,
     this.username,
     this.bio,
     this.country,
     this.city,
+    this.gender,
+    this.walkthroughSeen = false,
     this.status = 'ACTIVE',
     this.emailVerified = false,
     this.isBanned = false,
     this.loginCount = 0,
     this.lastLoginAt,
-    required this.createdAt,
     this.primaryActivity,
     this.activities = const [],
     this.experienceLevel,
@@ -93,103 +59,238 @@ class User {
     this.primaryGym,
     this.latitude,
     this.longitude,
+    this.searchRadius = 10,
     this.xpTotal = 0,
     this.level = 1,
     this.chatTokens = 20,
     this.isInfluencer = false,
     this.instagramHandle,
     this.instagramFollowers,
-    this.trustScore = 50,
+    this.trustScore = 50.0,
     this.idVerified = false,
     this.buddyCount = 0,
     this.sessionCount = 0,
+    this.challengeCount = 0,
     this.subscriptionPlan = 'free',
     this.subscriptionExpiry,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) => User(
-    id: json["id"],
-    email: json["email"],
-    firstName: json["firstName"],
-    lastName: json["lastName"],
-    username: json["username"],
-    avatarUrl: json["avatarUrl"],
-    phone: json["phone"],
-    bio: json["bio"],
-    country: json["country"],
-    city: json["city"],
-    latitude: json["latitude"],
-    longitude: json["longitude"],
-    status: json["status"],
-    emailVerified: json["emailVerified"],
-    isBanned: json["isBanned"],
-    loginCount: json["loginCount"],
-    lastLoginAt: json["lastLoginAt"] == null ? null : DateTime.parse(json["lastLoginAt"]),
-    createdAt: json["createdAt"] == null ? null : DateTime.parse(json["createdAt"]),
-    primaryActivity: json["primaryActivity"],
-    activities: json["activities"] == null ? [] : List<dynamic>.from(json["activities"]!.map((x) => x)),
-    experienceLevel: json["experienceLevel"],
-    goals: json["goals"] == null ? [] : List<dynamic>.from(json["goals"]!.map((x) => x)),
-    primaryGym: json["primaryGym"],
-    xpTotal: json["xpTotal"],
-    level: json["level"],
-    chatTokens: json["chatTokens"],
-    trustScore: json["trustScore"],
-    idVerified: json["idVerified"],
-    isInfluencer: json["isInfluencer"],
-    instagramHandle: json["instagramHandle"],
-    instagramFollowers: json["instagramFollowers"],
-    subscriptionPlan: json["subscriptionPlan"],
-    subscriptionExpiry: json["subscriptionExpiry"],
-    buddyCount: json["buddyCount"],
-    sessionCount: json["sessionCount"],
+  final String id;
+  final String email;
+  final String firstName;
+  final String lastName;
+  final String? avatarUrl;
+  final String? phone;
+  final String? username;
+  final String? bio;
+  final String? country;
+  final String? city;
+  final String? gender;
+  final bool walkthroughSeen;
+  final String status;
+  final bool emailVerified;
+  final bool isBanned;
+  final int loginCount;
+  final DateTime? lastLoginAt;
+  final DateTime createdAt;
+  final String? primaryActivity;
+  final List<String> activities;
+  final String? experienceLevel;
+  final List<String> goals;
+  final String? primaryGym;
+  final double? latitude;
+  final double? longitude;
+  final int searchRadius;
+  final int xpTotal;
+  final int level;
+  final int chatTokens;
+  final bool isInfluencer;
+  final String? instagramHandle;
+  final int? instagramFollowers;
+  final double trustScore;
+  final bool idVerified;
+  final int buddyCount;
+  final int sessionCount;
+  final int challengeCount;
+  final String subscriptionPlan;
+  final DateTime? subscriptionExpiry;
+
+  // ── Computed ────────────────────────────────────────
+  String get fullName => '$firstName $lastName';
+
+  String get displayHandle => username != null ? '@$username' : email;
+
+  bool get isPro => subscriptionPlan == 'pro' || subscriptionPlan == 'elite';
+
+  bool get isElite => subscriptionPlan == 'elite';
+
+  bool get isActive =>
+      subscriptionExpiry == null || subscriptionExpiry!.isAfter(DateTime.now());
+
+  String get levelName {
+    const names = [
+      'Newbie',
+      'Rookie',
+      'Regular',
+      'Athlete',
+      'Pro',
+      'Elite',
+      'Champion',
+      'Legend',
+      'Icon',
+      'GOAT',
+    ];
+    return level <= names.length ? names[level - 1] : 'Legend';
+  }
+
+  // ── Deserialise ─────────────────────────────────────
+  // Backend formatUser returns these exact keys.
+  factory UserModel.fromJson(Map<String, dynamic> j) => UserModel(
+    id: j['id'] as String,
+    email: j['email'] as String,
+    firstName: j['firstName'] as String,
+    lastName: j['lastName'] as String,
+    avatarUrl: j['avatarUrl'] as String?,
+    phone: j['phone'] as String?,
+    username: j['username'] as String?,
+    bio: j['bio'] as String?,
+    country: j['country'] as String?,
+    city: j['city'] as String?,
+    gender: j['gender'] as String?,
+    walkthroughSeen: j['walkthroughSeen'] as bool? ?? false,
+    status: j['status'] as String? ?? 'ACTIVE',
+    emailVerified: j['emailVerified'] as bool? ?? false,
+    isBanned: j['isBanned'] as bool? ?? false,
+    loginCount: j['loginCount'] as int? ?? 0,
+    lastLoginAt: j['lastLoginAt'] != null
+        ? DateTime.parse(j['lastLoginAt'] as String)
+        : null,
+    createdAt: DateTime.parse(j['createdAt'] as String),
+    primaryActivity: j['primaryActivity'] as String?,
+    activities: _strings(j['activities']),
+    experienceLevel: j['experienceLevel'] as String?,
+    goals: _strings(j['goals']),
+    primaryGym: j['primaryGym'] as String?,
+    latitude: (j['latitude'] as num?)?.toDouble(),
+    longitude: (j['longitude'] as num?)?.toDouble(),
+    searchRadius: j['searchRadius'] as int? ?? 10,
+    xpTotal: j['xpTotal'] as int? ?? 0,
+    level: j['level'] as int? ?? 1,
+    chatTokens: j['chatTokens'] as int? ?? 20,
+    isInfluencer: j['isInfluencer'] as bool? ?? false,
+    instagramHandle: j['instagramHandle'] as String?,
+    instagramFollowers: j['instagramFollowers'] as int?,
+    trustScore: (j['trustScore'] as num?)?.toDouble() ?? 50.0,
+    idVerified: j['idVerified'] as bool? ?? false,
+    buddyCount: j['buddyCount'] as int? ?? 0,
+    sessionCount: j['sessionCount'] as int? ?? 0,
+    challengeCount: j['challengeCount'] as int? ?? 0,
+    subscriptionPlan: j['subscriptionPlan'] as String? ?? 'free',
+    subscriptionExpiry: j['subscriptionExpiry'] != null
+        ? DateTime.parse(j['subscriptionExpiry'] as String)
+        : null,
   );
 
   Map<String, dynamic> toJson() => {
-    "id": id,
-    "email": email,
-    "firstName": firstName,
-    "lastName": lastName,
-    "username": username,
-    "avatarUrl": avatarUrl,
-    "phone": phone,
-    "bio": bio,
-    "country": country,
-    "city": city,
-    "latitude": latitude,
-    "longitude": longitude,
-    "status": status,
-    "emailVerified": emailVerified,
-    "isBanned": isBanned,
-    "loginCount": loginCount,
-    "lastLoginAt": lastLoginAt?.toIso8601String(),
-    "createdAt": createdAt?.toIso8601String(),
-    "primaryActivity": primaryActivity,
-    "activities": activities == null ? [] : List<dynamic>.from(activities!.map((x) => x)),
-    "experienceLevel": experienceLevel,
-    "goals": goals == null ? [] : List<dynamic>.from(goals!.map((x) => x)),
-    "primaryGym": primaryGym,
-    "xpTotal": xpTotal,
-    "level": level,
-    "chatTokens": chatTokens,
-    "trustScore": trustScore,
-    "idVerified": idVerified,
-    "isInfluencer": isInfluencer,
-    "instagramHandle": instagramHandle,
-    "instagramFollowers": instagramFollowers,
-    "subscriptionPlan": subscriptionPlan,
-    "subscriptionExpiry": subscriptionExpiry,
-    "buddyCount": buddyCount,
-    "sessionCount": sessionCount,
+    'id': id,
+    'email': email,
+    'firstName': firstName,
+    'lastName': lastName,
+    'avatarUrl': avatarUrl,
+    'phone': phone,
+    'username': username,
+    'bio': bio,
+    'country': country,
+    'city': city,
+    'status': status,
+    'emailVerified': emailVerified,
+    'isBanned': isBanned,
+    'primaryActivity': primaryActivity,
+    'activities': activities,
+    'experienceLevel': experienceLevel,
+    'goals': goals,
+    'primaryGym': primaryGym,
+    'xpTotal': xpTotal,
+    'level': level,
+    'chatTokens': chatTokens,
+    'isInfluencer': isInfluencer,
+    'trustScore': trustScore,
+    'idVerified': idVerified,
+    'subscriptionPlan': subscriptionPlan,
   };
 
-  String get fullName => '$firstName $lastName';
-  String? get displayHandle => username != null ? '@$username' : email;
-  bool get isPro     => subscriptionPlan == 'pro'   || subscriptionPlan == 'elite';
-  bool get isElite   => subscriptionPlan == 'elite';
-  bool get isActive  => subscriptionExpiry == null || subscriptionExpiry!.isAfter(DateTime.now());
-  String get levelName {
-    const names = ['Newbie','Rookie','Regular','Athlete','Pro','Elite','Champion','Legend','Icon','GOAT'];
-    return level <= names.length ? names[level - 1] : 'Legend';
-  }
+  UserModel copyWith({
+    String? firstName,
+    String? lastName,
+    String? avatarUrl,
+    String? bio,
+    String? username,
+    String? phone,
+    String? city,
+    String? country,
+    String? gender,
+    bool? walkthroughSeen,
+    String? primaryActivity,
+    List<String>? activities,
+    String? experienceLevel,
+    List<String>? goals,
+    String? primaryGym,
+    int? xpTotal,
+    int? level,
+    int? chatTokens,
+    double? latitude,
+    double? longitude,
+    int? searchRadius,
+    double? trustScore,
+    bool? idVerified,
+    int? buddyCount,
+    int? sessionCount,
+    int? challengeCount,
+    String? subscriptionPlan,
+    DateTime? subscriptionExpiry,
+  }) => UserModel(
+    id: id,
+    email: email,
+    createdAt: createdAt,
+    status: status,
+    emailVerified: emailVerified,
+    isBanned: isBanned,
+    isInfluencer: isInfluencer,
+    instagramHandle: instagramHandle,
+    instagramFollowers: instagramFollowers,
+    firstName: firstName ?? this.firstName,
+    lastName: lastName ?? this.lastName,
+    avatarUrl: avatarUrl ?? this.avatarUrl,
+    bio: bio ?? this.bio,
+    username: username ?? this.username,
+    phone: phone ?? this.phone,
+    city: city ?? this.city,
+    country: country ?? this.country,
+    gender: gender ?? this.gender,
+    walkthroughSeen: walkthroughSeen ?? this.walkthroughSeen,
+    latitude: latitude ?? this.latitude,
+    longitude: longitude ?? this.longitude,
+    searchRadius: searchRadius ?? this.searchRadius,
+    primaryActivity: primaryActivity ?? this.primaryActivity,
+    activities: activities ?? this.activities,
+    experienceLevel: experienceLevel ?? this.experienceLevel,
+    goals: goals ?? this.goals,
+    primaryGym: primaryGym ?? this.primaryGym,
+    xpTotal: xpTotal ?? this.xpTotal,
+    level: level ?? this.level,
+    chatTokens: chatTokens ?? this.chatTokens,
+    trustScore: trustScore ?? this.trustScore,
+    idVerified: idVerified ?? this.idVerified,
+    buddyCount: buddyCount ?? this.buddyCount,
+    sessionCount: sessionCount ?? this.sessionCount,
+    challengeCount: challengeCount ?? this.challengeCount,
+    subscriptionPlan: subscriptionPlan ?? this.subscriptionPlan,
+    subscriptionExpiry: subscriptionExpiry ?? this.subscriptionExpiry,
+  );
 }
+
+// ── Helpers ───────────────────────────────────────────────
+List<String> _strings(dynamic v) =>
+    (v as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+
+T? _castOr<T>(dynamic v, T? fallback) => v is T ? v : fallback;

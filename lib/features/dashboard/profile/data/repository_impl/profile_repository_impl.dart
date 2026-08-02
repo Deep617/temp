@@ -17,19 +17,19 @@ class ProfileRepositoryImpl extends BaseRepository
   );
 
   @override
-  Future<User> getMe() async {
+  Future<UserModel> getMe() async {
     return await safeApiCall(() async {
       final response = await remote.getMe();
-      User registerResponse = User.fromJson(response.data['data']);
+      UserModel registerResponse = UserModel.fromJson(response.data['data']);
       return registerResponse;
     });
   }
 
   @override
-  Future<User> updateProfile(Map<String, dynamic> data  ) async {
+  Future<UserModel> updateProfile(Map<String, dynamic> data  ) async {
     return await safeApiCall(() async {
       final response = await remote.updateProfile(data);
-      User registerResponse = User.fromJson(
+      UserModel registerResponse = UserModel.fromJson(
         response.data['data'],
       );
       return registerResponse;

@@ -39,19 +39,18 @@ class ApiInterceptor extends Interceptor {
       try {
         const encoder = JsonEncoder.withIndent('  ');
         log(
-          name: "║ BODY: ${options.uri}= Api Request:=",
+          name: "║ BODY: ${options.uri}= Api Request:",
           encoder.convert(options.data),
         );
       } catch (e) {
         if (options.data is FormData) {
           final formData = options.data as FormData;
 
-          log('Request Exception:= ${formData.fields}');
-          log('Request Exception:= ${formData.files}');
+          log('Request Exception:  ${formData.fields}');
+          log('Request Exception:  ${formData.files}');
         } else {
-          log('Request Exception:= ${options.data}');
+          log('Request Exception:  ${options.data}');
         }
-
       }
       print("╚═════════════════════════════════════════");
     }
@@ -69,11 +68,13 @@ class ApiInterceptor extends Interceptor {
       try {
         const encoder = JsonEncoder.withIndent('  ');
         log(
-          name: "║ RESPONSE: ${response.requestOptions.uri}= Api Response:=",
+          name:
+              "║ RESPONSE: ${response.requestOptions.uri}= Api Raw "
+              "Response: ",
           encoder.convert(response.data),
         );
       } catch (e) {
-        log(name: "Response Exception:=", response.data);
+        log(name: "Response Exception: ", response.data);
       }
       print("╚═════════════════════════════════════════");
     }
@@ -98,8 +99,8 @@ class ApiInterceptor extends Interceptor {
         _refreshing = false;
         return handler.resolve(retryResponse);
       } catch (e) {
-       // SecureStorageService service = getIt<SecureStorageService>();
-       // await service.clearStorage();
+        // SecureStorageService service = getIt<SecureStorageService>();
+        // await service.clearStorage();
         return handler.next(err);
       }
     }
@@ -114,11 +115,11 @@ class ApiInterceptor extends Interceptor {
         try {
           const encoder = JsonEncoder.withIndent('  ');
           log(
-            name: "${err.requestOptions.uri}= Api Error Response:=",
+            name: "${err.requestOptions.uri}= Api Error Response: ",
             encoder.convert(err.response?.data),
           );
         } catch (e) {
-          log(name: "Error Exception:=", err.response?.data);
+          log(name: "Error Exception: ", err.response?.data);
         }
       }
       print("╚════════════════════════════════════════");

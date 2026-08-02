@@ -4,9 +4,9 @@ import '../../../../auth/data/response_ml/register_response.dart';
 abstract class ProfileRepository {
   ProfileRepository();
 
-  Future<User> getMe();
+  Future<UserModel> getMe();
 
-  Future<User> updateProfile(Map<String, dynamic> data  );
+  Future<UserModel> updateProfile(Map<String, dynamic> data  );
 
   Future<String> uploadAvatar(String request);
 }

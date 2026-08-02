@@ -21,12 +21,12 @@ class LoginUseCase {
     return repository.login(lgnRequest);
   }
 
-  Future<User?> getCurrentUser() async {
+  Future<UserModel?> getCurrentUserModel() async {
     try {
       final token = await _secureStorageService.getAccessToken();
       if (token == null) return null;
-      User user = await _profileRepository.getMe();
-      return user;
+      UserModel userModel = await _profileRepository.getMe();
+      return userModel;
     } on AppError {
       await   _secureStorageService.clearStorage();
       rethrow;

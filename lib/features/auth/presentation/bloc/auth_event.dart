@@ -41,7 +41,7 @@ class AuthOnboardingCompleted extends AuthEvent {
 class AuthUserUpdated extends AuthEvent {
   const AuthUserUpdated({required this.user});
 
-  final User user;
+  final UserModel user;
 
   @override
   List<Object?> get props => [user];

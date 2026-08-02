@@ -53,7 +53,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
 
     try {
-      final user = await loginUseCase.getCurrentUser();
+      final user = await loginUseCase.getCurrentUserModel();
       if (user == null) {
         if (kDebugMode) {
           print("******* user not");

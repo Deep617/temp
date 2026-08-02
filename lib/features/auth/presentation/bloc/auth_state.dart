@@ -9,7 +9,7 @@ class AuthState extends Equatable {
   const AuthState({this.status = AuthStatus.initial, this.user, this.error});
 
   final AuthStatus status;
-  final User? user;
+  final UserModel? user;
   final AppError? error;
 
   bool get isLoading => status == AuthStatus.loading;
@@ -22,7 +22,7 @@ class AuthState extends Equatable {
 
   AuthState copyWith({
     AuthStatus? status,
-    User? user,
+    UserModel? user,
     AppError? error,
     bool clearError = false,
   }) => AuthState(

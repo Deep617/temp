@@ -9,7 +9,7 @@ class UpdateProfileUseCase {
 
   UpdateProfileUseCase(this.repository);
 
-  Future<User> updateProfile({required Map<String, dynamic> data}) {
+  Future<UserModel> updateProfile({required Map<String, dynamic> data}) {
     return repository.updateProfile(data);
   }
 }
@@ -29,7 +29,7 @@ class OnloadProfileUseCase {
 
   OnloadProfileUseCase(this.repository);
 
-  Future<User> getMe() {
+  Future<UserModel> getMe() {
     return repository.getMe();
   }
 }
