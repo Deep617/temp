@@ -82,6 +82,7 @@ class StationCompletion {
 }
 
 // ── ChallengeEntry ────────────────────────────────────────
+// ── ChallengeEntry ────────────────────────────────────────
 class ChallengeEntry {
   const ChallengeEntry({
     required this.id,
@@ -92,6 +93,7 @@ class ChallengeEntry {
     required this.totalXpEarned,
     required this.joinedAt,
     this.buddyId,
+    this.challengeTitle,
     this.rankCity,
     this.rankGlobal,
     this.lastSessionAt,
@@ -103,6 +105,7 @@ class ChallengeEntry {
   final String   challengeId;
   final String   userId;
   final String?  buddyId;
+  final String?  challengeTitle; // from challenge.title via include
   final String   status; // active/completed/dormant/dropped
   final int      currentStation;
   final int      totalXpEarned;
@@ -119,6 +122,8 @@ class ChallengeEntry {
         challengeId:    j['challengeId']    as String,
         userId:         j['userId']         as String,
         buddyId:        j['buddyId']        as String?,
+        challengeTitle: j['challengeTitle'] as String?
+            ?? (j['challenge'] as Map<String, dynamic>?)?['title'] as String?,
         status:         j['status']         as String,
         currentStation: j['currentStation'] as int? ?? 0,
         totalXpEarned:  j['totalXpEarned']  as int? ?? 0,

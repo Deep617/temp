@@ -95,9 +95,11 @@ GoRouter buildRouter(AuthBloc authBloc) {
 
       if (isUserAuthenticated &&
           !needsOnboarding &&
-          appCurrentLocation == AppRoutes.onboarding) {
+          (appCurrentLocation == AppRoutes.onboarding ||
+              appCurrentLocation == AppRoutes.splash)) {
         return AppRoutes.home;
       }
+
       return null;
     },
     routes: [

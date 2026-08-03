@@ -17,8 +17,6 @@ import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
 
-
-
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
   @override
@@ -34,6 +32,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   List<String> _activities = [];
   String?      _level;
   List<String> _goals      = [];
+  String?      _gender;
   File?        _newAvatar;
 
   @override
@@ -51,6 +50,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _activities      = List.from(user?.activities     ?? []);
     _level           = user?.experienceLevel;
     _goals           = List.from(user?.goals          ?? []);
+    _gender          = user?.gender;
   }
 
   @override
@@ -84,6 +84,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'activities':      _activities,
         'experienceLevel': _level,
         'goals':           _goals,
+        'gender':          _gender,
       },
     ));
   }
@@ -247,6 +248,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     onTap: () => setState(() => _primaryActivity = a['id'] as String),
                   )).toList(),
                 ).animate(delay: 200.ms).fadeIn(),
+
+                const SizedBox(height: 18),
+                Text('Gender', style: AppTextStyles.bodySM()),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8, runSpacing: 8,
+                  children: [
+                    {'id': 'male',   'label': '👨 Male'},
+                    {'id': 'female', 'label': '👩 Female'},
+                    {'id': 'other',  'label': '🧑 Other'},
+                  ].map((g) => GestureDetector(
+                    onTap: () => setState(() => _gender = g['id']),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _gender == g['id']
+                            ? AppColors.teal.withOpacity(0.15)
+                            : AppColors.surface2,
+                        borderRadius: BorderRadius.circular(100),
+                        border: Border.all(
+                          color: _gender == g['id']
+                              ? AppColors.teal.withOpacity(0.4)
+                              : AppColors.border2,
+                        ),
+                      ),
+                      child: Text(
+                        g['label']!,
+                        style: AppTextStyles.bodySM(
+                          color: _gender == g['id']
+                              ? AppColors.teal
+                              : AppColors.textSecondary,
+                        ).copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  )).toList(),
+                ),
 
                 const SizedBox(height: 18),
                 Text('Experience Level', style: AppTextStyles.bodySM()),

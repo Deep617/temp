@@ -30,8 +30,8 @@ class AuthRegisterRequested extends AuthEvent {
   const AuthRegisterRequested({required this.registerRequest});
 }
 
-class LogoutSubmitted extends AuthEvent {
-  const LogoutSubmitted();
+class AuthLoggedOut extends AuthEvent {
+  const AuthLoggedOut();
 }
 
 class AuthOnboardingCompleted extends AuthEvent {

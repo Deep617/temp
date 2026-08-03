@@ -39,7 +39,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLoginRequested>(_onLoginSubmitted);
     on<AuthRegisterRequested>(_onRegister);
     on<AuthOnboardingCompleted>(_onOnboardingCompleted);
-    on<LogoutSubmitted>(_onLogoutRequested);
+    on<AuthLoggedOut>(_onLogoutRequested);
     on<AuthUserUpdated>(_onUserUpdated);
     on<UserTokeExpire>(_onUserTokenNot);
   }
@@ -135,7 +135,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogoutRequested(
-    LogoutSubmitted event,
+      AuthLoggedOut event,
     Emitter<AuthState> emit,
   ) async {
     final Response logoutResponse = await _logoutUseCase.logoutPerform();

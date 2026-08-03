@@ -30,6 +30,7 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
     on<LeaderboardLoaded>(_onLeaderboardLoaded);
     on<BuddyNudgeSent>(_onBuddyNudgeSent);
     on<ChallengeStatusCleared>(_onStatusCleared);
+    on<GetGlobleLeaderboardLoaded>(getGlobalLeaderboard);
   }
 
   final ChallengeRepository challengeRepository;
