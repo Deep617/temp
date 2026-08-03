@@ -18,7 +18,7 @@ class ApiInterceptor extends Interceptor {
   ) async {
     final token = await getIt<SecureStorageService>().getAccessToken();
     if (kDebugMode) {
-      print("Token ApiInterceptor onRequest $token");
+      // print("Token ApiInterceptor onRequest $token");
     }
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
@@ -26,16 +26,17 @@ class ApiInterceptor extends Interceptor {
     if (kDebugMode) {
       print("");
       print("╔════════════════ REQUEST ════════════════");
+      print("║ URL: ${options.uri}");
       print("║ HEADERS:");
       options.headers.forEach((key, value) {
         if (kDebugMode) {
-          print("║ $key: $value");
+          print("║  $key: $value");
         }
       });
       try {
         const encoder = JsonEncoder.withIndent('  ');
         log(
-          name: "║ BODY: ${options.uri}= Api Request:",
+          name: "Api Request Body: ${options.uri}",
           encoder.convert(options.data),
         );
       } catch (e) {
@@ -57,13 +58,12 @@ class ApiInterceptor extends Interceptor {
     if (kDebugMode) {
       print("");
       print("╔════════════════ RESPONSE ══════════════");
+      print("║ URL: ${response.requestOptions.uri}");
       print("║ STATUS CODE: ${response.statusCode}");
       try {
         const encoder = JsonEncoder.withIndent('  ');
         log(
-          name:
-              "║ RESPONSE: ${response.requestOptions.uri}= Api Raw "
-              "Response: ",
+          name: "Api Raw Response: ${response.requestOptions.uri}",
           encoder.convert(response.data),
         );
       } catch (e) {
@@ -102,13 +102,18 @@ class ApiInterceptor extends Interceptor {
       print("");
       print("╔════════════════ ERROR ═════════════════");
       print("║ URL: ${err.requestOptions.uri}");
-      print("║ MESSAGE: ${err.message}");
       if (err.response != null) {
         print("║ STATUS CODE: ${err.response?.statusCode}");
+      }
+      print("║ AppError TYPE: ${err.type}");
+      print("║ MESSAGE: ${err.message}");
+      print("║ AppError STACKTRACE: ${err.stackTrace}");
+      print("║ AppError RESPONSE: ${err.response}");
+      if (err.response != null) {
         try {
           const encoder = JsonEncoder.withIndent('  ');
           log(
-            name: "${err.requestOptions.uri}= Api Error Response: ",
+            name: "Api Error Response: ${err.requestOptions.uri}",
             encoder.convert(err.response?.data),
           );
         } catch (e) {

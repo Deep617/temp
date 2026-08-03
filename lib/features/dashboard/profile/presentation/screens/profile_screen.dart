@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:seshlly/core/services/storage_service.dart';
 import 'package:seshlly/di_injection/dependency_injection.dart';
 import 'package:seshlly/routes/app_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -390,7 +389,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         mainAxisSpacing: 8,
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        childAspectRatio: 2.3,
+                        childAspectRatio: 1.6,
                         children: [
                           _StatCard(
                             value: '${user.buddyCount}',
@@ -470,8 +469,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       // Trust Score
                       _Card(
                         title: 'Trust Score',
-                        linkText: 'How it works',
-                        onLink: () {},
+                        linkText: 'View Feeds',
+                        onLink: () => context.push(AppRoutes.feed),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -519,6 +518,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       // ── LEADERBOARD RANK — Real data ─────────────
                       _Card(
                         title: 'Leaderboard Rank',
+                        linkText: 'View all',
+                        onLink: () => context.push(AppRoutes.leaderboard),
                         child: _loading
                             ? const Center(
                                 child: SizedBox(
@@ -603,7 +604,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           right: 8,
                                         ),
                                         child: _TrophyBadge(
-                                          label: e.challengeTitle ?? 'Trophy',
+                                          label: "e.challengeTitle" ?? 'Trophy',
                                           won: true,
                                         ),
                                       ),
@@ -658,58 +659,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       const SizedBox(height: 10),
 
-                      // Upgrade CTA
-                      if (!user.isPro)
-                        GestureDetector(
-                          onTap: () => context.push(AppRoutes.subscription),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              gradient: AppColors.membershipGradient,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: AppColors.primary.withOpacity(0.25),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Upgrade to Pro',
-                                        style: AppTextStyles.subtitle(
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        'Unlimited swipes & more',
-                                        style: AppTextStyles.bodySM(),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    borderRadius: BorderRadius.circular(9),
-                                  ),
-                                  child: Text(
-                                    'Upgrade',
-                                    style: AppTextStyles.btn(),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ).animate(delay: 300.ms).fadeIn(),
+                      // Subscription — show plan card for Pro/Elite, upgrade CTA for Free
+                      _SubscriptionCard(
+                        plan: user.subscriptionPlan,
+                        expiry: user.subscriptionExpiry,
+                        onUpgrade: () => context.push(AppRoutes.subscription),
+                      ).animate(delay: 300.ms).fadeIn(),
 
                       const SizedBox(height: 16),
                       Text(
@@ -957,7 +912,6 @@ class _StatCard extends StatelessWidget {
     ),
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
       children: [
         Text(value, style: AppTextStyles.h2(color: color)),
         const SizedBox(height: 4),
@@ -1108,9 +1062,11 @@ class _TrophyBadge extends StatelessWidget {
 
 // Session row — uses real WorkoutSession model
 class _SessionRow extends StatelessWidget {
+  final dynamic session;
+
   const _SessionRow({required this.session, this.isLast = false});
 
-  final WorkoutSession session;
+  // final WorkoutSession session;
   final bool isLast;
 
   String get _timeLabel {
@@ -1814,18 +1770,12 @@ class _SOSButton extends StatelessWidget {
 
   void _showSetNumberDialog(BuildContext context, SharedPreferences prefs) {
     final ctrl = TextEditingController();
-
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (_) => AlertDialog(
         backgroundColor: AppColors.surface1,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Text(
-          'Set Emergency Contact',
-          style: AppTextStyles.h3(),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Set Emergency Contact', style: AppTextStyles.h3()),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1858,11 +1808,7 @@ class _SOSButton extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              if (Navigator.of(dialogContext).canPop()) {
-                Navigator.of(dialogContext).pop();
-              }
-            },
+            onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancel',
               style: AppTextStyles.bodySM(color: AppColors.textMuted),
@@ -1877,39 +1823,24 @@ class _SOSButton extends StatelessWidget {
             ),
             onPressed: () async {
               final number = ctrl.text.trim();
-
-              if (number.isEmpty) return;
-
-              await prefs.setString(_kEmergencyNumber, number);
-
-              if (!context.mounted) return;
-
-              // Close only the dialog
-              if (Navigator.of(dialogContext).canPop()) {
-                Navigator.of(dialogContext).pop();
+              if (number.isNotEmpty) {
+                await prefs.setString(_kEmergencyNumber, number);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Emergency contact saved: $number'),
+                      backgroundColor: AppColors.success,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
               }
-
-              // Wait until the dialog is dismissed before showing the SnackBar
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!context.mounted) return;
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Emergency contact saved: $number'),
-                    backgroundColor: AppColors.success,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              });
             },
-            child: Text(
-              'Save',
-              style: AppTextStyles.btn(),
-            ),
+            child: Text('Save', style: AppTextStyles.btn()),
           ),
         ],
       ),
-
     );
   }
 
@@ -1934,124 +1865,87 @@ class _SOSCountdownDialog extends StatefulWidget {
 
 class _SOSCountdownDialogState extends State<_SOSCountdownDialog> {
   int _count = 3;
-  Timer? _timer;
-  NavigatorState? _navigator;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-// Cache Navigator before the widget can be deactivated
-    _navigator ??= Navigator.of(context);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return;
-
-      if (_count > 1) {
-        setState(() {
-          _count--;
-        });
-      } else {
-        // Show 0 briefly, then make the call
-        setState(() {
-          _count = 0;
-        });
-        _makeCall();
-      }
-    });
-
-  }
+  late final _timer = Stream.periodic(const Duration(seconds: 1), (i) => 2 - i)
+      .take(3)
+      .listen((c) {
+        if (mounted) setState(() => _count = c);
+        if (c == 0) _makeCall();
+      });
 
   Future<void> _makeCall() async {
-    _timer?.cancel();
-
-// Close the dialog safely using cached navigator
-    if (_navigator?.canPop() ?? false) {
-      _navigator!.pop();
-    }
-
+    _timer.cancel();
+    if (!mounted) return;
+    Navigator.of(context).pop();
     final uri = Uri.parse('tel:${widget.number}');
-
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    }
-
+    if (await canLaunchUrl(uri)) await launchUrl(uri);
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _timer.cancel();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: AppColors.surface1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.error.withOpacity(0.1),
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.error, width: 2),
-            ),
-            child: Center(
-              child: Text(
-                '$_count',
-                style: AppTextStyles.h1().copyWith(
-                  color: AppColors.error,
-                  fontSize: 28,
-                ),
+  Widget build(BuildContext context) => AlertDialog(
+    backgroundColor: AppColors.surface1,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: AppColors.error.withOpacity(0.1),
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.error, width: 2),
+          ),
+          child: Center(
+            child: Text(
+              '$_count',
+              style: AppTextStyles.h1().copyWith(
+                color: AppColors.error,
+                fontSize: 28,
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Calling Emergency Contact',
-            style: AppTextStyles.h3(),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            widget.number,
-            style: AppTextStyles.subtitle(color: AppColors.primary),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Calling in $_count second${_count == 1 ? '' : 's'}...',
-            style: AppTextStyles.bodySM(color: AppColors.textMuted),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-      actions: [
-        SizedBox(
-          width: double.infinity,
-          child: TextButton(
-            onPressed: () {
-              _timer?.cancel();
-              _navigator?.pop();
-            },
-            child: Text(
-              'Cancel',
-              style: AppTextStyles.subtitle(color: AppColors.textMuted),
-            ),
-          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Calling Emergency Contact',
+          style: AppTextStyles.h3(),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          widget.number,
+          style: AppTextStyles.subtitle(color: AppColors.primary),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Calling in $_count seconds...',
+          style: AppTextStyles.bodySM(color: AppColors.textMuted),
+          textAlign: TextAlign.center,
         ),
       ],
-    );
-  }
+    ),
+    actions: [
+      SizedBox(
+        width: double.infinity,
+        child: TextButton(
+          onPressed: () {
+            _timer.cancel();
+            Navigator.pop(context);
+          },
+          child: Text(
+            'Cancel',
+            style: AppTextStyles.subtitle(color: AppColors.textMuted),
+          ),
+        ),
+      ),
+    ],
+  );
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2123,4 +2017,193 @@ class _ToggleTile extends StatelessWidget {
       ),
     ),
   );
+}
+
+// ══════════════════════════════════════════════════════════
+//  SUBSCRIPTION CARD
+//  Shows current plan for Pro/Elite users
+//  Shows upgrade CTA for Free users
+// ══════════════════════════════════════════════════════════
+class _SubscriptionCard extends StatelessWidget {
+  const _SubscriptionCard({
+    required this.plan,
+    required this.onUpgrade,
+    this.expiry,
+  });
+
+  final String plan;
+  final DateTime? expiry;
+  final VoidCallback onUpgrade;
+
+  bool get _isPro => plan == 'pro' || plan == 'elite';
+
+  bool get _isElite => plan == 'elite';
+
+  String get _planLabel {
+    switch (plan) {
+      case 'elite':
+        return '💎 Elite';
+      case 'pro':
+        return '⚡ Pro';
+      default:
+        return '🆓 Free Plan';
+    }
+  }
+
+  Color get _planColor {
+    switch (plan) {
+      case 'elite':
+        return AppColors.purple;
+      case 'pro':
+        return AppColors.primary;
+      default:
+        return AppColors.textMuted;
+    }
+  }
+
+  String? get _expiryLabel {
+    if (expiry == null) return null;
+    final diff = expiry!.difference(DateTime.now());
+    if (diff.inDays > 30)
+      return 'Renews in ${(diff.inDays / 30).floor()} months';
+    if (diff.inDays > 0) return 'Expires in ${diff.inDays} days';
+    return 'Expired';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isPro) {
+      // Show active plan card
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _planColor.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _planColor.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: _planColor.withOpacity(0.15),
+                shape: BoxShape.circle,
+                border: Border.all(color: _planColor.withOpacity(0.3)),
+              ),
+              child: Center(
+                child: Text(
+                  _isElite ? '💎' : '⚡',
+                  style: const TextStyle(fontSize: 22),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        _planLabel,
+                        style: AppTextStyles.subtitle(color: _planColor),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.teal.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: AppColors.teal.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Text(
+                          'ACTIVE',
+                          style: AppTextStyles.label(
+                            color: AppColors.teal,
+                          ).copyWith(fontSize: 9),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _expiryLabel ?? 'Unlimited access',
+                    style: AppTextStyles.bodySM(color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            // Manage button
+            GestureDetector(
+              onTap: onUpgrade,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: _planColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _planColor.withOpacity(0.3)),
+                ),
+                child: Text(
+                  'Manage',
+                  style: AppTextStyles.bodySM(
+                    color: _planColor,
+                  ).copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Free plan — show upgrade CTA
+    return GestureDetector(
+      onTap: onUpgrade,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: AppColors.membershipGradient,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Upgrade to Pro',
+                    style: AppTextStyles.subtitle(color: AppColors.primary),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Unlimited swipes & more',
+                    style: AppTextStyles.bodySM(),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Text('Upgrade', style: AppTextStyles.btn()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

@@ -330,6 +330,7 @@ class _SessionCard extends StatelessWidget {
             GestureDetector(
               onTap: () => context.push(
                 AppRoutes.uploadProof.replaceAll(':sessionId', session.id),
+                extra: session,
               ),
               child: Container(
                 padding: const EdgeInsets.all(14),

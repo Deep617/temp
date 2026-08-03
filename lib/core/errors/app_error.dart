@@ -18,11 +18,7 @@ class AppError extends Equatable {
 
   static AppError fromException(dynamic e) {
     if (kDebugMode) {
-      print("AppError Top Level Exception ${e.toString()}");
-      print("AppError TYPE: ${e.type}");
-      print("AppError MESSAGE: ${e.message}");
-      print("AppError ERROR: ${e.error}");
-      print("AppError RESPONSE: ${e.response?.data}");
+    //  print("AppError Top Level Exception ${e.toString()}");
     }
 
     if (e is DioException) {
@@ -53,7 +49,7 @@ class AppError extends Equatable {
           }
           if (code == 403) {
             return AppError(
-              message: 'Access denied.',
+              message: message ,
               statusCode: 403,
               type: 'auth',
             );

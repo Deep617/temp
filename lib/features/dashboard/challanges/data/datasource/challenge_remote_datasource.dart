@@ -116,6 +116,25 @@ class ChallengeRemoteDatasource {
   }
 
 
+  // ── GLOBAL FEED ──────────────────────────────────────────
+  /// GET /feed → List<ChallengeFeedPost> (last 24hrs, auto-expires)
+  Future<List<ChallengeFeedPost>> getGlobalFeed() async {
+    final res  = await _dio.get('/feed');
+    final data = _data(res);
+    return (data['posts'] as List<dynamic>)
+        .map((e) => ChallengeFeedPost.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// POST /feed → post challenge completion to feed
+  Future<ChallengeFeedPost> postToFeed(Map<String, dynamic> data) async {
+    final res = await _dio.post('/feed', data: data);
+    return ChallengeFeedPost.fromJson(
+        _data(res)['post'] as Map<String, dynamic>);
+  }
+
+
+
   dynamic _data(Response res) {
     final body = res.data;
     if (body is Map && body['success'] == true) {

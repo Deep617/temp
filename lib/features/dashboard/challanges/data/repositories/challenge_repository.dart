@@ -45,6 +45,9 @@ abstract class ChallengeRepository {
     required String stationCompletionId,
   });
 
+  // POST /match/nudge/:buddyId
+  Future<void> nudgeBuddy(String buddyId);
+
   // GET /leaderboard?challengeId=&city=
   Future<List<LeaderboardEntry>> getLeaderboard({
     String? challengeId,
@@ -56,6 +59,13 @@ abstract class ChallengeRepository {
     String? city,
   }) ;
 
-  // POST /match/nudge/:buddyId
-  Future<void> nudgeBuddy(String buddyId);
+
+  // ── GLOBAL FEED ──────────────────────────────────────────
+  /// GET /feed → List<ChallengeFeedPost> (last 24hrs, auto-expires)
+  Future<List<ChallengeFeedPost>> getGlobalFeed() ;
+
+  /// POST /feed → post challenge completion to feed
+  Future<ChallengeFeedPost> postToFeed(Map<String, dynamic> data) ;
+
+
 }

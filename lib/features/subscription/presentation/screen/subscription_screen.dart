@@ -65,7 +65,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       'description': description,
       'order_id': order['id'],
       'prefill': {'name': user?.fullName ?? '', 'email': user?.email ?? ''},
-      'theme': {'color': '#BAEE0B'},
+      'theme': {'color': '#0A84FF'},
     };
     _razorpay.open(options);
   }
@@ -321,7 +321,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text(
-                                        '₹${plan['price']}',
+                                        '₹${(plan['price']/100).round()}',
                                         style: AppTextStyles.h2(
                                           color: isPopular
                                               ? AppColors.primary
@@ -329,7 +329,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                         ),
                                       ),
                                       Text(
-                                        '${(plan['interval'] as String?)?.toLowerCase() ?? 'mo'}',
+                                        (plan['interval'] as String?)?.toLowerCase() ?? 'mo',
                                         style: AppTextStyles.caption(),
                                       ),
                                       const SizedBox(height: 8),

@@ -135,4 +135,23 @@ class ChallengeRepositoryImpl extends BaseRepository
       throw AppError.fromException(e);
     });
   }
+
+  // ── GLOBAL FEED ──────────────────────────────────────────
+  /// GET /feed → List<ChallengeFeedPost> (last 24hrs, auto-expires)
+  @override
+  Future<List<ChallengeFeedPost>> getGlobalFeed() async {
+    return remote.getGlobalFeed().catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  /// POST /feed → post challenge completion to feed
+  @override
+  Future<ChallengeFeedPost> postToFeed(Map<String, dynamic> data) async {
+    return remote.postToFeed(data).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+
 }

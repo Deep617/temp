@@ -30,9 +30,12 @@ import '../features/dashboard/discover/presentation/screens/discover_screen.dart
 import '../features/dashboard/home_screen.dart';
 import '../features/dashboard/profile/presentation/screens/buddy_profile_screen.dart';
 import '../features/dashboard/profile/presentation/screens/profile_screen.dart';
+import '../features/dashboard/session/data/response_ml/workout_session.dart';
 import '../features/dashboard/session/presentation/screens/schedule_session_screen.dart';
 import '../features/dashboard/session/presentation/screens/sessions_screen.dart';
 import '../features/dashboard/session/presentation/screens/upload_proof_screen.dart';
+import '../features/feed_leaderboard/presentation/screen/feed_screen.dart';
+import '../features/feed_leaderboard/presentation/screen/leaderboard_screen.dart';
 import '../features/match/match_screen.dart';
 
 GoRouter buildRouter(AuthBloc authBloc) {
@@ -199,10 +202,12 @@ GoRouter buildRouter(AuthBloc authBloc) {
       GoRoute(
         path: AppRoutes.uploadProof,
         builder: (context, state) {
+          final extra = state.extra  as WorkoutSession;
           return BlocProvider(
             create: (_) => getIt<SessionBloc>(),
             child: UploadProofScreen(
               sessionId: state.pathParameters['sessionId']!,
+              session:    extra ,
             ),
           );
         },
@@ -253,6 +258,18 @@ GoRouter buildRouter(AuthBloc authBloc) {
       GoRoute(
         path: AppRoutes.globalLeaderboard,
         builder: (_, __) => const GlobalLeaderboardScreen(),
+      ),
+
+      // ── Leaderboard ───────────────────────────────────
+      GoRoute(
+        path:    AppRoutes.leaderboard,
+        builder: (_, __) => const LeaderboardScreen(),
+      ),
+
+      // ── Feed ─────────────────────────────────────────
+      GoRoute(
+        path:    AppRoutes.feed,
+        builder: (_, __) => const FeedScreen(),
       ),
 
       ShellRoute(
@@ -357,4 +374,10 @@ class AppRoutes {
   static const challengeDetail = '/challenges/:challengeId';
   static const globalLeaderboard = '/leaderboard/global';
   static const walkthroughOverlay = '/walkthroughOverlay';
+
+  // New: Leaderboard + Feed
+  static const leaderboard     = '/leaderboard';
+  static const feed            = '/feed';
+
+
 }

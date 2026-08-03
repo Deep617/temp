@@ -84,18 +84,23 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           curr.matchedUserId != null &&
           curr.matchedUserId != prev.matchedUserId,
       listener: (context, state) {
-        if (state.matchedUserId != null) {
-          final profile = state.profiles.firstWhere(
-            (p) => p.id == state.matchedUserId,
-            orElse: () => state.profiles.first,
-          );
-          _showMatchDialog(profile);
-        }
+
       },
       child: BlocBuilder<DiscoverBloc, DiscoverState>(
         builder: (context, state) {
           final user = context.watch<AuthBloc>().state.user;
+          if (state.matchedUserId != null) {
+            final profile = state.profiles.firstWhere(
+                  (p) => p.id == state.matchedUserId,
+              orElse: () => state.profiles.first,
+            );
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _showMatchDialog(profile);
+              }
+            });
 
+          }
           return Scaffold(
             backgroundColor: AppColors.bg,
             body: SafeArea(
@@ -339,7 +344,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
-  void _showMatchDialog(BuddyProfile profile) {
+  void  _showMatchDialog(BuddyProfile profile) {
     showDialog(
       context: context,
       builder: (_) => MatchDialog(profile: profile),

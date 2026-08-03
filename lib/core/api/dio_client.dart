@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import 'api_endpoints.dart';
 import 'api_interceptor.dart';
@@ -25,7 +26,13 @@ class DioClient {
 
     Response response = await dio.get(path, queryParameters: queryParameters);
     stopwatch.stop();
-    print('POST $path took: ${stopwatch.elapsedMilliseconds} ms');
+    if (kDebugMode) {
+      debugPrint("***********************");
+      print(
+        'Method: GET, Api Endpoint: $path, took: ${stopwatch.elapsedMilliseconds} ms',
+      );
+      debugPrint("***********************");
+    }
     if (response.statusCode != null &&
         response.statusCode! >= 200 &&
         response.statusCode! < 300) {
@@ -38,7 +45,13 @@ class DioClient {
     final stopwatch = Stopwatch()..start();
     Response response = await dio.post(path, data: data);
     stopwatch.stop();
-    print('POST $path took: ${stopwatch.elapsedMilliseconds} ms');
+    if (kDebugMode) {
+      debugPrint("***********************");
+      print(
+        'Method: POST, Api Endpoint: $path, took: ${stopwatch.elapsedMilliseconds} ms',
+      );
+      debugPrint("***********************");
+    }
 
     if (response.statusCode != null &&
         response.statusCode! >= 200 &&
@@ -48,11 +61,18 @@ class DioClient {
     throw Exception((response.statusMessage ?? 'Request failed',));
   }
 
-  Future<Response> put(
-    String path, {
-    Map<String, dynamic>? data,
-  }) async {
+  Future<Response> put(String path, {Map<String, dynamic>? data}) async {
+    final stopwatch = Stopwatch()..start();
     Response response = await dio.put(path, data: data);
+    stopwatch.stop();
+    if (kDebugMode) {
+      debugPrint("***********************");
+      print(
+        'Method: PUT, Api Endpoint: $path, took: ${stopwatch.elapsedMilliseconds} ms',
+      );
+      debugPrint("***********************");
+    }
+
     if (response.statusCode != null &&
         response.statusCode! >= 200 &&
         response.statusCode! < 300) {
@@ -65,7 +85,17 @@ class DioClient {
     String path, {
     Map<String, dynamic>? queryParameters,
   }) async {
+    final stopwatch = Stopwatch()..start();
     Response response = await dio.patch(path, queryParameters: queryParameters);
+    stopwatch.stop();
+    if (kDebugMode) {
+      debugPrint("***********************");
+      print(
+        'Method: PATCH, Api Endpoint: $path, took: ${stopwatch.elapsedMilliseconds} ms',
+      );
+      debugPrint("***********************");
+    }
+
     if (response.statusCode != null &&
         response.statusCode! >= 200 &&
         response.statusCode! < 300) {

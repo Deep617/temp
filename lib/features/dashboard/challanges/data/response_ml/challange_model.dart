@@ -271,44 +271,80 @@ class ChallengeFeedPost {
     required this.stationNum,
     required this.stationTitle,
     required this.postedAt,
+    required this.expiresAt,
     required this.xpAwarded,
     this.proofImageUrl,
     this.avatarUrl,
+    this.city,
+    this.challengeId,
+    this.challengeTitle,
+    this.activityTag,
     this.isCollab = false,
     this.collabUserName,
     this.collabAvatarUrl,
     this.activitySlug,
+    this.caption,
+    this.groupPhotoUrl,
+    this.groupName,
   });
 
   final String   id;
   final String   userId;
   final String   displayName;
   final String?  avatarUrl;
+  final String?  city;
+  final String?  challengeId;
+  final String?  challengeTitle;
+  final String?  activityTag;
   final int      stationNum;
   final String   stationTitle;
   final DateTime postedAt;
+  final DateTime expiresAt;
   final int      xpAwarded;
   final String?  proofImageUrl;
   final bool     isCollab;
   final String?  collabUserName;
   final String?  collabAvatarUrl;
   final String?  activitySlug;
+  final String?  caption;
+  final String?  groupPhotoUrl;
+  final String?  groupName;
+
+  // Time left until post expires
+  Duration get timeLeft => expiresAt.difference(DateTime.now());
+  bool     get isExpired => timeLeft.isNegative;
+  String   get timeLeftLabel {
+    final h = timeLeft.inHours;
+    final m = timeLeft.inMinutes % 60;
+    if (h > 0) return '${h}h ${m}m left';
+    return '${m}m left';
+  }
 
   factory ChallengeFeedPost.fromJson(Map<String, dynamic> j) =>
       ChallengeFeedPost(
-        id:              j['id']              as String,
-        userId:          j['userId']          as String,
-        displayName:     j['displayName']     as String,
-        avatarUrl:       j['avatarUrl']       as String?,
-        stationNum:      j['stationNum']      as int,
-        stationTitle:    j['stationTitle']    as String,
-        postedAt:        DateTime.parse(j['postedAt'] as String),
-        xpAwarded:       j['xpAwarded']       as int,
-        proofImageUrl:   j['proofImageUrl']   as String?,
-        isCollab:        j['isCollab']        as bool? ?? false,
-        collabUserName:  j['collabUserName']  as String?,
-        collabAvatarUrl: j['collabAvatarUrl'] as String?,
-        activitySlug:    j['activitySlug']    as String?,
+        id:             j['id']             as String,
+        userId:         j['userId']         as String,
+        displayName:    j['displayName']    as String,
+        avatarUrl:      j['avatarUrl']      as String?,
+        city:           j['city']           as String?,
+        challengeId:    j['challengeId']    as String?,
+        challengeTitle: j['challengeTitle'] as String?,
+        activityTag:    j['activityTag']    as String?,
+        stationNum:     j['stationNum']     as int,
+        stationTitle:   j['stationTitle']   as String,
+        postedAt:       DateTime.parse(j['postedAt'] as String),
+        expiresAt:      j['expiresAt'] != null
+            ? DateTime.parse(j['expiresAt'] as String)
+            : DateTime.now().add(const Duration(hours: 24)),
+        xpAwarded:      j['xpAwarded']      as int,
+        proofImageUrl:  j['proofImageUrl']  as String?,
+        isCollab:       j['isCollab']       as bool? ?? false,
+        collabUserName: j['collabUserName'] as String?,
+        collabAvatarUrl:j['collabAvatarUrl']as String?,
+        activitySlug:   j['activitySlug']   as String?,
+        caption:        j['caption']        as String?,
+        groupPhotoUrl:  j['groupPhotoUrl']  as String?,
+        groupName:      j['groupName']      as String?,
       );
 }
 
