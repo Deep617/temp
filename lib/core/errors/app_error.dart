@@ -18,7 +18,7 @@ class AppError extends Equatable {
 
   static AppError fromException(dynamic e) {
     if (kDebugMode) {
-    //  print("AppError Top Level Exception ${e.toString()}");
+      //  print("AppError Top Level Exception ${e.toString()}");
     }
 
     if (e is DioException) {
@@ -48,11 +48,10 @@ class AppError extends Equatable {
             return AppError(message: message, statusCode: 401, type: 'auth');
           }
           if (code == 403) {
-            return AppError(
-              message: message ,
-              statusCode: 403,
-              type: 'auth',
-            );
+            return AppError(message: message, statusCode: 403, type: 'auth');
+          }
+          if (code == 429) {
+            return AppError(message: message, statusCode: 429, type: 'network');
           }
           if (code == 422 || code == 400) {
             return AppError(

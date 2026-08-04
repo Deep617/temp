@@ -454,8 +454,11 @@ class CompatRing extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text('${score.toInt()}%',
-                  style: AppTextStyles.label(color: color).copyWith(fontSize: size * 0.2, fontWeight: FontWeight.w800)),
-              Text('match', style: AppTextStyles.caption().copyWith(fontSize: size * 0.12)),
+                  style: AppTextStyles.label(color: color).copyWith(fontSize:
+                  size * 0.15, fontWeight: FontWeight.w800)),
+              Text('match', style: AppTextStyles.caption(color: AppColors.primary).copyWith
+                (fontSize:
+              size * 0.09)),
             ],
           ),
         ],
