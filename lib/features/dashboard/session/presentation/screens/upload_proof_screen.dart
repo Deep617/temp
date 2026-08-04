@@ -2,19 +2,15 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:seshlly/features/dashboard/session/data/repositories/session_repository.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
-import '../../../../../core/widgets/common/common_widgets.dart';
 import '../../../../../di_injection/dependency_injection.dart';
 import '../../../challanges/data/repositories/challenge_repository.dart';
 import '../../data/response_ml/workout_session.dart';
-import '../bloc/session_bloc.dart';
-import '../bloc/session_event.dart';
-import '../bloc/session_state.dart';
 
 class UploadProofScreen extends StatefulWidget {
   const UploadProofScreen({
@@ -23,8 +19,8 @@ class UploadProofScreen extends StatefulWidget {
     required this.session,
   });
 
-  final WorkoutSession session;
   final String sessionId;
+  final WorkoutSession session;
 
   @override
   State<UploadProofScreen> createState() => _UploadProofScreenState();
@@ -32,201 +28,519 @@ class UploadProofScreen extends StatefulWidget {
 
 class _UploadProofScreenState extends State<UploadProofScreen> {
   File? _image;
+  bool _uploading = false;
+  WorkoutSession? _session;
+  bool _loadingSession = true;
 
-  Future<void> _pick(ImageSource src) async {
-    final picked = await ImagePicker().pickImage(
-      source: src,
-      imageQuality: 85,
-      maxWidth: 1200,
+  final _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSession();
+  }
+
+  // Load session details to show info
+  Future<void> _loadSession() async {
+    try {
+      final sessions = await getIt<SessionRepository>().getSessions(page: 1);
+      if (!mounted) return;
+      setState(() {
+        try {
+          _session = sessions.firstWhere((s) => s.id == widget.sessionId);
+        } catch (_) {}
+        _loadingSession = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingSession = false);
+    }
+  }
+
+  // Pick from gallery
+  Future<void> _pickGallery() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
     );
-    if (picked != null) setState(() => _image = File(picked.path));
+    if (picked != null && mounted) {
+      setState(() => _image = File(picked.path));
+    }
+  }
+
+  // Pick from camera
+  Future<void> _pickCamera() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 80,
+    );
+    if (picked != null && mounted) {
+      setState(() => _image = File(picked.path));
+    }
+  }
+
+  // Upload proof → then show feed prompt
+  Future<void> _upload() async {
+    if (_image == null || _uploading) return;
+    setState(() => _uploading = true);
+
+    try {
+      final api = getIt<SessionRepository>();
+
+      // Upload proof image
+      final updatedSession = await api.uploadProof(
+        sessionId: widget.sessionId,
+        imagePath: _image!.path,
+      );
+
+      if (!mounted) return;
+
+      // Success snack
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Proof uploaded! +50 XP 🎉'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      // ── Show "Post to Feed?" prompt ───────────────────
+      // Proof photo is auto-attached — user just adds caption
+      await showPostToFeedPrompt(
+        context,
+        session: updatedSession,
+        // Pass challenge info if session is part of challenge
+        challengeTitle: updatedSession.challengeTitle,
+        challengeId: updatedSession.challengeId,
+        stationNum: updatedSession.challengeStationNum ?? 0,
+        stationTitle: updatedSession.challengeTitle != null
+            ? 'Station ${updatedSession.challengeStationNum ?? 1}'
+            : '${updatedSession.activity} Session',
+        xpAwarded: updatedSession.xpEarned ?? 50,
+        isGroup: updatedSession.buddyId != null,
+      );
+
+      if (mounted) context.pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _uploading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Upload failed. Please try again.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return BlocConsumer<SessionBloc, SessionState>(
-      listener: (context, state) {
-        if (state.status == SessionStatus.uploaded) {
-          context.pop();
-        }
-        if (state.status == SessionStatus.failure && state.error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                state.error!.message,
-                style: AppTextStyles.bodySM(color: AppColors.error),
-              ),
-            ),
-          );
-        }
-      },
-      builder: (context, state) {
-        if (state.status == SessionStatus.uploaded) {
-          showPostToFeedPrompt(context, session: widget.session);
-        }
-        return Scaffold(
-          backgroundColor: AppColors.bg,
-          appBar: AppBar(
-            backgroundColor: AppColors.bg,
-            title: Text('Upload Workout Proof', style: AppTextStyles.h3()),
-            leading: IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => context.pop(),
-            ),
-          ),
-          body: Padding(
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.bg,
+    appBar: AppBar(
+      backgroundColor: AppColors.surface1,
+      title: Text('Upload Proof', style: AppTextStyles.h3()),
+      leading: IconButton(
+        icon: const Icon(Icons.close),
+        onPressed: _uploading ? null : () => context.pop(),
+      ),
+    ),
+    body: _loadingSession
+        ? const Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          )
+        : SingleChildScrollView(
             padding: const EdgeInsets.all(20),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.warning.withOpacity(0.3),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Text('⏰', style: TextStyle(fontSize: 24)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Upload within 8 hours',
-                              style: AppTextStyles.subtitle(
-                                color: AppColors.warning,
-                              ),
-                            ),
-                            Text(
-                              'Late or missing proof deducts chat tokens.',
-                              style: AppTextStyles.bodySM(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ).animate().fadeIn(),
-
-                const SizedBox(height: 24),
-
-                if (state.error != null)
+                // Session info card
+                if (_session != null)
                   Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppColors.error.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: AppColors.error.withOpacity(0.3),
-                      ),
+                      color: AppColors.surface1,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.border),
                     ),
-                    child: Text(
-                      state.error!.message,
-                      style: AppTextStyles.bodySM(color: AppColors.error),
+                    child: Row(
+                      children: [
+                        Text(
+                          _activityEmoji(_session!.activity),
+                          style: const TextStyle(fontSize: 28),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _session!.activity,
+                                style: AppTextStyles.subtitle(),
+                              ),
+                              if (_session!.buddyName != null)
+                                Text(
+                                  'with ${_session!.buddyName}',
+                                  style: AppTextStyles.bodySM(
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              Text(
+                                _formatDate(_session!.scheduledAt),
+                                style: AppTextStyles.bodySM(
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // XP reward
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppColors.warning.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Text(
+                            '+50 XP',
+                            style: AppTextStyles.label(
+                              color: AppColors.warning,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                  ).animate().fadeIn(),
 
+                const SizedBox(height: 20),
+
+                // Photo area
+                Text('Session Photo', style: AppTextStyles.subtitle()),
+                const SizedBox(height: 10),
+
+                // Photo preview or picker
                 GestureDetector(
-                  onTap: () => _pick(ImageSource.gallery),
-                  child: Container(
-                    height: 260,
+                  onTap: _image == null ? _showPickerOptions : null,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    width: double.infinity,
+                    height: 220,
                     decoration: BoxDecoration(
-                      color: AppColors.surface2,
-                      borderRadius: BorderRadius.circular(20),
+                      color: AppColors.surface1,
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: _image != null
                             ? AppColors.primary.withOpacity(0.4)
                             : AppColors.border2,
-                        width: 2,
+                        width: _image != null ? 1.5 : 1,
                       ),
                     ),
                     child: _image != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(18),
-                            child: Image.file(
-                              _image!,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                            ),
+                        ? Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(15),
+                                child: Image.file(
+                                  _image!,
+                                  width: double.infinity,
+                                  height: 220,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              // Change photo button
+                              Positioned(
+                                top: 10,
+                                right: 10,
+                                child: GestureDetector(
+                                  onTap: _showPickerOptions,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.6),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.edit,
+                                          color: Colors.white,
+                                          size: 13,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Change',
+                                          style: AppTextStyles.label(
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           )
                         : Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(
-                                Icons.add_photo_alternate_outlined,
-                                color: AppColors.textMuted,
-                                size: 56,
+                              Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.primary.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.add_a_photo_outlined,
+                                  color: AppColors.primary,
+                                  size: 28,
+                                ),
                               ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 14),
                               Text(
-                                'Tap to add photo',
-                                style: AppTextStyles.subtitle(),
+                                'Add Session Photo',
+                                style: AppTextStyles.subtitle(
+                                  color: AppColors.primary,
+                                ),
                               ),
+                              const SizedBox(height: 6),
                               Text(
-                                'Show yourself at the gym or during workout',
-                                style: AppTextStyles.bodySM(),
+                                'Camera or Gallery',
+                                style: AppTextStyles.bodySM(
+                                  color: AppColors.textMuted,
+                                ),
                               ),
                             ],
                           ),
                   ),
-                ).animate(delay: 100.ms).fadeIn(),
+                ).animate().fadeIn(delay: 100.ms),
 
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: GhostButton(
-                        label: '📷 Camera',
-                        height: 44,
-                        onPressed: () => _pick(ImageSource.camera),
+                const SizedBox(height: 12),
+
+                // Quick pick buttons (always visible)
+                if (_image == null)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _PickButton(
+                          icon: Icons.camera_alt_outlined,
+                          label: 'Camera',
+                          onTap: _pickCamera,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GhostButton(
-                        label: '🖼 Gallery',
-                        height: 44,
-                        onPressed: () => _pick(ImageSource.gallery),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _PickButton(
+                          icon: Icons.photo_library_outlined,
+                          label: 'Gallery',
+                          onTap: _pickGallery,
+                        ),
                       ),
-                    ),
-                  ],
-                ).animate(delay: 200.ms).fadeIn(),
+                    ],
+                  ).animate().fadeIn(delay: 150.ms),
 
-                const Spacer(),
+                const SizedBox(height: 28),
 
-                PrimaryButton(
-                  label: '✅ Upload Proof (+50 XP)',
-                  loading: state.isUploading,
-                  disabled: _image == null,
-                  onPressed: () => context.read<SessionBloc>().add(
-                    SessionProofUploaded(
-                      sessionId: widget.sessionId,
-                      imagePath: _image!.path,
+                // Note about feed
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.primary.withOpacity(0.15),
                     ),
                   ),
-                ).animate(delay: 300.ms).fadeIn(),
+                  child: Row(
+                    children: [
+                      const Text('💡', style: TextStyle(fontSize: 16)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'After upload, you can share this to the Challenge Feed with your photo — visible for 24 hours.',
+                          style: AppTextStyles.bodySM(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 180.ms),
 
-                const SizedBox(height: 16),
-                Text(
-                  'Your proof will be verified by our system and your buddy',
-                  style: AppTextStyles.bodySM(),
-                  textAlign: TextAlign.center,
-                ),
+                const SizedBox(height: 28),
+
+                // Upload button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _image != null && !_uploading ? _upload : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      disabledBackgroundColor: AppColors.surface3,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: _uploading
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text('Uploading...', style: AppTextStyles.btn()),
+                            ],
+                          )
+                        : Text(
+                            _image != null
+                                ? 'Upload Proof ✅'
+                                : 'Select a photo first',
+                            style: AppTextStyles.btn(),
+                          ),
+                  ),
+                ).animate().fadeIn(delay: 200.ms),
+
+                const SizedBox(height: 40),
               ],
             ),
           ),
-        );
-      },
+  );
+
+  void _showPickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface1,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: AppColors.border2,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Text('Select Photo', style: AppTextStyles.h3()),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(
+                Icons.camera_alt_outlined,
+                color: AppColors.primary,
+              ),
+              title: Text('Camera', style: AppTextStyles.subtitle()),
+              onTap: () {
+                Navigator.pop(context);
+                _pickCamera();
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.photo_library_outlined,
+                color: AppColors.primary,
+              ),
+              title: Text('Gallery', style: AppTextStyles.subtitle()),
+              onTap: () {
+                Navigator.pop(context);
+                _pickGallery();
+              },
+            ),
+          ],
+        ),
+      ),
     );
+  }
+
+  String _activityEmoji(String activity) {
+    const map = {
+      'gym': '🏋️',
+      'running': '🏃',
+      'cycling': '🚴',
+      'swimming': '🏊',
+      'boxing': '🥊',
+      'yoga': '🧘',
+      'hiit': '💥',
+      'crossfit': '🔥',
+      'hyrox': '⚡',
+      'climbing': '🧗',
+      'tennis': '🎾',
+    };
+    return map[activity.toLowerCase()] ?? '💪';
+  }
+
+  String _formatDate(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inDays == 0) return 'Today';
+    if (diff.inDays == 1) return 'Yesterday';
+    return '${diff.inDays} days ago';
   }
 }
 
-// ══════════════════════════════════════════════════════════
+// ── Pick button widget ─────────────────────────────────────
+class _PickButton extends StatelessWidget {
+  const _PickButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface1,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: AppColors.primary, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: AppTextStyles.bodySM(
+              color: AppColors.primary,
+            ).copyWith(fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 //  POST-SESSION FEED PROMPT
 //  Show this dialog after session proof upload
 //  Usage: showPostToFeedPrompt(context, session, challengeEntry)

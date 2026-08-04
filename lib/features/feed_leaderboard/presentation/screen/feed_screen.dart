@@ -23,7 +23,6 @@ import '../../../dashboard/challanges/data/response_ml/challange_model.dart';
 import '../../../dashboard/session/data/response_ml/workout_session.dart';
 
 
-
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
   @override
@@ -43,8 +42,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final challengeRepository = getIt<ChallengeRepository>();
-      final posts = await challengeRepository.getGlobalFeed();
+      final posts = await getIt<ChallengeRepository>().getGlobalFeed();
       if (mounted) setState(() {
         _posts   = posts.where((p) => !p.isExpired).toList();
         _loading = false;
@@ -102,23 +100,23 @@ class _FeedScreenState extends State<FeedScreen> {
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator(
-                  color: AppColors.primary))
+              color: AppColors.primary))
               : _posts.isEmpty
-                  ? _EmptyFeed()
-                  : RefreshIndicator(
-                      color:     AppColors.primary,
-                      onRefresh: _load,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                        itemCount: _posts.length,
-                        itemBuilder: (_, i) => _FeedCard(
-                          post: _posts[i],
-                          me:   context.read<AuthBloc>().state.user,
-                        ).animate(
-                          delay: Duration(milliseconds: i * 60),
-                        ).fadeIn().slideY(begin: 0.1),
-                      ),
-                    ),
+              ? _EmptyFeed()
+              : RefreshIndicator(
+            color:     AppColors.primary,
+            onRefresh: _load,
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+              itemCount: _posts.length,
+              itemBuilder: (_, i) => _FeedCard(
+                post: _posts[i],
+                me:   context.read<AuthBloc>().state.user,
+              ).animate(
+                delay: Duration(milliseconds: i * 60),
+              ).fadeIn().slideY(begin: 0.1),
+            ),
+          ),
         ),
       ]),
     ),
@@ -171,8 +169,8 @@ class _FeedCard extends StatelessWidget {
             onTap: post.userId == me?.id
                 ? null
                 : () => context.push(
-                    AppRoutes.buddyProfile
-                        .replaceAll(':userId', post.userId)),
+                AppRoutes.buddyProfile
+                    .replaceAll(':userId', post.userId)),
             child: AppAvatar(
               name:     post.displayName,
               imageUrl: post.avatarUrl,
@@ -189,8 +187,8 @@ class _FeedCard extends StatelessWidget {
                     onTap: post.userId == me?.id
                         ? null
                         : () => context.push(
-                            AppRoutes.buddyProfile
-                                .replaceAll(':userId', post.userId)),
+                        AppRoutes.buddyProfile
+                            .replaceAll(':userId', post.userId)),
                     child: Text(
                       post.groupName != null
                           ? post.groupName!
@@ -428,4 +426,275 @@ class _ShareButton extends StatelessWidget {
     );
   }
 }
+
+// ══════════════════════════════════════════════════════════
+//  POST-SESSION FEED PROMPT
+//  Show this dialog after session proof upload
+//  Usage: showPostToFeedPrompt(context, session, challengeEntry)
+// ══════════════════════════════════════════════════════════
+Future<void> showPostToFeedPrompt(
+    BuildContext context, {
+      required WorkoutSession session,
+      String?     challengeTitle,
+      String?     challengeId,
+      int         stationNum   = 0,
+      String      stationTitle = 'Session Complete',
+      int         xpAwarded    = 50,
+      bool        isGroup      = false,
+    }) async {
+  if (!context.mounted) return;
+
+  final result = await showModalBottomSheet<bool>(
+    context:         context,
+    backgroundColor: AppColors.surface1,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) => _PostToFeedSheet(
+      session:        session,
+      challengeTitle: challengeTitle,
+      challengeId:    challengeId,
+      stationNum:     stationNum,
+      stationTitle:   stationTitle,
+      xpAwarded:      xpAwarded,
+      isGroup:        isGroup,
+    ),
+  );
+
+  // result = true means user tapped "Post"
+  if (result == true && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Text('Posted to challenge feed! 🎉'),
+      backgroundColor: AppColors.success,
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+}
+
+class _PostToFeedSheet extends StatefulWidget {
+  const _PostToFeedSheet({
+    required this.session,
+    required this.stationTitle,
+    required this.xpAwarded,
+    required this.isGroup,
+    this.challengeTitle,
+    this.challengeId,
+    this.stationNum = 0,
+  });
+  final WorkoutSession session;
+  final String?        challengeTitle;
+  final String?        challengeId;
+  final int            stationNum;
+  final String         stationTitle;
+  final int            xpAwarded;
+  final bool           isGroup;
+
+  @override
+  State<_PostToFeedSheet> createState() => _PostToFeedSheetState();
+}
+
+class _PostToFeedSheetState extends State<_PostToFeedSheet> {
+  final _captionCtrl = TextEditingController();
+  bool _posting = false;
+
+  @override
+  void dispose() { _captionCtrl.dispose(); super.dispose(); }
+
+  Future<void> _post() async {
+    setState(() => _posting = true);
+    try {
+      final api = getIt<ChallengeRepository>();
+      await api.postToFeed({
+        'challengeId':   widget.challengeId ?? widget.session.id,
+        'stationNum':    widget.stationNum,
+        'stationTitle':  widget.stationTitle,
+        'xpAwarded':     widget.xpAwarded,
+        'proofImageUrl': widget.session.proofImageUrl,
+        'isCollab':      widget.session.buddyId != null,
+        'caption':       _captionCtrl.text.trim().isEmpty
+            ? null
+            : _captionCtrl.text.trim(),
+        if (widget.session.buddyId != null) ...{
+          'collabUserId': widget.session.buddyId,
+        },
+      });
+      if (mounted) Navigator.pop(context, true);
+    } catch (_) {
+      setState(() => _posting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text('Failed to post. Try again.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.only(
+      left: 20, right: 20, top: 20,
+      bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+    ),
+    child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Container(
+        width: 36, height: 4,
+        margin: const EdgeInsets.only(bottom: 20),
+        decoration: BoxDecoration(
+          color: AppColors.border2,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+
+      // Trophy animation
+      const Text('🏆', style: TextStyle(fontSize: 40)),
+      const SizedBox(height: 8),
+      Text('Share to Feed?', style: AppTextStyles.h3()),
+      const SizedBox(height: 6),
+      Text(
+        'Your achievement disappears after 24 hours',
+        style: AppTextStyles.bodySM(color: AppColors.textMuted),
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 16),
+
+      // Proof photo thumbnail — auto-attached from upload
+      if (widget.session.proofImageUrl != null) ...[
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            widget.session.proofImageUrl!,
+            width:  double.infinity,
+            height: 140,
+            fit:    BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              height: 140,
+              decoration: BoxDecoration(
+                color:        AppColors.surface2,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: Icon(Icons.image_not_supported,
+                    color: AppColors.textMuted, size: 32),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
+
+      // Challenge info preview
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color:        AppColors.surface2,
+          borderRadius: BorderRadius.circular(10),
+          border:       Border.all(color: AppColors.border2),
+        ),
+        child: Row(children: [
+          const Text('⚡', style: TextStyle(fontSize: 18)),
+          const SizedBox(width: 10),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.challengeTitle != null
+                    ? '${widget.challengeTitle} • ${widget.stationTitle}'
+                    : widget.stationTitle,
+                style: AppTextStyles.bodySM(),
+              ),
+              Text('+${widget.xpAwarded} XP earned',
+                  style: AppTextStyles.bodySM(
+                      color: AppColors.warning)),
+            ],
+          )),
+          // Photo attached indicator
+          if (widget.session.proofImageUrl != null)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 6, vertical: 3),
+              decoration: BoxDecoration(
+                color:        AppColors.teal.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                    color: AppColors.teal.withOpacity(0.3)),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.image,
+                    color: AppColors.teal, size: 11),
+                const SizedBox(width: 3),
+                Text('Photo',
+                    style: AppTextStyles.label(
+                        color: AppColors.teal)
+                        .copyWith(fontSize: 9)),
+              ]),
+            ),
+        ]),
+      ),
+
+      const SizedBox(height: 12),
+
+      // Caption field
+      TextField(
+        controller:    _captionCtrl,
+        style:         AppTextStyles.body(),
+        maxLines:      2,
+        maxLength:     140,
+        decoration: InputDecoration(
+          hintText:    'Add a caption (optional)...',
+          hintStyle:   AppTextStyles.bodySM(color: AppColors.textMuted),
+          filled:      true,
+          fillColor:   AppColors.surface2,
+          counterStyle: AppTextStyles.caption(),
+          border:      OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide:   BorderSide.none,
+          ),
+        ),
+      ),
+
+      const SizedBox(height: 16),
+
+      // Buttons
+      Row(children: [
+        Expanded(
+          child: OutlinedButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.border2),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(vertical: 13),
+            ),
+            child: Text('Skip',
+                style: AppTextStyles.btn(color: AppColors.textMuted)),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 2,
+          child: ElevatedButton(
+            onPressed: _posting ? null : _post,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(vertical: 13),
+            ),
+            child: _posting
+                ? const SizedBox(
+                width: 20, height: 20,
+                child: CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 2))
+                : Text('Post to Feed 🔥',
+                style: AppTextStyles.btn()),
+          ),
+        ),
+      ]),
+    ]),
+  );
+}
+
+
 
