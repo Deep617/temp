@@ -1,8 +1,7 @@
 import 'package:dio/dio.dart';
 
-import '../../../../../core/api/api_endpoints.dart';
 import '../../../../../core/api/dio_client.dart';
-import '../../../../auth/data/request_ml/upload_profile_request.dart';
+import '../../../discover/data/response_ml/buddy_profile.dart';
 import '../response_ml/workout_session.dart';
 
 class SessionRemoteDatasource {
@@ -10,20 +9,24 @@ class SessionRemoteDatasource {
 
   SessionRemoteDatasource(this._dio);
 
-  // SESSIONS
+  /// POST /sessions → WorkoutSession
   Future<WorkoutSession> scheduleSession({
-    required String buddyId,
+    required List<String> buddyIds, // [] = solo, [id] = buddy, [id,id] = group
     required String activity,
     required DateTime scheduledAt,
+    required int durationMins, // 45 | 60 | 90 | 120
     String? gymName,
+    String? challengeId,
   }) async {
     final res = await _dio.post(
       '/sessions',
       data: {
-        'buddyId': buddyId,
+        'buddyIds': buddyIds,
         'activity': activity,
-        'scheduledAt': scheduledAt.toIso8601String(),
+        'scheduledAt': scheduledAt.toUtc().toIso8601String(),
+        'durationMins': durationMins,
         if (gymName != null) 'gymName': gymName,
+        if (challengeId != null) 'challengeId': challengeId,
       },
     );
     return WorkoutSession.fromJson(_body(res)['data'] as Map<String, dynamic>);
@@ -59,11 +62,24 @@ class SessionRemoteDatasource {
     return WorkoutSession.fromJson(_body(res)['data'] as Map<String, dynamic>);
   }
 
+
+  /// GET /match/buddies → List<BuddyProfile>
+  Future<List<BuddyProfile>> getMyBuddies({int page = 1}) async {
+    final res = await _dio.get('/match/buddies', queryParameters: {'page': page});
+    final list = _body(res) as List<dynamic>;
+    return list.map((e) => BuddyProfile.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// POST /sessions/:id/respond → confirm or decline invite
+  Future<void> respondToSessionInvite(String sessionId, String action) async {
+    await _dio.post('/sessions/$sessionId/respond', data: {'action': action});
+  }
+
   Map<String, dynamic> _body(Response res) {
     if (res.statusCode != null &&
         res.statusCode! >= 200 &&
         res.statusCode! < 300) {
-      return res.data  ;
+      return res.data;
     }
     throw Exception(
       (res.data as Map<String, dynamic>?)?['message'] ?? 'Request failed',

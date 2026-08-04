@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
+import 'package:seshlly/core/services/secure_storage_service.dart';
+import 'package:seshlly/di_injection/dependency_injection.dart';
+import 'package:seshlly/features/dashboard/session/data/repositories/session_repository.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:timeago/timeago.dart' as timeago;
 
@@ -19,12 +23,13 @@ class ChatScreen extends StatefulWidget {
   const ChatScreen({
     super.key,
     required this.chatId,
-    required this.buddyId,
     required this.buddyName,
+    required this.buddyId,
     this.buddyAvatar,
   });
-  final String  chatId,buddyId;
+  final String  chatId;
   final String  buddyName;
+  final String  buddyId;
   final String? buddyAvatar;
 
   @override
@@ -36,6 +41,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scroll  = ScrollController();
   bool    _isTyping = false;
   IO.Socket? _socket;
+  // Debounce timer — emits typing:stop 2 s after the user pauses
+  DateTime _lastTyped = DateTime(0);
 
   @override
   void initState() {
@@ -48,6 +55,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _socket?.emit('chat:leave', {'chatId': widget.chatId});
     _socket?.disconnect();
     _msgCtrl.dispose();
     _scroll.dispose();
@@ -55,27 +63,39 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _initSocket() {
-    _socket = IO.io(ApiEndpoints.socketUrl, <String, dynamic>{
-      'transports': ['websocket'],
-      'autoConnect': false,
-    });
-    _socket!.connect();
+    // Read the stored access token so the Socket.io server can authenticate
+    // this connection via the JWT middleware in src/socket/socket.js.
+     getIt<SecureStorageService>().getAccessToken().then((token) {
+      if (!mounted) return;
+      _socket = IO.io(ApiEndpoints.socketUrl, IO.OptionBuilder()
+          .setTransports(['websocket'])
+          .disableAutoConnect()
+          .setAuth({'token': token ?? ''})
+          .build());
 
-    // Push incoming messages into ChatBloc
-    _socket!.on('message:new', (data) {
-      final msg = Message.fromJson(data as Map<String, dynamic>);
-      if (msg.chatId == widget.chatId && mounted) {
-        context.read<ChatBloc>().add(ChatMessageReceived(message: msg));
-        _scrollToBottom();
-      }
-    });
+      _socket!.onConnect((_) {
+        // Join the chat room so we receive message:new events for this chat
+        _socket!.emit('chat:join', {'chatId': widget.chatId});
+      });
 
-    _socket!.on('typing:start', (_) {
-      if (mounted) setState(() => _isTyping = true);
-    });
-    _socket!.on('typing:stop', (_) {
-      if (mounted) setState(() => _isTyping = false);
-    });
+      _socket!.connect();
+
+      // Push incoming messages into ChatBloc
+      _socket!.on('message:new', (data) {
+        final msg = Message.fromJson(data as Map<String, dynamic>);
+        if (msg.chatId == widget.chatId && mounted) {
+          context.read<ChatBloc>().add(ChatMessageReceived(message: msg));
+          _scrollToBottom();
+        }
+      });
+
+      _socket!.on('typing:start', (_) {
+        if (mounted) setState(() => _isTyping = true);
+      });
+      _socket!.on('typing:stop', (_) {
+        if (mounted) setState(() => _isTyping = false);
+      });
+    }); // end storage.read().then()
   }
 
   void _send() {
@@ -139,7 +159,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return BlocListener<ChatBloc, ChatState>(
       listenWhen: (prev, curr) =>
-          curr.status == ChatStatus.failure && curr.error != null,
+      curr.status == ChatStatus.failure && curr.error != null,
       listener: (context, state) {
         if (state.error?.statusCode == 402) {
           _showTokenError(context);
@@ -161,8 +181,7 @@ class _ChatScreenState extends State<ChatScreen> {
           titleSpacing: 0,
           title: GestureDetector(
             onTap: () => context.push(
-                AppRoutes.buddyProfile.replaceAll(':userId', widget.buddyId,),
-              extra: {'buddyId': widget.chatId,},),
+                AppRoutes.buddyProfile.replaceAll(':userId', widget.chatId)),
             child: Row(children: [
               AppAvatar(
                 name:     widget.buddyName,
@@ -294,8 +313,16 @@ class _ChatScreenState extends State<ChatScreen> {
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 10),
                       ),
-                      onChanged: (_) {
+                      onChanged: (v) {
+                        if (v.isEmpty) return;
+                        _lastTyped = DateTime.now();
                         _socket?.emit('typing:start', {'chatId': widget.chatId});
+                        // Auto-stop after 2 s of no keystrokes
+                        Future.delayed(const Duration(seconds: 2), () {
+                          if (DateTime.now().difference(_lastTyped).inSeconds >= 2) {
+                            _socket?.emit('typing:stop', {'chatId': widget.chatId});
+                          }
+                        });
                       },
                     ),
                   ),
@@ -314,15 +341,15 @@ class _ChatScreenState extends State<ChatScreen> {
                         color:  state.isSending ? AppColors.surface3 : AppColors.primary,
                         shape:  BoxShape.circle,
                         boxShadow: [BoxShadow(
-                          color: AppColors.primaryGlow, blurRadius: 12)],
+                            color: AppColors.primaryGlow, blurRadius: 12)],
                       ),
                       child: state.isSending
                           ? const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.black))
+                          padding: EdgeInsets.all(12),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.black))
                           : const Icon(Icons.send_rounded,
-                              color: Colors.black, size: 20),
+                          color: Colors.black, size: 20),
                     ),
                   ),
                 ),
@@ -354,7 +381,7 @@ class _MessageBubble extends StatelessWidget {
       ),
       child: Row(
         mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
@@ -365,7 +392,7 @@ class _MessageBubble extends StatelessWidget {
           Flexible(
             child: Column(
               crossAxisAlignment:
-                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -380,17 +407,17 @@ class _MessageBubble extends StatelessWidget {
                     ),
                     boxShadow: isMe
                         ? [BoxShadow(
-                            color: AppColors.primaryGlow, blurRadius: 8)]
+                        color: AppColors.primaryGlow, blurRadius: 8)]
                         : null,
                   ),
                   child: msg.type == 'session_invite'
                       ? _SessionInviteCard(msg: msg)
                       : Text(
-                          msg.content,
-                          style: isMe
-                              ? AppTextStyles.body(color: Colors.black)
-                              : AppTextStyles.body(),
-                        ),
+                    msg.content,
+                    style: isMe
+                        ? AppTextStyles.body(color: Colors.black)
+                        : AppTextStyles.body(),
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Row(mainAxisSize: MainAxisSize.min, children: [
@@ -418,31 +445,158 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-class _SessionInviteCard extends StatelessWidget {
+class _SessionInviteCard extends StatefulWidget {
   const _SessionInviteCard({required this.msg});
   final Message msg;
+  @override
+  State<_SessionInviteCard> createState() => _SessionInviteCardState();
+}
+
+class _SessionInviteCardState extends State<_SessionInviteCard> {
+  bool _responding = false;
+
+  Future<void> _respond(String action) async {
+    setState(() => _responding = true);
+    try {
+      final data      = widget.msg.metadata ?? {};
+      final sessionId = data['sessionId'] as String?;
+      if (sessionId == null) return;
+      await getIt<SessionRepository>().respondToSessionInvite(sessionId,
+          action);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(action == 'confirm'
+              ? 'Session confirmed! 🤝' : 'Session declined'),
+          backgroundColor: action == 'confirm'
+              ? AppColors.success : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (_) {
+      if (mounted) setState(() => _responding = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final data = msg.metadata ?? {};
+    final data        = widget.msg.metadata ?? {};
+    final activity    = data['activity']    as String? ?? 'Workout';
+    final scheduledAt = data['scheduledAt'] as String?;
+    final duration    = data['durationMins'] as int?   ?? 60;
+    final gymName     = data['gymName']     as String?;
+
+    DateTime? dt;
+    if (scheduledAt != null) dt = DateTime.tryParse(scheduledAt);
+    final dateStr = dt != null
+        ? '${_weekday(dt.weekday)}, ${dt.day} ${_month(dt.month)} · '
+        '${_fmt12(dt)}'
+        : '';
+
+    final durationStr = duration == 45 ? '45 mins'
+        : duration == 60  ? '1 hour'
+        : duration == 90  ? '1.5 hours'
+        : '2 hours';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize:       MainAxisSize.min,
+      mainAxisSize: MainAxisSize.min,
       children: [
+        // Header
         Row(children: [
           const Icon(Icons.fitness_center,
-              color: AppColors.primary, size: 16),
-          const SizedBox(width: 6),
+              color: AppColors.primary, size: 14),
+          const SizedBox(width: 5),
           Text('Session Invite',
               style: AppTextStyles.label(color: AppColors.primary)),
         ]),
-        const SizedBox(height: 6),
-        Text(data['activity'] ?? 'Workout',
+        const SizedBox(height: 8),
+        // Activity
+        Text(activity,
             style: AppTextStyles.subtitle(color: Colors.black)),
-        Text(data['scheduledAt'] ?? '',
-            style: AppTextStyles.bodySM(color: Colors.black54)),
+        const SizedBox(height: 3),
+        // Date/time
+        if (dateStr.isNotEmpty)
+          Text(dateStr,
+              style: AppTextStyles.bodySM(color: Colors.black54)),
+        // Duration
+        Row(children: [
+          const Icon(Icons.timer_outlined,
+              size: 12, color: Colors.black38),
+          const SizedBox(width: 3),
+          Text(durationStr,
+              style: AppTextStyles.bodySM(color: Colors.black54)),
+          if (gymName != null) ...[
+            const SizedBox(width: 8),
+            const Icon(Icons.location_on,
+                size: 12, color: Colors.black38),
+            const SizedBox(width: 3),
+            Flexible(child: Text(gymName,
+                style: AppTextStyles.bodySM(color: Colors.black54),
+                overflow: TextOverflow.ellipsis)),
+          ],
+        ]),
+        const SizedBox(height: 12),
+        // Confirm / Decline buttons
+        if (!_responding)
+          Row(children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => _respond('decline'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color:        Colors.red.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Text('Decline ❌',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodySM(
+                          color: Colors.red)
+                          .copyWith(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => _respond('confirm'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color:        AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: AppColors.primary.withOpacity(0.4)),
+                  ),
+                  child: Text('Confirm ✅',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodySM(
+                          color: AppColors.primary)
+                          .copyWith(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ),
+          ])
+        else
+          const Center(child: SizedBox(
+            width: 20, height: 20,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: AppColors.primary),
+          )),
       ],
     );
+  }
+
+  String _weekday(int w) => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][w-1];
+  String _month(int m)   =>
+      ['Jan','Feb','Mar','Apr','May','Jun',
+        'Jul','Aug','Sep','Oct','Nov','Dec'][m-1];
+  String _fmt12(DateTime dt) {
+    final h = dt.hour > 12 ? dt.hour - 12 : dt.hour == 0 ? 12 : dt.hour;
+    final m = dt.minute.toString().padLeft(2,'0');
+    return '$h:$m ${dt.hour >= 12 ? "PM" : "AM"}';
   }
 }
 
@@ -466,12 +620,12 @@ class _TypingBubble extends StatelessWidget {
                 color: AppColors.textMuted, shape: BoxShape.circle),
           )
               .animate(onPlay: (c) => c.repeat(),
-                  delay: Duration(milliseconds: i * 150))
+              delay: Duration(milliseconds: i * 150))
               .moveY(begin: 0, end: -4,
-                  duration: 400.ms, curve: Curves.easeInOut)
+              duration: 400.ms, curve: Curves.easeInOut)
               .then()
               .moveY(begin: -4, end: 0,
-                  duration: 400.ms, curve: Curves.easeInOut)),
+              duration: 400.ms, curve: Curves.easeInOut)),
         ]),
       ),
     );

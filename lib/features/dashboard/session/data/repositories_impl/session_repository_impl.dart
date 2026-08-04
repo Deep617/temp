@@ -5,6 +5,7 @@ import 'package:seshlly/features/dashboard/session/data/response_ml/workout_sess
 
 import '../../../../../core/api/base_repository.dart';
 import '../../../../../core/services/secure_storage_service.dart';
+import '../../../discover/data/response_ml/buddy_profile.dart';
 
 class SessionRepositoryImpl extends BaseRepository
     implements SessionRepository {
@@ -26,17 +27,21 @@ class SessionRepositoryImpl extends BaseRepository
 
   @override
   Future<WorkoutSession> scheduleSession({
-    required String buddyId,
+    required List<String> buddyIds, // [] = solo, [id] = buddy, [id,id] = group
     required String activity,
     required DateTime scheduledAt,
+    required int durationMins, // 45 | 60 | 90 | 120
     String? gymName,
+    String? challengeId,
   }) {
     return remote
         .scheduleSession(
-          buddyId: buddyId,
+          buddyIds: buddyIds,
           activity: activity,
           scheduledAt: scheduledAt,
+          durationMins: durationMins,
           gymName: gymName,
+          challengeId: challengeId,
         )
         .catchError((e) {
           throw AppError.fromException(e);
@@ -54,4 +59,25 @@ class SessionRepositoryImpl extends BaseRepository
           throw AppError.fromException(e);
         });
   }
+
+
+  @override
+  Future<List<BuddyProfile>> getMyBuddies({int page = 1}) {
+    return remote
+        .getMyBuddies(page: page)
+        .catchError((e) {
+          throw AppError.fromException(e);
+        });
+  }
+
+  @override
+  Future<void>  respondToSessionInvite(String sessionId, String action) {
+    return remote
+        .respondToSessionInvite(  sessionId,action)
+        .catchError((e) {
+          throw AppError.fromException(e);
+        });
+  }
+
+
 }

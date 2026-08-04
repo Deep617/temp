@@ -36,10 +36,12 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     emit(state.copyWith(status: SessionStatus.scheduling, clearError: true));
     try {
       final session = await _repo.scheduleSession(
-        buddyId: event.buddyId,
+        buddyIds: event.buddyIds,
         activity: event.activity,
         scheduledAt: event.scheduledAt,
+        durationMins: event.durationMins,
         gymName: event.gymName,
+        challengeId: event.challengeId,
       );
       emit(
         state.copyWith(
