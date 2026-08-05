@@ -302,7 +302,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       maxLines: 4,
                       minLines: 1,
                       decoration: InputDecoration(
-                        hintText:      'Message ${widget.buddyName}...',
+                        hintText:      'Message...',
                         hintStyle:     AppTextStyles.body(color: AppColors.textDim),
                         filled:        true,
                         fillColor:     AppColors.surface2,

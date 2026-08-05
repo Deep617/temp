@@ -46,8 +46,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
       final appCurrentLocation = state.matchedLocation;
       final authState = authBloc.state;
       final isUserLoading =
-          authState.status == AuthStatus.initial ||
-          authState.status == AuthStatus.loading;
+          authState.status == AuthStatus.initial ;
       final isUserAuthenticated = authState.status == AuthStatus.authenticated;
       final isUserOnboarding = authState.status == AuthStatus.onboarding;
       final isUserUnauthenticated =

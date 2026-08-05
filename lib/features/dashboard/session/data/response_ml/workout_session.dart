@@ -12,7 +12,8 @@ class WorkoutSession {
     this.buddyName,
     this.buddyAvatar,
     this.gymName,
-    this.status          = 'pending_confirmation',
+    this.status              = 'scheduled',
+    this.inviteStatus,
     this.proofImageUrl,
     this.proofVideoUrl,
     this.proofUploadedAt,
@@ -24,7 +25,7 @@ class WorkoutSession {
     this.challengeTitle,
     this.challengeStationNum,
     this.chatId,
-    this.participants    = const [],
+    this.participants        = const [],
   });
 
   final String    id;
@@ -35,9 +36,21 @@ class WorkoutSession {
   final String    activity;
   final String?   gymName;
   final DateTime  scheduledAt;
-  final int       durationMins;
-  final DateTime  endTime;
+  final int       durationMins;   // 45 | 60 | 90 | 120
+  final DateTime  endTime;        // scheduledAt + durationMins
+
+  // ── Session Status (WorkoutSession) ──────────────────────
+  // scheduled   → session booked, upcoming
+  // completed   → proof uploaded + buddy confirmed
+  // missed      → session time passed, no proof uploaded
   final String    status;
+
+  // ── Invite Status (SessionParticipant) ───────────────────
+  // pending     → invite sent, waiting for response
+  // confirmed   → buddy accepted
+  // declined    → buddy rejected
+  final String?   inviteStatus;
+
   final String?   proofImageUrl;
   final String?   proofVideoUrl;
   final DateTime? proofUploadedAt;
@@ -52,29 +65,41 @@ class WorkoutSession {
   final List<SessionParticipant> participants;
   final DateTime  createdAt;
 
+  // ── Session status getters ────────────────────────────────
+  bool get isScheduled  => status == 'scheduled';
   bool get isCompleted  => status == 'completed';
-  bool get isIncomplete => status == 'incomplete';
-  bool get isCancelled  => status == 'cancelled';
-  bool get isPending    => status == 'pending_confirmation';
-  bool get isConfirmed  => status == 'confirmed';
-  bool get isGroup      => participants.length > 2;
+  bool get isMissed     => status == 'missed';
 
-  // needsProof — session ended, within 3hr window, proof not uploaded yet
-  bool get needsProof =>
-      canUploadProof && proofImageUrl == null;
+  // ── Invite status getters ─────────────────────────────────
+  bool get isInvitePending   => inviteStatus == 'pending';
+  bool get isInviteConfirmed => inviteStatus == 'confirmed';
+  bool get isInviteDeclined  => inviteStatus == 'declined';
 
-  bool get canUploadProof {
+  // ── Group session ─────────────────────────────────────────
+  bool get isGroup => participants.length > 1;
+
+  // ── Proof upload logic ────────────────────────────────────
+  // needsProof → session ended, within 3hr window, no proof yet
+  bool get needsProof {
     final now      = DateTime.now();
     final deadline = endTime.add(const Duration(hours: 3));
-    return now.isAfter(endTime) &&
+    return status == 'scheduled' &&
+        now.isAfter(endTime) &&
         now.isBefore(deadline) &&
-        proofImageUrl == null &&
-        (status == 'confirmed' || status == 'pending_confirmation');
+        proofImageUrl == null;
+  }
+
+  bool get canUploadProof => needsProof;
+
+  bool get proofWindowExpired {
+    final deadline = endTime.add(const Duration(hours: 3));
+    return DateTime.now().isAfter(deadline) && proofImageUrl == null;
   }
 
   Duration get proofWindowRemaining =>
       endTime.add(const Duration(hours: 3)).difference(DateTime.now());
 
+  // ── Duration label ────────────────────────────────────────
   String get durationLabel {
     switch (durationMins) {
       case 45:  return '45 mins';
@@ -86,36 +111,37 @@ class WorkoutSession {
   }
 
   factory WorkoutSession.fromJson(Map<String, dynamic> j) => WorkoutSession(
-    id:               j['id']               as String,
-    userId:           j['userId']           as String,
-    buddyId:          j['buddyId']          as String?,
-    buddyName:        j['buddyName']        as String?,
-    buddyAvatar:      j['buddyAvatar']      as String?,
-    activity:         j['activity']         as String,
-    gymName:          j['gymName']          as String?,
-    scheduledAt:      DateTime.parse(j['scheduledAt'] as String),
-    durationMins:     j['durationMins']     as int?    ?? 60,
-    endTime:          j['endTime'] != null
+    id:                  j['id']               as String,
+    userId:              j['userId']           as String,
+    buddyId:             j['buddyId']          as String?,
+    buddyName:           j['buddyName']        as String?,
+    buddyAvatar:         j['buddyAvatar']      as String?,
+    activity:            j['activity']         as String,
+    gymName:             j['gymName']          as String?,
+    scheduledAt:         DateTime.parse(j['scheduledAt'] as String),
+    durationMins:        j['durationMins']     as int?    ?? 60,
+    endTime:             j['endTime'] != null
         ? DateTime.parse(j['endTime'] as String)
         : DateTime.parse(j['scheduledAt'] as String)
         .add(const Duration(hours: 1)),
-    status:           j['status']           as String? ?? 'pending_confirmation',
-    proofImageUrl:    j['proofImageUrl']    as String?,
-    proofVideoUrl:    j['proofVideoUrl']    as String?,
-    proofUploadedAt:  j['proofUploadedAt'] != null
+    status:              j['status']           as String? ?? 'scheduled',
+    inviteStatus:        j['inviteStatus']     as String?,
+    proofImageUrl:       j['proofImageUrl']    as String?,
+    proofVideoUrl:       j['proofVideoUrl']    as String?,
+    proofUploadedAt:     j['proofUploadedAt'] != null
         ? DateTime.parse(j['proofUploadedAt'] as String) : null,
-    xpEarned:         j['xpEarned']         as int?,
-    tokensDeducted:   j['tokensDeducted']   as int?,
-    notes:            j['notes']            as String?,
-    incompleteReason: j['incompleteReason'] as String?,
-    challengeId:         j['challengeId']         as String?,
-    challengeTitle:      j['challengeTitle']      as String?,
+    xpEarned:            j['xpEarned']         as int?,
+    tokensDeducted:      j['tokensDeducted']   as int?,
+    notes:               j['notes']            as String?,
+    incompleteReason:    j['incompleteReason'] as String?,
+    challengeId:         j['challengeId']      as String?,
+    challengeTitle:      j['challengeTitle']   as String?,
     challengeStationNum: j['challengeStationNum'] as int?,
-    chatId:              j['chatId']              as String?,
-    participants:     (j['participants'] as List<dynamic>? ?? [])
+    chatId:              j['chatId']           as String?,
+    participants:        (j['participants'] as List<dynamic>? ?? [])
         .map((e) => SessionParticipant.fromJson(e as Map<String, dynamic>))
         .toList(),
-    createdAt:        DateTime.parse(j['createdAt'] as String),
+    createdAt:           DateTime.parse(j['createdAt'] as String),
   );
 }
 

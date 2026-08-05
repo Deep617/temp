@@ -40,7 +40,9 @@ class SessionRemoteDatasource {
       '/sessions/my',
       queryParameters: {if (status != null) 'status': status, 'page': page},
     );
-    return (_body(res)['data'] as List)
+
+    final data = _data(res);
+    return (data['sessions'] as List<dynamic>)
         .map((e) => WorkoutSession.fromJson(e as Map<String, dynamic>))
         .toList();
   }
@@ -66,7 +68,7 @@ class SessionRemoteDatasource {
   /// GET /match/buddies → List<BuddyProfile>
   Future<List<BuddyProfile>> getMyBuddies({int page = 1}) async {
     final res = await _dio.get('/match/buddies', queryParameters: {'page': page});
-    final list = _body(res) as List<dynamic>;
+    final list = _data(res) as List<dynamic>;
     return list.map((e) => BuddyProfile.fromJson(e as Map<String, dynamic>)).toList();
   }
 
@@ -83,6 +85,19 @@ class SessionRemoteDatasource {
     }
     throw Exception(
       (res.data as Map<String, dynamic>?)?['message'] ?? 'Request failed',
+    );
+  }
+
+  dynamic _data(Response res) {
+    final body = res.data;
+    if (body is Map && body['success'] == true) {
+      return body['data'];
+    }
+    throw DioException(
+      requestOptions: res.requestOptions,
+      response:       res,
+      type:           DioExceptionType.badResponse,
+      message:        (body is Map ? body['message'] as String? : null) ?? 'Unexpected response',
     );
   }
 }
