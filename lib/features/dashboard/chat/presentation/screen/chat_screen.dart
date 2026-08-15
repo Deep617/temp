@@ -47,7 +47,7 @@ class _ChatScreenState extends State<ChatScreen> {
   DateTime _lastTyped = DateTime(0);
 
   late StrikeRepository strikeRepository;
-  late var _streak;
+  int? _streak;
 
   @override
   void initState() {
@@ -211,11 +211,12 @@ class _ChatScreenState extends State<ChatScreen> {
           title: GestureDetector(
             onTap: () => context.push(
               AppRoutes.buddyProfile.replaceAll(':userId', widget.buddyId),
+              extra: {'chatId': widget.chatId},
             ),
             child: Row(
               children: [
                 AppAvatar(
-                  name: _streak
+                  name: _streak != null
                       ? widget.buddyName
                       : "${widget.buddyName} "
                             "🔥 ${_streak.toString()}",

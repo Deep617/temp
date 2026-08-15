@@ -45,8 +45,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
     redirect: (context, state) async {
       final appCurrentLocation = state.matchedLocation;
       final authState = authBloc.state;
-      final isUserLoading =
-          authState.status == AuthStatus.initial ;
+      final isUserLoading = authState.status == AuthStatus.initial;
       final isUserAuthenticated = authState.status == AuthStatus.authenticated;
       final isUserOnboarding = authState.status == AuthStatus.onboarding;
       final isUserUnauthenticated =
@@ -168,7 +167,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
             create: (_) => getIt<ProfileBloc>(),
             child: BuddyProfileScreen(
               userId: state.pathParameters['userId']!,
-              buddyId: extra?['buddyId'] ?? '',
+              chatId: extra?['chatId'] ?? '',
             ),
           );
         },
@@ -201,12 +200,12 @@ GoRouter buildRouter(AuthBloc authBloc) {
       GoRoute(
         path: AppRoutes.uploadProof,
         builder: (context, state) {
-          final extra = state.extra  as WorkoutSession;
+          final extra = state.extra as WorkoutSession;
           return BlocProvider(
             create: (_) => getIt<SessionBloc>(),
             child: UploadProofScreen(
               sessionId: state.pathParameters['sessionId']!,
-              session:    extra ,
+              session: extra,
             ),
           );
         },
@@ -261,15 +260,12 @@ GoRouter buildRouter(AuthBloc authBloc) {
 
       // ── Leaderboard ───────────────────────────────────
       GoRoute(
-        path:    AppRoutes.leaderboard,
+        path: AppRoutes.leaderboard,
         builder: (_, __) => const LeaderboardScreen(),
       ),
 
       // ── Feed ─────────────────────────────────────────
-      GoRoute(
-        path:    AppRoutes.feed,
-        builder: (_, __) => const FeedScreen(),
-      ),
+      GoRoute(path: AppRoutes.feed, builder: (_, __) => const FeedScreen()),
 
       ShellRoute(
         builder: (context, state, child) => HomeScreen(child: child),
@@ -375,12 +371,10 @@ class AppRoutes {
   static const walkthroughOverlay = '/walkthroughOverlay';
 
   // New: Leaderboard + Feed
-  static const leaderboard     = '/leaderboard';
-  static const feed            = '/feed';
-
+  static const leaderboard = '/leaderboard';
+  static const feed = '/feed';
 
   // Strike 2 — Buddy Strike
-  static const strikeView      = '/strike/view';
-  static const pendingStrikes  = '/strikes/pending';
-
+  static const strikeView = '/strike/view';
+  static const pendingStrikes = '/strikes/pending';
 }
