@@ -5,14 +5,6 @@ class AppConstants {
   static const int apiTimeout = 30;
 
 
-  // Storage keys
-  static const String kAccessToken   = 'access_token';
-  static const String kRefreshToken  = 'refresh_token';
-  static const String kUserId        = 'user_id';
-  //static const String kOnboarded     = 'onboarded';
-  static const String kUserData      = 'user_data';
-  static const String kWalkthroughSeen = 'walkthrough_seen';
-
 
   // ── Pagination ────────────────────────────────────────
   static const int pageSize = 20;

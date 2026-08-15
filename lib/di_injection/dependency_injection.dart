@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import 'package:seshlly/features/auth/domain/usecases/onboarding_competed.dart';
 import 'package:seshlly/features/dashboard/challanges/data/datasource/challenge_remote_datasource.dart';
 import 'package:seshlly/features/dashboard/challanges/data/repositories/challenge_repository.dart';
 import 'package:seshlly/features/dashboard/challanges/data/repositories/challenge_repository_impl.dart';
@@ -16,6 +17,8 @@ import 'package:seshlly/features/notification/data/datasource/notification_remot
 import 'package:seshlly/features/notification/data/repositories/notification_repositorie.dart';
 import 'package:seshlly/features/notification/data/repositories_impl/notification_repositories_impl.dart';
 import 'package:seshlly/features/notification/presentation/bloc/notification_bloc.dart';
+import 'package:seshlly/features/strike/data/datasource/strike_remote_datasource.dart';
+import 'package:seshlly/features/strike/data/repositories/strike_repository.dart';
 import 'package:seshlly/features/subscription/data/datasource/subscription_remote_datasource.dart';
 import 'package:seshlly/features/subscription/data/repositories/subscription_repository.dart';
 import 'package:seshlly/features/subscription/presentation/bloc/subscription_bloc.dart';
@@ -40,6 +43,7 @@ import '../features/dashboard/profile/data/repository_impl/profile_repository_im
 import '../features/dashboard/profile/domain/repositories/profile_repository.dart';
 import '../features/dashboard/profile/domain/usecases/update_profile_usecase.dart';
 import '../features/dashboard/profile/presentation/bloc/profile_bloc.dart';
+import '../features/strike/data/repositories/strike_repository_impl.dart';
 import '../features/subscription/data/repositories/subscription_repositories_impl.dart';
 
 final getIt = GetIt.instance;
@@ -66,8 +70,9 @@ Future<void> setupDependencies() async {
   );
   getIt.registerLazySingleton(() => LoginUseCase(getIt(), getIt(), getIt()));
   getIt.registerLazySingleton(() => RegisterUseCase(getIt()));
+  getIt.registerLazySingleton(() => OnboardingCompeted(getIt()));
   getIt.registerLazySingleton<AuthBloc>(
-    () => AuthBloc(getIt(), getIt(), getIt(), getIt(), getIt()),
+    () => AuthBloc(getIt(), getIt(), getIt(), getIt(), getIt(), getIt()),
   );
 
   /// Profile
@@ -151,4 +156,16 @@ Future<void> setupDependencies() async {
   getIt.registerFactory<ChallengeBloc>(
     () => ChallengeBloc(challengeRepository: getIt()),
   );
+
+
+  //Strike
+  getIt.registerLazySingleton<StrikeRemoteDatasource>(
+        () => StrikeRemoteDatasource(getIt()),
+  );
+  getIt.registerLazySingleton<StrikeRepository>(
+        () => StrikeRepositoryImpl(getIt(), getIt()),
+  );
+  /*getIt.registerFactory<ChallengeBloc>(
+        () => ChallengeBloc(challengeRepository: getIt()),
+  );*/
 }

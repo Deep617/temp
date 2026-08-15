@@ -61,12 +61,14 @@ class UserModel {
     this.longitude,
     this.searchRadius = 10,
     this.xpTotal = 0,
+    this.weeklyXp = 0,     // ADD
+    this.monthlyXp = 0,    // ADD
     this.level = 1,
     this.chatTokens = 20,
     this.isInfluencer = false,
     this.instagramHandle,
     this.instagramFollowers,
-    this.trustScore = 50.0,
+    this.trustScore = 30.0,
     this.idVerified = false,
     this.buddyCount = 0,
     this.sessionCount = 0,
@@ -102,6 +104,8 @@ class UserModel {
   final double? longitude;
   final int searchRadius;
   final int xpTotal;
+  final int       weeklyXp;    // ADD
+  final int       monthlyXp;   // ADD
   final int level;
   final int chatTokens;
   final bool isInfluencer;
@@ -175,12 +179,14 @@ class UserModel {
     longitude: (j['longitude'] as num?)?.toDouble(),
     searchRadius: j['searchRadius'] as int? ?? 10,
     xpTotal: j['xpTotal'] as int? ?? 0,
+    weeklyXp:  j['weeklyXp']  as int? ?? 0,   // ADD
+    monthlyXp: j['monthlyXp'] as int? ?? 0,   // ADD
     level: j['level'] as int? ?? 1,
     chatTokens: j['chatTokens'] as int? ?? 20,
     isInfluencer: j['isInfluencer'] as bool? ?? false,
     instagramHandle: j['instagramHandle'] as String?,
     instagramFollowers: j['instagramFollowers'] as int?,
-    trustScore: (j['trustScore'] as num?)?.toDouble() ?? 50.0,
+    trustScore: (j['trustScore'] as num?)?.toDouble() ?? 30.0,
     idVerified: j['idVerified'] as bool? ?? false,
     buddyCount: j['buddyCount'] as int? ?? 0,
     sessionCount: j['sessionCount'] as int? ?? 0,
@@ -236,6 +242,8 @@ class UserModel {
     List<String>? goals,
     String? primaryGym,
     int? xpTotal,
+    int? weeklyXp,
+    int? monthlyXp,
     int? level,
     int? chatTokens,
     double? latitude,
@@ -277,6 +285,8 @@ class UserModel {
     goals: goals ?? this.goals,
     primaryGym: primaryGym ?? this.primaryGym,
     xpTotal: xpTotal ?? this.xpTotal,
+    weeklyXp:  weeklyXp  ?? this.weeklyXp,
+    monthlyXp: monthlyXp ?? this.monthlyXp,
     level: level ?? this.level,
     chatTokens: chatTokens ?? this.chatTokens,
     trustScore: trustScore ?? this.trustScore,
@@ -294,3 +304,91 @@ List<String> _strings(dynamic v) =>
     (v as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
 
 T? _castOr<T>(dynamic v, T? fallback) => v is T ? v : fallback;
+
+
+
+
+class BuddyStrike {
+  BuddyStrike({
+    required this.id,
+    required this.senderId,
+    required this.receiverId,
+    required this.matchId,
+    required this.expiresAt,
+    required this.createdAt,
+    this.imageUrl,
+    this.caption,
+    this.reactEmoji,
+    this.viewedAt,
+    this.sender,
+    this.streak = 0,
+  });
+
+  final String    id;
+  final String    senderId;
+  final String    receiverId;
+  final String    matchId;
+  final String?   imageUrl;   // null until viewed (one-time view)
+  final String?   caption;
+  final String?   reactEmoji; // 💪🔥😤🏆🤝😮
+  final DateTime? viewedAt;
+  final DateTime  expiresAt;
+  final DateTime  createdAt;
+  final Map<String, dynamic>? sender; // {id, firstName, avatarUrl}
+  final int       streak;
+
+  bool get isViewed  => viewedAt != null;
+  bool get isExpired => DateTime.now().isAfter(expiresAt);
+  bool get canReact  => isViewed && reactEmoji == null && !isExpired;
+
+  factory BuddyStrike.fromJson(Map<String, dynamic> j) => BuddyStrike(
+    id:         j['id']         as String,
+    senderId:   j['senderId']   as String,
+    receiverId: j['receiverId'] as String,
+    matchId:    j['matchId']    as String,
+    imageUrl:   j['imageUrl']   as String?,
+    caption:    j['caption']    as String?,
+    reactEmoji: j['reactEmoji'] as String?,
+    viewedAt:   j['viewedAt'] != null
+        ? DateTime.parse(j['viewedAt'] as String)
+        : null,
+    expiresAt:  DateTime.parse(j['expiresAt'] as String),
+    createdAt:  DateTime.parse(j['createdAt'] as String),
+    sender:     j['sender']  as Map<String, dynamic>?,
+    streak:     j['streak']  as int? ?? 0,
+  );
+}
+
+// ════════════════════════════════════════════════════════
+//  NEW CLASS 2 — StrikeStreakEntry (leaderboard ke liye)
+//  File ke end mein add karo (BuddyStrike ke baad)
+// ════════════════════════════════════════════════════════
+
+class StrikeStreakEntry {
+  StrikeStreakEntry({
+    required this.matchId,
+    required this.userAName,
+    required this.userBName,
+    required this.streak,
+    this.userAAvatarUrl,
+    this.userBAvatarUrl,
+  });
+
+  final String  matchId;
+  final String  userAName;
+  final String  userBName;
+  final int     streak;
+  final String? userAAvatarUrl;
+  final String? userBAvatarUrl;
+
+  factory StrikeStreakEntry.fromJson(Map<String, dynamic> j) =>
+      StrikeStreakEntry(
+        matchId:        j['matchId']        as String,
+        userAName:      j['userAName']      as String,
+        userBName:      j['userBName']      as String,
+        streak:         j['streak']         as int,
+        userAAvatarUrl: j['userAAvatarUrl'] as String?,
+        userBAvatarUrl: j['userBAvatarUrl'] as String?,
+      );
+}
+

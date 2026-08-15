@@ -15,4 +15,6 @@ abstract class AuthRepository {
   Future<Response> logout();
 
   Future<Response> refreshToken();
+
+  Future<void> markWalkthroughSeen();
 }

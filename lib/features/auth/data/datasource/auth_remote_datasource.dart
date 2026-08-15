@@ -4,6 +4,7 @@ import '../../../../../core/api/api_endpoints.dart';
 import '../../../../../core/api/dio_client.dart';
 import '../request_ml/login_request.dart';
 import '../request_ml/register_request.dart';
+import '../response_ml/register_response.dart';
 
 class AuthRemoteDataSource {
   final DioClient client;
@@ -41,4 +42,9 @@ class AuthRemoteDataSource {
 
     return response;
   }
+
+  Future<void> markWalkthroughSeen() async {
+    await client.patch('/users/me', queryParameters: {'walkthroughSeen': true});
+  }
+
 }

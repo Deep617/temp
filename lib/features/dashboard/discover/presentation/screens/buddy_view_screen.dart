@@ -31,10 +31,12 @@ class _BuddyViewScreenState extends State<BuddyViewScreen> {
   }
 
   void _showMatchDialog(BuddyProfile profile) {
-    showDialog(
-      context: context,
-      builder: (_) => MatchDialog(profile: profile),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showDialog(
+        context: context,
+        builder: (_) => MatchDialog(profile: profile),
+      );
+    });
   }
 
   @override
@@ -58,7 +60,8 @@ class _BuddyViewScreenState extends State<BuddyViewScreen> {
         }
         if (state.matchedUserId != null) {
           _showMatchDialog(widget.buddyProfile);
-        }/*else{
+        }
+        /*else{
          if(mounted){
            context.pop();
          }

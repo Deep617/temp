@@ -2,18 +2,44 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:seshlly/di_injection/dependency_injection.dart';
+import 'package:seshlly/features/strike/data/repositories/strike_repository.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/widgets/common/common_widgets.dart';
 import '../../../../../routes/app_router.dart';
+import '../../../../auth/data/response_ml/register_response.dart';
 import '../../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/chat_bloc.dart';
 
-class ChatsListScreen extends StatelessWidget {
+class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
+
+  @override
+  State<ChatsListScreen> createState() => _ChatsListScreenState();
+}
+
+class _ChatsListScreenState extends State<ChatsListScreen> {
+  late StrikeRepository strikeRepository;
+
+  List<BuddyStrike> _pendingStrikes = [];
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    strikeRepository = getIt<StrikeRepository>();
+    _loadPendingStrikes();
+  }
+
+  Future<void> _loadPendingStrikes() async {
+    final strikes = await strikeRepository.getPendingStrikes();
+    setState(() => _pendingStrikes = strikes);
+    // Show red dot badge on chat if strike pending
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +49,18 @@ class ChatsListScreen extends StatelessWidget {
         backgroundColor: AppColors.bg,
         title: Text('Messages', style: AppTextStyles.h3()),
         actions: [
+          if (_pendingStrikes.isNotEmpty) ...[
+            IconButton(
+              icon: const Icon(
+                Icons.local_fire_department_sharp,
+                color: AppColors.error,
+              ),
+              onPressed: () {
+                context.push(AppRoutes.pendingStrikes);
+              },
+            ),
+          ],
+
           IconButton(
             icon: const Icon(Icons.search, color: AppColors.textMuted),
             onPressed: () {},
@@ -35,8 +73,9 @@ class ChatsListScreen extends StatelessWidget {
           BlocBuilder<AuthBloc, AuthState>(
             builder: (context, authState) {
               final user = authState.user;
-              if (user == null || user.chatTokens! >= 5)
+              if (user == null || user.chatTokens >= 5) {
                 return const SizedBox.shrink();
+              }
               return Container(
                 margin: const EdgeInsets.all(16),
                 padding: const EdgeInsets.all(14),
@@ -116,12 +155,13 @@ class ChatsListScreen extends StatelessWidget {
                   );
                 }
 
-                if (state.chats.isEmpty)
+                if (state.chats.isEmpty) {
                   return const EmptyState(
                     emoji: '💬',
                     title: 'No conversations yet',
                     subtitle: 'Match with a buddy and start chatting!',
                   );
+                }
 
                 return RefreshIndicator(
                   color: AppColors.primary,

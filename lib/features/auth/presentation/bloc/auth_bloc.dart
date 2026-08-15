@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:seshlly/features/auth/domain/usecases/logout_usecase.dart';
+import 'package:seshlly/features/auth/domain/usecases/onboarding_competed.dart';
 
 import '../../../../core/errors/app_error.dart';
 import '../../../../core/services/secure_storage_service.dart';
@@ -17,6 +18,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
   final RegisterUseCase registerUseCase;
   final LogoutUseCase _logoutUseCase;
+  final OnboardingCompeted _onboardingCompeted;
   final SecureStorageService _sStorageService;
   final StorageService _storageService;
 
@@ -24,6 +26,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     this._storageService,
     this._sStorageService,
     this.loginUseCase,
+    this._onboardingCompeted,
     this.registerUseCase,
     this._logoutUseCase,
   ) : super(const AuthState()) {
@@ -32,7 +35,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
     on<AuthCheckRequested>((event, emit) async {
       if (kDebugMode) {
-        print('****** Event received');
+        print('****** AuthCheckEvent received');
       }
       await _onCheckRequested(event, emit);
     });
@@ -130,12 +133,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthOnboardingCompleted event,
     Emitter<AuthState> emit,
   ) async {
+   // await _onboardingCompeted.markWalkthroughSeen();
     await _storageService.setOnboarding();
     emit(state.copyWith(status: AuthStatus.authenticated));
   }
 
   Future<void> _onLogoutRequested(
-      AuthLoggedOut event,
+    AuthLoggedOut event,
     Emitter<AuthState> emit,
   ) async {
     final Response logoutResponse = await _logoutUseCase.logoutPerform();
@@ -152,11 +156,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onUserTokenNot(
-      UserTokeExpire event,
-      Emitter<AuthState> emit,
-      ) async {
-
+    UserTokeExpire event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(state.copyWith(status: AuthStatus.unauthenticated));
   }
 }
-

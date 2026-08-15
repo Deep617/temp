@@ -83,15 +83,13 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       listenWhen: (prev, curr) =>
           curr.matchedUserId != null &&
           curr.matchedUserId != prev.matchedUserId,
-      listener: (context, state) {
-
-      },
+      listener: (context, state) {},
       child: BlocBuilder<DiscoverBloc, DiscoverState>(
         builder: (context, state) {
           final user = context.watch<AuthBloc>().state.user;
           if (state.matchedUserId != null) {
             final profile = state.profiles.firstWhere(
-                  (p) => p.id == state.matchedUserId,
+              (p) => p.id == state.matchedUserId,
               orElse: () => state.profiles.first,
             );
             WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -99,7 +97,6 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 _showMatchDialog(profile);
               }
             });
-
           }
           return Scaffold(
             backgroundColor: AppColors.bg,
@@ -117,9 +114,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child:   Center(
-                            child: Image.asset(AppImages.logo,height: 45,
-                                width: 45,)
+                          child: Center(
+                            child: Image.asset(
+                              AppImages.logo,
+                              height: 45,
+                              width: 45,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -344,7 +344,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
-  void  _showMatchDialog(BuddyProfile profile) {
+  void _showMatchDialog(BuddyProfile profile) {
     showDialog(
       context: context,
       builder: (_) => MatchDialog(profile: profile),
@@ -736,7 +736,7 @@ class MatchDialog extends StatelessWidget {
             label: '💬 Send First Message',
             onPressed: () {
               Navigator.pop(context);
-              context.push(AppRoutes.chat);
+              AppRoutes.chat.replaceAll(':chatId', profile.id);
             },
             height: 48,
           ).animate(delay: 500.ms).fadeIn(),

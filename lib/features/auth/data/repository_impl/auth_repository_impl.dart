@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:seshlly/core/services/secure_storage_service.dart';
 
 import '../../../../core/api/base_repository.dart';
+import '../../../../core/errors/app_error.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasource/auth_remote_datasource.dart';
 import '../request_ml/login_request.dart';
@@ -59,6 +60,13 @@ class AuthRepositoryImpl extends BaseRepository implements AuthRepository {
     return await safeApiCall(() async {
       final response = await remote.logout();
       return response;
+    });
+  }
+
+  @override
+  Future<void> markWalkthroughSeen() {
+    return remote.markWalkthroughSeen().catchError((e) {
+      throw AppError.fromException(e);
     });
   }
 }

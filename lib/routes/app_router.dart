@@ -379,4 +379,8 @@ class AppRoutes {
   static const feed            = '/feed';
 
 
+  // Strike 2 — Buddy Strike
+  static const strikeView      = '/strike/view';
+  static const pendingStrikes  = '/strikes/pending';
+
 }
