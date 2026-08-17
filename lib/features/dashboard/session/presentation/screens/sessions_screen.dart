@@ -1,22 +1,33 @@
+// ─────────────────────────────────────────────────────────
+//  sessions_screen.dart
+//
+//  Fixes:
+//  1. + button only visible if buddyCount > 0
+//  2. Session card shows duration + start-end time range
+//  3. incomplete/missed status handled properly
+//  4. incompleteReason shown on card
+//  5. inviteStatus shown (pending/confirmed/declined)
+//  6. Group session label
+//  7. Upload Proof button (within 3hr window)
+// ─────────────────────────────────────────────────────────
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:seshlly/routes/app_router.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/widgets/common/common_widgets.dart';
-import '../../../../../core/widgets/error_widget.dart';
-import '../../data/response_ml/workout_session.dart';
-import '../bloc/session_bloc.dart';
-import '../bloc/session_event.dart';
-import '../bloc/session_state.dart';
+import '../../../../../routes/app_router.dart';
+import '../../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../session/data/response_ml/workout_session.dart';
+import '../../../session/presentation/bloc/session_bloc.dart';
+import '../../../session/presentation/bloc/session_event.dart';
+import '../../../session/presentation/bloc/session_state.dart';
 
 class SessionsScreen extends StatefulWidget {
   const SessionsScreen({super.key});
-
   @override
   State<SessionsScreen> createState() => _SessionsScreenState();
 }
@@ -29,6 +40,10 @@ class _SessionsScreenState extends State<SessionsScreen>
   void initState() {
     super.initState();
     _tabs = TabController(length: 3, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SessionBloc>().add(
+          const SessionsLoaded(status: 'scheduled'));
+    });
   }
 
   @override
@@ -39,6 +54,10 @@ class _SessionsScreenState extends State<SessionsScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Read buddyCount from AuthBloc to control + button visibility
+    final user = context.select((AuthBloc b) => b.state.user);
+    final hasBuddies = (user?.buddyCount ?? 0) > 0;
+
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
@@ -46,10 +65,10 @@ class _SessionsScreenState extends State<SessionsScreen>
         title: Text('Sessions', style: AppTextStyles.h3()),
         bottom: TabBar(
           controller: _tabs,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textMuted,
-          indicatorColor: AppColors.primary,
-          indicatorSize: TabBarIndicatorSize.tab,
+          labelColor:            AppColors.primary,
+          unselectedLabelColor:  AppColors.textMuted,
+          indicatorColor:        AppColors.primary,
+          indicatorSize:         TabBarIndicatorSize.tab,
           labelStyle: AppTextStyles.label(color: AppColors.primary),
           tabs: const [
             Tab(text: 'UPCOMING'),
@@ -57,25 +76,58 @@ class _SessionsScreenState extends State<SessionsScreen>
             Tab(text: 'MISSED'),
           ],
           onTap: (i) {
-            // Reload sessions filtered by tab
             final statuses = ['scheduled', 'completed', 'missed'];
-            context.read<SessionBloc>().add(
-              SessionsLoaded(status: statuses[i]),
-            );
+            context.read<SessionBloc>()
+                .add(SessionsLoaded(status: statuses[i]));
           },
         ),
         actions: [
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(8),
+          // ── + button: only if user has buddies ────────
+          if (hasBuddies)
+            IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color:        AppColors.primary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.add,
+                    color: Colors.white, size: 18),
               ),
-              child: const Icon(Icons.add, color: Colors.black, size: 18),
+              onPressed: () =>
+                  context.push(AppRoutes.scheduleSession),
+            )
+          else
+          // No buddies — tap to go to Discover
+            IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color:        AppColors.surface2,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border2),
+                ),
+                child: const Icon(Icons.add,
+                    color: AppColors.textMuted, size: 18),
+              ),
+              tooltip: 'Find a buddy first',
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text(
+                        'Match with a buddy first to schedule sessions 🤝'),
+                    backgroundColor: AppColors.warning,
+                    behavior: SnackBarBehavior.floating,
+                    action: SnackBarAction(
+                      label:   'Discover',
+                      textColor: Colors.white,
+                      onPressed: () =>
+                          context.go(AppRoutes.discover),
+                    ),
+                  ),
+                );
+              },
             ),
-            onPressed: () => context.push(AppRoutes.scheduleSession),
-          ),
         ],
       ),
       body: TabBarView(
@@ -91,66 +143,55 @@ class _SessionsScreenState extends State<SessionsScreen>
   }
 }
 
+// ══════════════════════════════════════════════════════════
+//  SESSION LIST
+// ══════════════════════════════════════════════════════════
 class _SessionList extends StatelessWidget {
   const _SessionList({required this.status});
-
   final String status;
 
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<SessionBloc, SessionState>(
       listener: (context, state) {
-        if (state.status == SessionStatus.scheduled) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Session scheduled! 💪',
-                style: AppTextStyles.body(),
-              ),
-            ),
-          );
-        }
         if (state.status == SessionStatus.uploaded) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Proof uploaded! +50 XP ✅',
-                style: AppTextStyles.body(),
-              ),
-            ),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Proof uploaded! +50 XP ✅',
+                style: AppTextStyles.body()),
+            backgroundColor: AppColors.teal,
+            behavior: SnackBarBehavior.floating,
+          ));
         }
-        if (state.status == SessionStatus.failure && state.error != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                state.error!.message,
-                style: AppTextStyles.bodySM(color: AppColors.error),
-              ),
-            ),
-          );
+        if (state.status == SessionStatus.failure &&
+            state.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(state.error!.message,
+                style: AppTextStyles.bodySM(
+                    color: AppColors.error)),
+            behavior: SnackBarBehavior.floating,
+          ));
         }
       },
       builder: (context, state) {
         if (state.isLoading) {
           return const Center(
-            child: CircularProgressIndicator(color: AppColors.primary),
-          );
+              child: CircularProgressIndicator(
+                  color: AppColors.primary));
         }
 
-        // Error View with action
-        if (state.status == SessionStatus.failure) {
-          ErrorView(
-            appError: state.error!,
-            onRetry: () {
-              context.read<SessionBloc>().add(const SessionsLoaded());
-            },
-          );
-        }
+        // Filter sessions by status
+        // Also show 'scheduled' sessions that need proof in UPCOMING
+        final filtered = state.sessions.where((s) {
+          if (status == 'scheduled') {
+            return s.status == 'scheduled';
+          }
+          return s.status == status;
+        }).toList();
 
-        final filtered = state.sessions
-            .where((s) => s.status == status)
-            .toList();
+        // Sort: upcoming by scheduledAt asc, rest by desc
+        filtered.sort((a, b) => status == 'scheduled'
+            ? a.scheduledAt.compareTo(b.scheduledAt)
+            : b.scheduledAt.compareTo(a.scheduledAt));
 
         if (filtered.isEmpty) {
           return EmptyState(
@@ -164,7 +205,10 @@ class _SessionList extends StatelessWidget {
                 : status == 'completed'
                 ? 'No completed sessions'
                 : 'No missed sessions',
-            action: status == 'scheduled' ? 'Schedule Session' : null,
+            subtitle: status == 'scheduled'
+                ? 'Schedule a session with your buddy'
+                : null,
+            action:   status == 'scheduled' ? 'Schedule Session' : null,
             onAction: status == 'scheduled'
                 ? () => context.push(AppRoutes.scheduleSession)
                 : null,
@@ -172,15 +216,17 @@ class _SessionList extends StatelessWidget {
         }
 
         return RefreshIndicator(
-          color: AppColors.primary,
+          color:           AppColors.primary,
           backgroundColor: AppColors.surface2,
-          onRefresh: () async =>
-              context.read<SessionBloc>().add(SessionsLoaded(status: status)),
+          onRefresh: () async => context.read<SessionBloc>()
+              .add(SessionsLoaded(status: status)),
           child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: filtered.length,
-            itemBuilder: (_, i) => _SessionCard(session: filtered[i])
-                .animate(delay: Duration(milliseconds: i * 80))
+            padding:    const EdgeInsets.all(16),
+            itemCount:  filtered.length,
+            itemBuilder: (_, i) => _SessionCard(
+                session: filtered[i])
+                .animate(
+                delay: Duration(milliseconds: i * 80))
                 .fadeIn()
                 .slideY(begin: 0.2),
           ),
@@ -190,178 +236,349 @@ class _SessionList extends StatelessWidget {
   }
 }
 
+// ══════════════════════════════════════════════════════════
+//  SESSION CARD
+// ══════════════════════════════════════════════════════════
 class _SessionCard extends StatelessWidget {
   const _SessionCard({required this.session});
-
   final WorkoutSession session;
 
+  // Status colors
   Color get _statusColor {
+    if (session.needsProof) return AppColors.warning;
     switch (session.status) {
-      case 'completed':
-        return AppColors.teal;
-      case 'missed':
-        return AppColors.error;
-      case 'cancelled':
-        return AppColors.textMuted;
+      case 'completed': return AppColors.teal;
+      case 'missed':    return AppColors.error;
+      case 'cancelled': return AppColors.textMuted;
+      default:          return AppColors.primary;
+    }
+  }
+
+  String get _statusLabel {
+    if (session.needsProof) return 'UPLOAD PROOF';
+    switch (session.status) {
+      case 'completed': return 'COMPLETED';
+      case 'missed':    return 'MISSED';
+      case 'cancelled': return 'CANCELLED';
       default:
-        return AppColors.primary;
+      // Show invite status if pending
+        if (session.isInvitePending)   return 'PENDING';
+        if (session.isInviteDeclined)  return 'DECLINED';
+        if (session.isInviteConfirmed) return 'CONFIRMED';
+        return 'UPCOMING';
     }
   }
 
   String get _statusEmoji {
+    if (session.needsProof)           return '📸';
+    if (session.isInvitePending)      return '⏳';
+    if (session.isInviteDeclined)     return '❌';
     switch (session.status) {
-      case 'completed':
-        return '✅';
-      case 'missed':
-        return '❌';
-      case 'cancelled':
-        return '🚫';
-      default:
-        return '⏰';
+      case 'completed': return '✅';
+      case 'missed':    return '😔';
+      case 'cancelled': return '🚫';
+      default:          return '⏰';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final fmt = DateFormat('EEE, dd MMM · hh:mm a');
+    final dateFmt = DateFormat('EEE, dd MMM');
+    final timeFmt = DateFormat('h:mm a');
+
+    final dateStr     = dateFmt.format(session.scheduledAt);
+    final startStr    = timeFmt.format(session.scheduledAt);
+    final endStr      = timeFmt.format(session.endTime);
+    final timeRange   = '$startStr - $endStr';
+    final isGroup     = session.isGroup;
+
+    // Card border highlight
+    final borderColor = session.needsProof
+        ? AppColors.warning.withOpacity(0.4)
+        : session.status == 'missed'
+        ? AppColors.error.withOpacity(0.2)
+        : session.isInviteDeclined
+        ? AppColors.error.withOpacity(0.2)
+        : AppColors.border;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface1,
+        color:        AppColors.surface1,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: session.needsProof
-              ? AppColors.warning.withOpacity(0.4)
-              : AppColors.border,
-        ),
+        border:       Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
-                session.needsProof ? '⚠️' : _statusEmoji,
-                style: const TextStyle(fontSize: 22),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      session.activity.replaceFirst(
-                        session.activity[0],
-                        session.activity[0].toUpperCase(),
-                      ),
-                      style: AppTextStyles.subtitle(),
-                    ),
-                    Text(
-                      fmt.format(session.scheduledAt),
-                      style: AppTextStyles.bodySM(),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: _statusColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(100),
-                  border: Border.all(color: _statusColor.withOpacity(0.3)),
-                ),
-                child: Text(
-                  session.status.toUpperCase(),
-                  style: AppTextStyles.label(color: _statusColor),
-                ),
-              ),
-            ],
-          ),
-          if (session.buddyName != null) ...[
-            const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 10),
-            Row(
+
+          // ── Header ─────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(
-                  Icons.people_outline,
-                  size: 15,
-                  color: AppColors.textMuted,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'With ${session.buddyName}',
-                  style: AppTextStyles.bodySM(),
-                ),
-                if (session.gymName != null) ...[
-                  const SizedBox(width: 12),
-                  const Icon(
-                    Icons.location_on_outlined,
-                    size: 15,
-                    color: AppColors.textMuted,
+                Row(children: [
+                  Text(_statusEmoji,
+                      style: const TextStyle(fontSize: 22)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Activity + Group label
+                        Row(children: [
+                          Text(
+                            _capitalize(session.activity),
+                            style: AppTextStyles.subtitle(),
+                          ),
+                          if (isGroup) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.teal
+                                    .withOpacity(0.1),
+                                borderRadius:
+                                BorderRadius.circular(4),
+                                border: Border.all(
+                                    color: AppColors.teal
+                                        .withOpacity(0.3)),
+                              ),
+                              child: Text('👥 Group',
+                                  style: AppTextStyles.caption()
+                                      .copyWith(
+                                      color:
+                                      AppColors.teal,
+                                      fontWeight:
+                                      FontWeight.w700)),
+                            ),
+                          ],
+                        ]),
+                        const SizedBox(height: 3),
+                        // Date
+                        Text(dateStr,
+                            style: AppTextStyles.bodySM(
+                                color:
+                                AppColors.textSecondary)),
+                        // Time range + duration
+                        Text(
+                          '$timeRange (${session.durationLabel})',
+                          style: AppTextStyles.bodySM(
+                              color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(width: 4),
-                  Text(session.gymName!, style: AppTextStyles.bodySM()),
+                  const SizedBox(width: 8),
+                  // Status badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color:        _statusColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(100),
+                      border: Border.all(
+                          color: _statusColor.withOpacity(0.3)),
+                    ),
+                    child: Text(_statusLabel,
+                        style: AppTextStyles.label(
+                            color: _statusColor)),
+                  ),
+                ]),
+
+                // ── Buddy / Gym row ───────────────────────
+                if (session.buddyName != null ||
+                    session.participants.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    const Icon(Icons.people_outline,
+                        size: 14,
+                        color: AppColors.textMuted),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        isGroup
+                            ? _groupNames()
+                            : 'With ${session.buddyName}',
+                        style: AppTextStyles.bodySM(),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (session.gymName != null) ...[
+                      const SizedBox(width: 8),
+                      const Icon(Icons.location_on_outlined,
+                          size: 14,
+                          color: AppColors.textMuted),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(session.gymName!,
+                            style: AppTextStyles.bodySM(),
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ]),
+                ],
+
+                // ── Challenge link ───────────────────────
+                if (session.challengeTitle != null) ...[
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    const Icon(Icons.bolt,
+                        size: 14,
+                        color: AppColors.warning),
+                    const SizedBox(width: 5),
+                    Text('${session.challengeTitle}',
+                        style: AppTextStyles.bodySM(
+                            color: AppColors.warning)),
+                  ]),
+                ],
+
+                // ── XP earned ────────────────────────────
+                if (session.xpEarned != null) ...[
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    const Icon(Icons.star,
+                        color: AppColors.warning, size: 14),
+                    const SizedBox(width: 4),
+                    Text('+${session.xpEarned} XP earned',
+                        style: AppTextStyles.bodySM(
+                            color: AppColors.warning)
+                            .copyWith(
+                            fontWeight: FontWeight.w700)),
+                  ]),
+                ],
+
+                // ── Invite pending: waiting message ───────
+                if (session.isInvitePending &&
+                    session.status == 'scheduled') ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color:
+                          AppColors.warning.withOpacity(0.2)),
+                    ),
+                    child: Row(children: [
+                      const Text('⏳',
+                          style: TextStyle(fontSize: 14)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Waiting for buddy to confirm the session invite.',
+                          style: AppTextStyles.bodySM(
+                              color: AppColors.textMuted),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ],
+
+                // ── Invite declined ───────────────────────
+                if (session.isInviteDeclined) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color:
+                          AppColors.error.withOpacity(0.2)),
+                    ),
+                    child: Row(children: [
+                      const Text('😔',
+                          style: TextStyle(fontSize: 14)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Buddy declined this session invite.',
+                          style: AppTextStyles.bodySM(
+                              color: AppColors.textMuted),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ],
+
+                // ── Incomplete reason ─────────────────────
+                if (session.isMissed &&
+                    session.incompleteReason != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color:
+                          AppColors.error.withOpacity(0.2)),
+                    ),
+                    child: Row(children: [
+                      const Icon(Icons.info_outline,
+                          size: 14,
+                          color: AppColors.error),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          session.incompleteReason!,
+                          style: AppTextStyles.bodySM(
+                              color: AppColors.error),
+                        ),
+                      ),
+                    ]),
+                  ),
                 ],
               ],
             ),
-          ],
-          if (session.xpEarned != null) ...[
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(Icons.star, color: AppColors.warning, size: 15),
-                const SizedBox(width: 4),
-                Text(
-                  '+${session.xpEarned} XP earned',
-                  style: AppTextStyles.bodySM(
-                    color: AppColors.warning,
-                  ).copyWith(fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-          ],
+          ),
+
+          // ── Upload Proof CTA (within 3hr window) ───────
           if (session.needsProof) ...[
-            const SizedBox(height: 14),
-            GestureDetector(
-              onTap: () => context.push(
-                AppRoutes.uploadProof.replaceAll(':sessionId', session.id),
-                extra: session,
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.warning.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Text('📸', style: TextStyle(fontSize: 20)),
+            Container(
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: GestureDetector(
+                onTap: () => context.push(
+                    AppRoutes.uploadProof
+                        .replaceAll(':sessionId', session.id)),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color:
+                        AppColors.warning.withOpacity(0.4)),
+                  ),
+                  child: Row(children: [
+                    const Text('📸',
+                        style: TextStyle(fontSize: 20)),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                        CrossAxisAlignment.start,
                         children: [
+                          Text('Upload Proof',
+                              style: AppTextStyles.subtitle(
+                                  color: AppColors.warning)),
                           Text(
-                            'Upload Proof',
-                            style: AppTextStyles.subtitle(
-                              color: AppColors.warning,
-                            ),
-                          ),
-                          Text(
-                            'Missing proof will deduct chat tokens!',
-                            style: AppTextStyles.bodySM(),
+                            _proofWindowText(),
+                            style: AppTextStyles.bodySM(
+                                color: AppColors.textMuted),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right, color: AppColors.warning),
-                  ],
+                    const Icon(Icons.chevron_right,
+                        color: AppColors.warning),
+                  ]),
                 ),
               ),
             ),
@@ -370,4 +587,31 @@ class _SessionCard extends StatelessWidget {
       ),
     );
   }
+
+  // Proof window countdown
+  String _proofWindowText() {
+    final rem = session.proofWindowRemaining;
+    if (rem.isNegative) return 'Window closed';
+    final hrs  = rem.inHours;
+    final mins = rem.inMinutes % 60;
+    if (hrs > 0) return '${hrs}h ${mins}m remaining to upload';
+    return '${mins}m remaining to upload';
+  }
+
+  // Group participant names
+  String _groupNames() {
+    if (session.participants.isEmpty) {
+      return session.buddyName != null
+          ? 'With ${session.buddyName}'
+          : 'Group session';
+    }
+    final others = session.participants
+        .map((p) => p.name.split(' ').first)
+        .take(3)
+        .join(', ');
+    return 'With $others${session.participants.length > 3 ? ' +${session.participants.length - 3}' : ''}';
+  }
+
+  String _capitalize(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1).toLowerCase();
 }

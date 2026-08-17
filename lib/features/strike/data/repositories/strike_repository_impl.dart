@@ -48,8 +48,8 @@ class StrikeRepositoryImpl extends BaseRepository implements StrikeRepository {
   }
 
   @override
-  Future<List<BuddyStrike>> getPendingStrikes() {
-    return remote.getPendingStrikes().catchError((e) {
+  Future<List<BuddyStrike>> getPendingStrikes(String? buddyId) {
+    return remote.getPendingStrikes(buddyId: buddyId).catchError((e) {
       throw AppError.fromException(e);
     });
   }

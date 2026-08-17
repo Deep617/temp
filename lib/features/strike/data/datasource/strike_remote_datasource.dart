@@ -51,8 +51,10 @@ class StrikeRemoteDatasource {
   }
 
   // Mujhe kitni pending strikes hain (not yet viewed)
-  Future<List<BuddyStrike>> getPendingStrikes() async {
-    final res = await _dio.get('/strikes/pending');
+  Future<List<BuddyStrike>> getPendingStrikes({String? buddyId}) async {
+    final res = await _dio.get('/strikes/pending', queryParameters: {
+      if (buddyId != null && buddyId.isNotEmpty) 'buddyId': buddyId,
+    },);
     final data = _data(res);
     return (data['strikes'] as List<dynamic>)
         .map((e) => BuddyStrike.fromJson(e as Map<String, dynamic>))

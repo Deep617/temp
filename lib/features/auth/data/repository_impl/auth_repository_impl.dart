@@ -69,4 +69,119 @@ class AuthRepositoryImpl extends BaseRepository implements AuthRepository {
       throw AppError.fromException(e);
     });
   }
+
+  // ── Forgot Password ───────────────────────────────────────
+  @override
+  Future<void> sendForgotPasswordOtp(String email) async {
+    return remote.sendForgotPasswordOtp(email).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  @override
+  Future<void> verifyForgotPasswordOtp({
+    required String email,
+    required String otp,
+  }) async {
+    return remote.verifyForgotPasswordOtp(email: email, otp: otp).catchError((
+      e,
+    ) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    return remote
+        .resetPassword(email: email, otp: otp, newPassword: newPassword)
+        .catchError((e) {
+          throw AppError.fromException(e);
+        });
+  }
+
+  @override
+  Future<Map<String, dynamic>> applyAsInfluencer({
+    required String instagramHandle,
+    required int claimedFollowers,
+  }) async {
+    return remote
+        .applyAsInfluencer(
+          instagramHandle: instagramHandle,
+          claimedFollowers: claimedFollowers,
+        )
+        .catchError((e) {
+          throw AppError.fromException(e);
+        });
+  }
+
+  @override
+  Future<void> markInfluencerCodeAdded() async {
+    return remote.markInfluencerCodeAdded().catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  @override
+  Future<InfluencerApplicationStatus> getInfluencerStatus() async {
+    return remote.getInfluencerStatus().catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  @override
+  Future<List<InfluencerProfile>> discoverInfluencers({
+    String? activity,
+    String? city,
+    int page = 1,
+  }) async {
+    return remote
+        .discoverInfluencers(activity: activity, city: city, page: page)
+        .catchError((e) {
+          throw AppError.fromException(e);
+        });
+  }
+
+  @override
+  Future<InfluencerProfile> getInfluencerProfile(String id) async {
+    return remote.getInfluencerProfile(id).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  // ── Match Requests API ────────────────────────────────────
+
+  @override
+  Future<List<MatchRequest>> getMatchRequests() async {
+    return remote.getMatchRequests().catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  @override
+  Future<Map<String, dynamic>> acceptMatchRequest(String swipeId) async {
+    return remote.acceptMatchRequest(swipeId).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  @override
+  Future<void> declineMatchRequest(String swipeId) async {
+    return remote.declineMatchRequest(swipeId).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  @override
+  Future<Map<String, dynamic>> swipeUser({
+    required String targetId,
+    String action = 'like',
+  }) async {
+    return remote.swipeUser(targetId: targetId, action: action).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
 }

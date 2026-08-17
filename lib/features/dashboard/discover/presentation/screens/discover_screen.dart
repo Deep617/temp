@@ -374,7 +374,13 @@ class _BuddyCard extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        context.push(AppRoutes.buddyView, extra: {'buddyProfile': profile});
+        if (profile.isInfluencer) {
+          context.push(
+            AppRoutes.influencerProfile.replaceAll(':id', profile.id),
+          );
+        } else {
+          context.push(AppRoutes.buddyView, extra: {'buddyProfile': profile});
+        }
       },
       child: Container(
         decoration: BoxDecoration(

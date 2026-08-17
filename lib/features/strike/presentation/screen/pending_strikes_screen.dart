@@ -37,7 +37,7 @@ class _PendingStrikesScreenState extends State<PendingStrikesScreen> {
 
   Future<void> _load() async {
     try {
-      final strikes = await strikeRepository.getPendingStrikes();
+      final strikes = await strikeRepository.getPendingStrikes(null);
       if (!mounted) return;
       setState(() {
         _pending = strikes.where((s) => !s.isViewed).toList();

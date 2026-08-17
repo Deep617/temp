@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:seshlly/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:seshlly/features/auth/presentation/screens/onboarding_screen_s.dart';
 import 'package:seshlly/features/auth/presentation/screens/register_screen.dart';
 import 'package:seshlly/features/auth/presentation/screens/welcome_screen.dart';
@@ -18,6 +19,8 @@ import 'package:seshlly/splash_screen.dart';
 import '../di_injection/dependency_injection.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/auth/presentation/bloc/auth_state.dart';
+import '../features/auth/presentation/screens/influencer_apply_screen.dart';
+import '../features/auth/presentation/screens/influencer_profile_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/dashboard/challanges/presentation/bloc/challenge_bloc.dart';
 import '../features/dashboard/challanges/presentation/screen/challenge_detail_screen.dart';
@@ -59,6 +62,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
         AppRoutes.login,
         AppRoutes.register,
         AppRoutes.splash,
+        AppRoutes.forgotPassword,
       ];
       final isOnAuthPage = authRoutes.contains(appCurrentLocation);
 
@@ -155,6 +159,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
               buddyId: extra?['buddyId'] ?? '',
               buddyName: extra?['buddyName'] ?? '',
               buddyAvatar: extra?['buddyAvatar'],
+              matchId:     extra?['matchId'],    // pass matchId for Strike streak
             ),
           );
         },
@@ -264,6 +269,21 @@ GoRouter buildRouter(AuthBloc authBloc) {
         builder: (_, __) => const LeaderboardScreen(),
       ),
 
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        builder: (_, __) => const ForgotPasswordScreen(),
+      ),
+
+      // Influencer
+      GoRoute(
+        path: AppRoutes.influencerApply,
+        builder: (_, __) => const InfluencerApplyScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.influencerProfile,
+        builder: (ctx, state) =>
+            InfluencerProfileScreen(influencerId: state.pathParameters['id']!),
+      ),
       // ── Feed ─────────────────────────────────────────
       GoRoute(path: AppRoutes.feed, builder: (_, __) => const FeedScreen()),
 
@@ -377,4 +397,9 @@ class AppRoutes {
   // Strike 2 — Buddy Strike
   static const strikeView = '/strike/view';
   static const pendingStrikes = '/strikes/pending';
+  static const forgotPassword = '/forgotPassword';
+
+  // Influencer
+  static const influencerApply = '/influencer/apply';
+  static const influencerProfile = '/influencer/:id';
 }

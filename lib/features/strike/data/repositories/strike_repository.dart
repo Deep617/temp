@@ -21,7 +21,7 @@ abstract class StrikeRepository {
   Future<void> reactToStrike(String strikeId, String emoji);
 
   // my  pending strikes hain (not yet viewed)
-  Future<List<BuddyStrike>> getPendingStrikes();
+  Future<List<BuddyStrike>> getPendingStrikes(String? buddyId);
 
   // Ek match ka current streak nikalo
   Future<Map<String, dynamic>> getStrikeStreak(String matchId);

@@ -187,7 +187,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            context.push(AppRoutes.forgotPassword);
+                          },
                           child: Text(
                             'Forgot password?',
                             style: AppTextStyles.bodySM(

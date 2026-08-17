@@ -377,6 +377,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
 
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      context.push(AppRoutes.influencerApply);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF59E0B),
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      '"Apply as Influencer ⭐"',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
                 // ── BODY ────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.all(14),
