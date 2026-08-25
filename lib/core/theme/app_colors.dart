@@ -20,6 +20,7 @@ class AppColors {
 
   /// Global Accent #00CFA4 — CTAs, graphs, key interactions
   static const Color accent       = Color(0xFF00CFA4);
+  static const Color secondry       = Color(0xFFF59E0B);
 
   // Aliases kept for backward-compat with existing screens
   static const Color primaryLight = Color(0xFF00B2FF);

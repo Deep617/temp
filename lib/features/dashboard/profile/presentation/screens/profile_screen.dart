@@ -377,29 +377,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
 
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      context.push(AppRoutes.influencerApply);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFF59E0B),
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                if (!user.isInfluencer) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        context.push(AppRoutes.influencerApply);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      '"Apply as Influencer ⭐"',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
+                      child: Text(
+                        '"Apply as Influencer ⭐"',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
+
                 // ── BODY ────────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.all(14),
@@ -729,98 +733,110 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface1,
+
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.4,
-        maxChildSize: 0.9,
-        expand: false,
-        builder: (_, controller) => ListView(
-          controller: controller,
-          padding: const EdgeInsets.only(bottom: 32),
-          children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(top: 12, bottom: 20),
-                decoration: BoxDecoration(
-                  color: AppColors.border2,
-                  borderRadius: BorderRadius.circular(2),
+      clipBehavior: Clip.antiAlias,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          border: Border(
+            top: BorderSide(color: AppColors.border2, width: 1),
+            left: BorderSide(color: AppColors.border2, width: 1),
+            right: BorderSide(color: AppColors.border2, width: 1),
+          ),
+        ),
+        child: DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (_, controller) => ListView(
+            controller: controller,
+            padding: const EdgeInsets.only(bottom: 32),
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 12, bottom: 20),
+                  decoration: BoxDecoration(
+                    color: AppColors.border2,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text('Settings', style: AppTextStyles.h3()),
-            ),
-            const SizedBox(height: 16),
-
-            // ── Notifications ───────────────────────────
-            _SettingsTile(
-              emoji: '🔔',
-              label: 'Notifications',
-              onTap: () {
-                Navigator.pop(ctx);
-                _showNotificationsSheet(context);
-              },
-            ),
-            // ── Privacy ─────────────────────────────────
-            _SettingsTile(
-              emoji: '🔒',
-              label: 'Privacy',
-              onTap: () {
-                Navigator.pop(ctx);
-                _showPrivacySheet(context);
-              },
-            ),
-            // ── Language ────────────────────────────────
-            _SettingsTile(
-              emoji: '🌐',
-              label: 'Language',
-              onTap: () {
-                Navigator.pop(ctx);
-                _showLanguageSheet(context);
-              },
-            ),
-            // ── Support ─────────────────────────────────
-            _SettingsTile(
-              emoji: '💬',
-              label: 'Support',
-              onTap: () {
-                Navigator.pop(ctx);
-                _showSupportSheet(context);
-              },
-            ),
-            // ── Terms & Privacy ──────────────────────────
-            _SettingsTile(
-              emoji: '📋',
-              label: 'Terms & Privacy',
-              onTap: () {
-                Navigator.pop(ctx);
-                _showTermsSheet(context);
-              },
-            ),
-
-            const Divider(color: AppColors.border, height: 32),
-
-            // ── Sign Out ─────────────────────────────────
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-              leading: const Text('🚪', style: TextStyle(fontSize: 22)),
-              title: Text(
-                'Sign Out',
-                style: AppTextStyles.subtitle(color: AppColors.error),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text('Settings', style: AppTextStyles.h3()),
               ),
-              onTap: () {
-                Navigator.pop(ctx);
-                context.read<AuthBloc>().add(const AuthLoggedOut());
-              },
-            ),
-          ],
+              const SizedBox(height: 16),
+
+              // ── Notifications ───────────────────────────
+              _SettingsTile(
+                emoji: '🔔',
+                label: 'Notifications',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showNotificationsSheet(context);
+                },
+              ),
+              // ── Privacy ─────────────────────────────────
+              _SettingsTile(
+                emoji: '🔒',
+                label: 'Privacy',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showPrivacySheet(context);
+                },
+              ),
+              // ── Language ────────────────────────────────
+              _SettingsTile(
+                emoji: '🌐',
+                label: 'Language',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showLanguageSheet(context);
+                },
+              ),
+              // ── Support ─────────────────────────────────
+              _SettingsTile(
+                emoji: '💬',
+                label: 'Support',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showSupportSheet(context);
+                },
+              ),
+              // ── Terms & Privacy ──────────────────────────
+              _SettingsTile(
+                emoji: '📋',
+                label: 'Terms & Privacy',
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showTermsSheet(context);
+                },
+              ),
+
+              const Divider(color: AppColors.border, height: 32),
+
+              // ── Sign Out ─────────────────────────────────
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                leading: const Text('🚪', style: TextStyle(fontSize: 22)),
+                title: Text(
+                  'Sign Out',
+                  style: AppTextStyles.subtitle(color: AppColors.error),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.read<AuthBloc>().add(const AuthLoggedOut());
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

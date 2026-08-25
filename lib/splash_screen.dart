@@ -1,17 +1,11 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:go_router/go_router.dart';
-import 'package:seshlly/routes/app_router.dart';
 
 import 'core/constants/app_assets.dart';
-import 'core/services/secure_storage_service.dart';
-import 'core/services/storage_service.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_text_styles.dart';
 import 'core/theme/app_theme.dart';
-import 'di_injection/dependency_injection.dart';
 
 // Pure UI — GoRouter redirect driven by AuthBloc handles navigation
 class SplashScreen extends StatefulWidget {
@@ -25,34 +19,6 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigate();
-  }
-
-  Future<void> _navigate() async {
-    final token = await getIt<SecureStorageService>().getAccessToken();
-    final isOnboarded = await getIt<StorageService>().getOnboarding();
-    if (kDebugMode) {
-      print("Token on _navigate: $token");
-    }
-    if (token != null && token.isNotEmpty && isOnboarded) {
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          context.go(AppRoutes.home);
-        }
-      });
-    } else if (token != null && token.isNotEmpty && !isOnboarded) {
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          context.go(AppRoutes.onboarding);
-        }
-      });
-    } else {
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          context.go(AppRoutes.welcome);
-        }
-      });
-    }
   }
 
   @override
@@ -71,7 +37,6 @@ class _SplashScreenState extends State<SplashScreen> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
@@ -81,9 +46,8 @@ class _SplashScreenState extends State<SplashScreen> {
                       ),
                     ],
                   ),
-                  child:   Center(
-                    child:  Image.asset(AppImages.logo,height: 80,
-                      width: 80,),
+                  child: Center(
+                    child: Image.asset(AppImages.logo, height: 80, width: 80),
                   ),
                 ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
 

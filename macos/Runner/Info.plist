@@ -28,5 +28,10 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSCameraUsageDescription</key>
+    <string>Camera access is required to capture your strike.</string>
+
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Photo library access is required to select a strike photo.</string>
 </dict>
 </plist>

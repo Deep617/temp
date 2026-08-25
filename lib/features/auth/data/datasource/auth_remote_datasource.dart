@@ -44,20 +44,19 @@ class AuthRemoteDataSource {
   }
 
   Future<void> markWalkthroughSeen() async {
-    await client.patch('/users/me', queryParameters: {'walkthroughSeen': true});
+    await client.put('/users/me', data: {'walkthroughSeen': true});
   }
-
 
   // ── Forgot Password ───────────────────────────────────────
   Future<void> sendForgotPasswordOtp(String email) async {
-    await client.post('/auth/forgot-password', data: { 'email': email });
+    await client.post('/auth/forgot-password', data: {'email': email});
   }
 
   Future<void> verifyForgotPasswordOtp({
     required String email,
     required String otp,
   }) async {
-    await client.post('/auth/verify-otp', data: { 'email': email, 'otp': otp });
+    await client.post('/auth/verify-otp', data: {'email': email, 'otp': otp});
   }
 
   Future<void> resetPassword({
@@ -65,24 +64,25 @@ class AuthRemoteDataSource {
     required String otp,
     required String newPassword,
   }) async {
-    await client.post('/auth/reset-password', data: {
-      'email':       email,
-      'otp':         otp,
-      'newPassword': newPassword,
-    });
+    await client.post(
+      '/auth/reset-password',
+      data: {'email': email, 'otp': otp, 'newPassword': newPassword},
+    );
   }
-
 
   // ── Influencer API ────────────────────────────────────────
 
   Future<Map<String, dynamic>> applyAsInfluencer({
     required String instagramHandle,
-    required int    claimedFollowers,
+    required int claimedFollowers,
   }) async {
-    final res = await client.post('/influencer/apply', data: {
-      'instagramHandle':  instagramHandle,
-      'claimedFollowers': claimedFollowers,
-    });
+    final res = await client.post(
+      '/influencer/apply',
+      data: {
+        'instagramHandle': instagramHandle,
+        'claimedFollowers': claimedFollowers,
+      },
+    );
     return _data(res);
   }
 
@@ -100,11 +100,14 @@ class AuthRemoteDataSource {
     String? city,
     int page = 1,
   }) async {
-    final res = await client.get('/influencer/discover', queryParameters: {
-      if (activity != null) 'activity': activity,
-      if (city     != null) 'city':     city,
-      'page': page,
-    });
+    final res = await client.get(
+      '/influencer/discover',
+      queryParameters: {
+        if (activity != null) 'activity': activity,
+        if (city != null) 'city': city,
+        'page': page,
+      },
+    );
     final data = _data(res);
     return (data['influencers'] as List<dynamic>)
         .map((e) => InfluencerProfile.fromJson(e as Map<String, dynamic>))
@@ -116,14 +119,19 @@ class AuthRemoteDataSource {
     return InfluencerProfile.fromJson(_data(res));
   }
 
-// ── Match Requests API ────────────────────────────────────
+  // ── Match Requests API ────────────────────────────────────
 
   Future<List<MatchRequest>> getMatchRequests() async {
-    final res  = await client.get('/match/requests');
-    final data = _data(res);
-    return (data['requests'] as List<dynamic>)
-        .map((e) => MatchRequest.fromJson(e as Map<String, dynamic>))
-        .toList();
+    try {
+      final res = await client.get('/match/requests');
+      final data = _data(res);
+      final list = data['requests'] as List<dynamic>? ?? [];
+      return list
+          .map((e) => MatchRequest.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      return [];
+    }
   }
 
   Future<Map<String, dynamic>> acceptMatchRequest(String swipeId) async {
@@ -139,13 +147,12 @@ class AuthRemoteDataSource {
     required String targetId,
     String action = 'like',
   }) async {
-    final res = await client.post('/match/swipe', data: {
-      'targetId': targetId,
-      'action':   action,
-    });
+    final res = await client.post(
+      '/match/swipe',
+      data: {'targetId': targetId, 'action': action},
+    );
     return _data(res);
   }
-
 
   dynamic _data(Response res) {
     final body = res.data;
@@ -154,10 +161,11 @@ class AuthRemoteDataSource {
     }
     throw DioException(
       requestOptions: res.requestOptions,
-      response:       res,
-      type:           DioExceptionType.badResponse,
-      message:        (body is Map ? body['message'] as String? : null) ?? 'Unexpected response',
+      response: res,
+      type: DioExceptionType.badResponse,
+      message:
+          (body is Map ? body['message'] as String? : null) ??
+          'Unexpected response',
     );
   }
-
 }

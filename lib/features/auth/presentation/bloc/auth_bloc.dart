@@ -68,7 +68,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           print("******* user present");
         }
       }
-      bool onboarded = await _storageService.getOnboarding();
+      // bool onboarded = await _storageService.getOnboarding();
+      bool onboarded = user.walkthroughSeen;
+
       emit(
         state.copyWith(
           status: onboarded ? AuthStatus.authenticated : AuthStatus.onboarding,
@@ -94,7 +96,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       _sStorageService.saveAccessToken(loginResponse.accessToken!);
       _sStorageService.saveRefreshToken(loginResponse.refreshToken!);
-      bool onboarded = await _storageService.getOnboarding();
+      // bool onboarded = await _storageService.getOnboarding();
+      bool onboarded = loginResponse.user!.walkthroughSeen;
       emit(
         state.copyWith(
           status: onboarded ? AuthStatus.authenticated : AuthStatus.onboarding,
@@ -133,7 +136,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthOnboardingCompleted event,
     Emitter<AuthState> emit,
   ) async {
-   // await _onboardingCompeted.markWalkthroughSeen();
+    await _onboardingCompeted.markWalkthroughSeen();
     await _storageService.setOnboarding();
     emit(state.copyWith(status: AuthStatus.authenticated));
   }

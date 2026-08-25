@@ -25,16 +25,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _showPass = false;
-  bool isOnBoarded = false;
 
   @override
   void initState() {
     super.initState();
-    getOnboarding();
-  }
-
-  getOnboarding() async {
-    isOnBoarded = await storageService.getOnboarding();
   }
 
   @override

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -17,17 +16,15 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
   SystemChrome.setSystemUIOverlayStyle(AppTheme.overlayStyle);
+
   /// STEP 1: INIT DI
   await setupDependencies();
-  runApp(  MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
-  const MyApp({
-    super.key,
-
-  });
   @override
   Widget build(BuildContext context) {
     final authBloc = getIt<AuthBloc>();
@@ -35,9 +32,7 @@ class MyApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         /// GLOBAL BLOCS ONLY
-        BlocProvider.value(
-          value: authBloc,
-        ),
+        BlocProvider.value(value: authBloc),
       ],
       child: MaterialApp.router(
         title: 'Seshlly',

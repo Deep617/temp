@@ -393,7 +393,7 @@ class InfluencerProfile {
     this.city,
     this.primaryActivity,
     this.influencerBio,
-    this.trustScore = 30.0,
+    this.trustScore = "30.0",
     this.level = 1,
     this.totalSessions = 0,
     this.instagramVerifiedAt,
@@ -408,7 +408,7 @@ class InfluencerProfile {
   final String  instagramHandle;
   final int     instagramFollowers;
   final String? influencerBio;
-  final double  trustScore;
+  final String  trustScore;
   final int     level;
   final int     totalSessions;
   final DateTime? instagramVerifiedAt;
@@ -437,7 +437,7 @@ class InfluencerProfile {
         instagramHandle:     j['instagramHandle']      as String,
         instagramFollowers:  j['instagramFollowers']   as int? ?? 0,
         influencerBio:       j['influencerBio']        as String?,
-        trustScore:          (j['trustScore'] as num?) ?.toDouble() ?? 30.0,
+        trustScore:          j['trustScore'] as String?  ?? '30.0',
         level:               j['level']                as int? ?? 1,
         totalSessions:       j['totalSessions']        as int? ?? 0,
         instagramVerifiedAt: j['instagramVerifiedAt'] != null

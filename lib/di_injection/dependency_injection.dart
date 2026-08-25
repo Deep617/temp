@@ -34,6 +34,8 @@ import '../features/auth/domain/usecases/login_usecase.dart';
 import '../features/auth/domain/usecases/logout_usecase.dart';
 import '../features/auth/domain/usecases/register_usecase.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
+import '../features/dashboard/chat/presentation/bloc/match_request_bloc.dart';
+import '../features/dashboard/chat/presentation/bloc/strike_bloc.dart';
 import '../features/dashboard/discover/data/datasource/discover_remote_datasource.dart';
 import '../features/dashboard/discover/data/repositories/discover_repository.dart';
 import '../features/dashboard/discover/data/repository_impl/discover_repository_impl.dart';
@@ -168,4 +170,13 @@ Future<void> setupDependencies() async {
   /*getIt.registerFactory<ChallengeBloc>(
         () => ChallengeBloc(challengeRepository: getIt()),
   );*/
+
+  getIt.registerFactory<MatchRequestBloc>(
+        () => MatchRequestBloc(api: getIt()),
+  );
+
+  getIt.registerFactory<StrikeBloc>(
+        () => StrikeBloc(api: getIt()),
+  );
 }
+

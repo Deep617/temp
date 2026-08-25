@@ -1,7 +1,6 @@
 class ApiEndpoints {
   //static const String apiBaseUrl = 'https://api.fitconnect.app/api/v1';
-  static const String apiBaseUrl =
-      'https://api.dryfresh.in/api/v1';
+  static const String apiBaseUrl = 'https://api.seshlly.com/api/v1';
   static const String socketUrl = 'https://api.fitconnect.app';
 
   //static const String baseUrl = 'https://dummyjson.com';

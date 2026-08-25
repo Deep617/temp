@@ -5,8 +5,18 @@
 //  Usually opened from chat list badge or notification
 // ─────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────
+//  pending_strikes_screen.dart
+//  List of unviewed Strike 2s
+//  Navigate to: context.push(AppRoutes.pendingStrikes)
+//  Usually opened from chat list badge or notification
+// ─────────────────────────────────────────────────────────
+
+import 'package:flutter/material.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../di_injection/dependency_injection.dart';
@@ -22,26 +32,23 @@ class PendingStrikesScreen extends StatefulWidget {
 }
 
 class _PendingStrikesScreenState extends State<PendingStrikesScreen> {
-  List<BuddyStrike> _pending  = [];
-  List<BuddyStrike> _viewed   = [];
-  bool              _loading  = true;
-  late StrikeRepository strikeRepository;
+  List<BuddyStrike> _pending = [];
+  List<BuddyStrike> _viewed = [];
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    strikeRepository = getIt<StrikeRepository>();
-
     _load();
   }
 
   Future<void> _load() async {
     try {
-      final strikes = await strikeRepository.getPendingStrikes(null);
+      final strikes = await getIt<StrikeRepository>().getPendingStrikes(null);
       if (!mounted) return;
       setState(() {
         _pending = strikes.where((s) => !s.isViewed).toList();
-        _viewed  = strikes.where((s) =>  s.isViewed).toList();
+        _viewed = strikes.where((s) => s.isViewed).toList();
         _loading = false;
       });
     } catch (_) {
@@ -53,9 +60,9 @@ class _PendingStrikesScreenState extends State<PendingStrikesScreen> {
     context.push(
       AppRoutes.strikeView,
       extra: {
-        'strike':    strike,
+        'strike': strike,
         'buddyName': strike.sender?['firstName'] as String? ?? 'Buddy',
-        'streak':    strike.streak,
+        'streak': strike.streak,
       },
     );
   }
@@ -68,26 +75,27 @@ class _PendingStrikesScreenState extends State<PendingStrikesScreen> {
         backgroundColor: const Color(0xFF07090F),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.chevron_left,
-              color: Colors.white54, size: 28),
+          icon: const Icon(Icons.chevron_left, color: Colors.white54, size: 28),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Strikes',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            )),
+        title: const Text(
+          'Strikes',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         centerTitle: true,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Divider(
-              height: 1, color: Colors.white.withOpacity(0.06)),
+          child: Divider(height: 1, color: Colors.white.withOpacity(0.06)),
         ),
       ),
       body: _loading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF0A84FF)))
+              child: CircularProgressIndicator(color: Color(0xFF0A84FF)),
+            )
           : RefreshIndicator(
               onRefresh: _load,
               color: const Color(0xFF0A84FF),
@@ -104,11 +112,15 @@ class _PendingStrikesScreenState extends State<PendingStrikesScreen> {
           children: [
             Icon(Icons.bolt_outlined, color: Colors.white12, size: 52),
             SizedBox(height: 12),
-            Text('No strikes yet',
-                style: TextStyle(color: Colors.white30, fontSize: 15)),
+            Text(
+              'No strikes yet',
+              style: TextStyle(color: Colors.white30, fontSize: 15),
+            ),
             SizedBox(height: 6),
-            Text('Go to a chat and tap ⚡ to send one',
-                style: TextStyle(color: Colors.white24, fontSize: 12)),
+            Text(
+              'Go to a chat and tap the kettlebell icon to send one',
+              style: TextStyle(color: Colors.white24, fontSize: 12),
+            ),
           ],
         ),
       );
@@ -117,26 +129,20 @@ class _PendingStrikesScreenState extends State<PendingStrikesScreen> {
     return ListView(
       children: [
         if (_pending.isNotEmpty) ...[
-          _SectionHeader(
-            label: 'PENDING',
-            count: _pending.length,
+          _SectionHeader(label: 'PENDING', count: _pending.length),
+          ..._pending.map(
+            (s) => _StrikeItem(
+              strike: s,
+              isPending: true,
+              onTap: () => _openStrike(s),
+            ),
           ),
-          ..._pending.map((s) => _StrikeItem(
-                strike:   s,
-                isPending: true,
-                onTap:    () => _openStrike(s),
-              )),
         ],
         if (_viewed.isNotEmpty) ...[
-          _SectionHeader(
-            label: 'VIEWED TODAY',
-            count: _viewed.length,
+          _SectionHeader(label: 'VIEWED TODAY', count: _viewed.length),
+          ..._viewed.map(
+            (s) => _StrikeItem(strike: s, isPending: false, onTap: () {}),
           ),
-          ..._viewed.map((s) => _StrikeItem(
-                strike:    s,
-                isPending: false,
-                onTap:     () {},
-              )),
         ],
         const SizedBox(height: 24),
       ],
@@ -147,8 +153,9 @@ class _PendingStrikesScreenState extends State<PendingStrikesScreen> {
 // ── Section header ────────────────────────────────────────
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.label, required this.count});
+
   final String label;
-  final int    count;
+  final int count;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -174,7 +181,7 @@ class _StrikeItem extends StatelessWidget {
   });
 
   final BuddyStrike strike;
-  final bool        isPending;
+  final bool isPending;
   final VoidCallback onTap;
 
   @override
@@ -197,7 +204,8 @@ class _StrikeItem extends StatelessWidget {
               // Blue dot for pending
               if (isPending)
                 Container(
-                  width: 7, height: 7,
+                  width: 7,
+                  height: 7,
                   margin: const EdgeInsets.only(right: 10),
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
@@ -216,19 +224,21 @@ class _StrikeItem extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        )),
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       isPending
                           ? 'Tap to view · disappears after'
                           : strike.reactEmoji != null
-                              ? 'You reacted ${strike.reactEmoji}'
-                              : 'Viewed',
+                          ? 'You reacted ${strike.reactEmoji}'
+                          : 'Viewed',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.4),
                         fontSize: 11,
@@ -258,11 +268,13 @@ class _StrikeItem extends StatelessWidget {
 
 class _Avatar extends StatelessWidget {
   const _Avatar({required this.initial});
+
   final String initial;
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 36, height: 36,
+    width: 36,
+    height: 36,
     decoration: const BoxDecoration(
       shape: BoxShape.circle,
       gradient: LinearGradient(
@@ -272,12 +284,14 @@ class _Avatar extends StatelessWidget {
       ),
     ),
     child: Center(
-      child: Text(initial,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-          )),
+      child: Text(
+        initial,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     ),
   );
 }

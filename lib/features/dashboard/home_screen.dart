@@ -11,6 +11,8 @@ import '../../di_injection/dependency_injection.dart';
 import '../notification/presentation/bloc/notification_bloc.dart';
 import 'challanges/presentation/bloc/challenge_event.dart';
 import 'chat/presentation/bloc/chat_bloc.dart';
+import 'chat/presentation/bloc/match_request_bloc.dart';
+import 'chat/presentation/screen/chats_list_screen.dart';
 import 'discover/presentation/bloc/discover_bloc.dart';
 import 'discover/presentation/bloc/discover_event.dart';
 import 'profile/presentation/bloc/profile_bloc.dart';
@@ -30,9 +32,18 @@ class HomeScreen extends StatelessWidget {
           create: (ctx) =>
               getIt<DiscoverBloc>()..add(const DiscoverProfilesLoaded()),
         ),
-        BlocProvider(
-          create: (ctx) => getIt<ChatBloc>()..add(const ChatListLoaded()),
+        MultiBlocProvider(
+          providers: [
+            BlocProvider<ChatBloc>(
+              create: (_) => getIt<ChatBloc>()..add(const ChatListLoaded()),
+            ),
+            BlocProvider<MatchRequestBloc>(
+              create: (_) => getIt<MatchRequestBloc>(),
+            ),
+          ],
+          child: const ChatsListScreen(),
         ),
+
         BlocProvider(
           create: (ctx) => getIt<SessionBloc>()..add(const SessionsLoaded()),
         ),

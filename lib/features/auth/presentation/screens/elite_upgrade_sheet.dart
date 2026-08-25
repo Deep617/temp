@@ -7,6 +7,7 @@
 // ─────────────────────────────────────────────────────────
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:seshlly/core/theme/app_colors.dart';
 import '../../../../routes/app_router.dart';
 import '../../data/response_ml/register_response.dart';
 
@@ -17,10 +18,23 @@ class EliteUpgradeSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration:   BoxDecoration(
         color:        Color(0xFF0e0f14),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        border:       Border(top: BorderSide(color: Color(0xFF1C2438))),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(20),
+          ),
+          border: Border(
+            top: BorderSide(
+              color: AppColors.border2,
+              width: 1,
+            ), left: BorderSide(
+            color: AppColors.border2,
+            width: 1,
+          ), right: BorderSide(
+            color: AppColors.border2,
+            width: 1,
+          ),
+          ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -174,11 +188,13 @@ class EliteUpgradeSheet extends StatelessWidget {
                       children: [
                         Text(e.$1, style: const TextStyle(fontSize: 16)),
                         const SizedBox(width: 10),
-                        Text(e.$2,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
-                              fontSize: 13,
-                            )),
+                        Flexible(
+                          child: Text(e.$2,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 13,
+                              )),
+                        ),
                       ],
                     ),
                   )),

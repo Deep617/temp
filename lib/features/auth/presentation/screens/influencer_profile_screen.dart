@@ -40,7 +40,6 @@ class _InfluencerProfileScreenState
   void initState() {
     super.initState();
     _authRepository = getIt<AuthRepository>();
-
     _load();
   }
 
@@ -304,6 +303,7 @@ Future<void> _load() async {
                   ),
                 ]),
               ),
+              const SizedBox(height: 4),
 
               // ── Stats ─────────────────────────────────────
               Container(
@@ -320,7 +320,7 @@ Future<void> _load() async {
                     _Divider(),
                     _Stat('${p.totalSessions}','Sessions'),
                     _Divider(),
-                    _Stat('${p.trustScore.toStringAsFixed(1)}★','Trust'),
+                    _Stat('${p.trustScore}★','Trust'),
                     _Divider(),
                     _Stat('Lv ${p.level}',     'Level'),
                   ],
