@@ -81,23 +81,18 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return BlocListener<DiscoverBloc, DiscoverState>(
       // Show match dialog when a match is returned
       listenWhen: (prev, curr) =>
-          curr.matchedUserId != null &&
+      curr.matchedUserId != null &&
           curr.matchedUserId != prev.matchedUserId,
-      listener: (context, state) {},
+      listener: (context, state) {        // ← yahan handle karo
+        final profile = state.profiles.firstWhere(
+              (p) => p.id == state.matchedUserId,
+          orElse: () => state.profiles.first,
+        );
+        _showMatchDialog(profile);         // ← sirf ek baar
+      },
       child: BlocBuilder<DiscoverBloc, DiscoverState>(
         builder: (context, state) {
           final user = context.watch<AuthBloc>().state.user;
-          if (state.matchedUserId != null) {
-            final profile = state.profiles.firstWhere(
-              (p) => p.id == state.matchedUserId,
-              orElse: () => state.profiles.first,
-            );
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                _showMatchDialog(profile);
-              }
-            });
-          }
           return Scaffold(
             backgroundColor: AppColors.bg,
             body: SafeArea(
@@ -742,7 +737,15 @@ class MatchDialog extends StatelessWidget {
             label: '💬 Send First Message',
             onPressed: () {
               Navigator.pop(context);
-              AppRoutes.chat.replaceAll(':chatId', profile.id);
+            context.push(                                    // ← FIX
+              AppRoutes.chat.replaceAll(':chatId', profile.id),
+              extra: {
+                'buddyName':   profile.firstName,
+                'buddyAvatar': profile.avatarUrl,
+                'buddyId':     profile.id,
+                'matchId':     profile.id,
+              },
+            );
             },
             height: 48,
           ).animate(delay: 500.ms).fadeIn(),

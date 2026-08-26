@@ -455,6 +455,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
 
+
                 // Input bar
                 Container(
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
@@ -464,181 +465,118 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   child: SafeArea(
                     top: false,
-                    child: Row(
-                      children: [
-                        // 🏋️ Sesh Flash button
-                        GestureDetector(
-                          onTap: _openCamera,
-                          child: Container(
-                            width: 38,
-                            height: 38,
-                            margin: const EdgeInsets.only(right: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0A84FF).withOpacity(0.1),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: const Color(0xFF0A84FF).withOpacity(0.3),
-                              ),
-                            ),
-                            child: Center(
-                              child: Image.asset(
-                                'assets/images/sesh_flash.png',
-                                width: 22,
-                                height: 22,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // 📷 Gallery button
-                        GestureDetector(
-                          onTap: _pickFromGallery,
-                          child: Container(
-                            width: 38,
-                            height: 38,
-                            margin: const EdgeInsets.only(right: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.05),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.1),
-                              ),
-                            ),
-                            child: const Center(
-                              child: Text('📷', style: TextStyle(fontSize: 15)),
-                            ),
-                          ),
-                        ),
-
-                        // Session shortcut
-                        GestureDetector(
-                          onTap: () => context.push(
-                            AppRoutes.scheduleSession,
-                            extra: {
-                              'buddyId': widget.buddyId,
-                              'buddyName': widget.buddyName,
-                            },
-                          ),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.primary.withOpacity(0.3),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.fitness_center,
-                                  color: AppColors.primary,
-                                  size: 14,
+                    child: BlocBuilder<ChatBloc, ChatState>(
+                      builder: (context, chatState) {
+                        final hasText = _msgCtrl.text.trim().isNotEmpty;
+                        return Row(
+                          children: [
+                            // LEFT — 📷 Camera (feed/gallery ke liye)
+                            GestureDetector(
+                              onTap: _pickFromGallery,
+                              child: Container(
+                                width: 38, height: 38,
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.06),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                      color: Colors.white.withOpacity(0.12)),
                                 ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Session',
-                                  style: AppTextStyles.bodySM(
-                                    color: AppColors.primary,
-                                  ).copyWith(fontWeight: FontWeight.w700),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        // Text field
-                        Expanded(
-                          child: BlocBuilder<ChatBloc, ChatState>(
-                            builder: (context, state) => TextField(
-                              controller: _msgCtrl,
-                              style: AppTextStyles.body(
-                                color: AppColors.textPrimary,
-                              ),
-                              maxLines: 4,
-                              minLines: 1,
-                              decoration: InputDecoration(
-                                hintText: 'Message ${widget.buddyName}...',
-                                hintStyle: AppTextStyles.body(
+                                child: const Icon(
+                                  Icons.camera_alt_outlined,
                                   color: AppColors.textMuted,
-                                ),
-                                filled: true,
-                                fillColor: AppColors.surface2,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                  borderSide: BorderSide.none,
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
+                                  size: 18,
                                 ),
                               ),
-                              onChanged: (v) {
-                                if (v.isEmpty) return;
-                                _lastTyped = DateTime.now();
-                                _socket?.emit('typing:start', {
-                                  'chatId': widget.chatId,
-                                });
-                                // Auto-stop after 2 s of no keystrokes
-                                Future.delayed(const Duration(seconds: 2), () {
-                                  if (DateTime.now()
-                                          .difference(_lastTyped)
-                                          .inSeconds >=
-                                      2) {
-                                    _socket?.emit('typing:stop', {
-                                      'chatId': widget.chatId,
-                                    });
-                                  }
-                                });
-                              },
                             ),
-                          ),
-                        ),
 
-                        const SizedBox(width: 8),
-
-                        // Send button
-                        BlocBuilder<ChatBloc, ChatState>(
-                          builder: (context, state) => GestureDetector(
-                            onTap: state.isSending ? null : _send,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: state.isSending
-                                    ? AppColors.surface3
-                                    : AppColors.primary,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primaryGlow,
-                                    blurRadius: 12,
+                            // MIDDLE — Text field with emoji suffix
+                            Expanded(
+                              child: TextField(
+                                controller: _msgCtrl,
+                                style: AppTextStyles.body(color: AppColors.textPrimary),
+                                maxLines: 4,
+                                minLines: 1,
+                                decoration: InputDecoration(
+                                  hintText: 'Message ${widget.buddyName}...',
+                                  hintStyle: AppTextStyles.body(color: AppColors.textMuted),
+                                  filled: true,
+                                  fillColor: AppColors.surface2,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: BorderSide.none,
                                   ),
-                                ],
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 10),
+                                  suffixIcon: IconButton(
+                                    icon: const Icon(Icons.emoji_emotions_outlined,
+                                        color: AppColors.textMuted, size: 20),
+                                    onPressed: () {},
+                                  ),
+                                ),
+                                onChanged: (v) {
+                                  setState(() {}); // hasText rebuild ke liye
+                                  if (v.isEmpty) return;
+                                  _lastTyped = DateTime.now();
+                                  _socket?.emit('typing:start', {'chatId': widget.chatId});
+                                  Future.delayed(const Duration(seconds: 2), () {
+                                    if (DateTime.now()
+                                        .difference(_lastTyped).inSeconds >= 2) {
+                                      _socket?.emit('typing:stop', {'chatId': widget.chatId});
+                                    }
+                                  });
+                                },
                               ),
-                              child: state.isSending
-                                  ? const Padding(
-                                      padding: EdgeInsets.all(12),
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.black,
-                                      ),
-                                    )
-                                  : const Icon(
-                                      Icons.send_rounded,
-                                      color: Colors.black,
-                                      size: 20,
-                                    ),
                             ),
-                          ),
-                        ),
-                      ],
+
+                            const SizedBox(width: 8),
+
+                            // RIGHT — Sesh Flash (no text) OR Send (has text)
+                            hasText
+                                ? GestureDetector(
+                              onTap: chatState.isSending ? null : _send,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: 44, height: 44,
+                                decoration: BoxDecoration(
+                                  color: chatState.isSending
+                                      ? AppColors.surface3
+                                      : AppColors.primary,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [BoxShadow(
+                                      color: AppColors.primaryGlow, blurRadius: 12)],
+                                ),
+                                child: chatState.isSending
+                                    ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.black),
+                                )
+                                    : const Icon(Icons.send_rounded,
+                                    color: Colors.black, size: 20),
+                              ),
+                            )
+                                : GestureDetector(
+                              onTap: _openCamera,
+                              child: Container(
+                                width: 44, height: 44,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                      color: AppColors.primary.withOpacity(0.3)),
+                                ),
+                                child: Center(
+                                  child: Image.asset(
+                                    'assets/images/sesh_flash.png',
+                                    width: 22, height: 22,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -834,23 +772,29 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
   }
 
   Widget _buildCard(BuildContext context) {
-    final data = widget.msg.metadata ?? {};
-    final activity = data['activity'] as String? ?? 'Workout';
+    final data        = widget.msg.metadata ?? {};
+    final activity    = data['activity']    as String? ?? 'Workout';
     final scheduledAt = data['scheduledAt'] as String?;
-    final endTimeStr = data['endTime'] as String?;
-    final duration = data['durationMins'] as int? ?? 60;
-    final gymName = data['gymName'] as String?;
+    final endTimeStr  = data['endTime']     as String?;
+    final duration    = data['durationMins'] as int?   ?? 60;
+    final gymName     = data['gymName']     as String?;
+
+    // ── isScheduler check — sirf receiver ko buttons dikhenge ──
+    final myId        = context.read<AuthBloc>().state.user?.id ?? '';
+    final scheduledBy = data['scheduledBy'] as String?    // backend field
+        ?? data['userId']      as String?;   // fallback field
+    final isScheduler = scheduledBy != null && scheduledBy == myId;
 
     DateTime? dt;
     DateTime? endDt;
-    if (scheduledAt != null) dt = DateTime.tryParse(scheduledAt);
-    if (endTimeStr != null) endDt = DateTime.tryParse(endTimeStr);
+    if (scheduledAt != null) dt    = DateTime.tryParse(scheduledAt);
+    if (endTimeStr  != null) endDt = DateTime.tryParse(endTimeStr);
 
     final dateStr = dt != null
         ? '${_weekday(dt.weekday)}, ${dt.day} ${_month(dt.month)} · ${_fmt12(dt)}'
         : '';
     final endTimeLabel = endDt != null ? 'ends ${_fmt12(endDt)}' : '';
-    final durationStr = duration == 45
+    final durationStr  = duration == 45
         ? '45 mins'
         : duration == 60
         ? '1 hour'
@@ -860,8 +804,8 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
 
     // State colors
     final isConfirmed = _respondedAction == 'confirm';
-    final isDeclined = _respondedAction == 'decline';
-    final isPending = _respondedAction == null;
+    final isDeclined  = _respondedAction == 'decline';
+    final isPending   = _respondedAction == null;
 
     final headerBg = isConfirmed
         ? AppColors.teal.withOpacity(0.1)
@@ -903,20 +847,20 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
       opacity: isDeclined ? 0.85 : 1.0,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface1,
+          color:        AppColors.surface1,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: cardBorder, width: 1.5),
+          border:       Border.all(color: cardBorder, width: 1.5),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize:       MainAxisSize.min,
           children: [
             // ── Header ───────────────────────────────────
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: headerBg,
+                color:  headerBg,
                 border: Border(bottom: BorderSide(color: headerBorder)),
               ),
               child: Row(
@@ -938,13 +882,13 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+                mainAxisSize:       MainAxisSize.min,
                 children: [
-                  // Activity — capitalized, strikethrough if declined
+                  // Activity
                   Text(
                     _capitalize(activity),
                     style: AppTextStyles.subtitle().copyWith(
-                      fontSize: 15,
+                      fontSize:   15,
                       decoration: isDeclined
                           ? TextDecoration.lineThrough
                           : TextDecoration.none,
@@ -958,16 +902,16 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
                   // Date row
                   if (dateStr.isNotEmpty)
                     _InfoRow(
-                      icon: Icons.calendar_today,
-                      text: dateStr,
+                      icon:  Icons.calendar_today,
+                      text:  dateStr,
                       faded: isDeclined,
                     ),
                   const SizedBox(height: 3),
 
                   // Duration + end time
                   _InfoRow(
-                    icon: Icons.timer_outlined,
-                    text: endTimeLabel.isNotEmpty
+                    icon:  Icons.timer_outlined,
+                    text:  endTimeLabel.isNotEmpty
                         ? '$durationStr · $endTimeLabel'
                         : durationStr,
                     faded: isDeclined,
@@ -977,8 +921,8 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
                   if (gymName != null) ...[
                     const SizedBox(height: 3),
                     _InfoRow(
-                      icon: Icons.location_on,
-                      text: gymName,
+                      icon:  Icons.location_on,
+                      text:  gymName,
                       faded: isDeclined,
                     ),
                   ],
@@ -987,103 +931,129 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
                   Container(height: 1, color: AppColors.border),
                   const SizedBox(height: 10),
 
-                  // ── Pending: show buttons ───────────────
-                  if (isPending)
-                    _responding
-                        ? const Center(
-                            child: SizedBox(
-                              width: 22,
-                              height: 22,
+                  // ── Pending state ───────────────────────
+                  if (isPending) ...[
+                    // SCHEDULER — waiting for buddy to confirm
+                    if (isScheduler)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface3,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 12, height: 12,
                               child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.primary,
+                                strokeWidth: 1.5,
+                                color: AppColors.textMuted,
                               ),
                             ),
-                          )
-                        : Row(
-                            children: [
-                              Expanded(
-                                child: Material(
-                                  color: AppColors.error.withOpacity(0.08),
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: InkWell(
-                                    onTap: _responding
-                                        ? null
-                                        : () => _respond('decline'),
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 9,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: AppColors.error.withOpacity(
-                                            0.3,
-                                          ),
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        'Decline ✕',
-                                        textAlign: TextAlign.center,
-                                        style: AppTextStyles.bodySM(
-                                          color: AppColors.error,
-                                        ).copyWith(fontWeight: FontWeight.w700),
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Waiting for ${widget.msg.senderName.isNotEmpty ? "confirmation" : "confirmation"}...',
+                              style: AppTextStyles.bodySM(
+                                color: AppColors.textMuted,
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Material(
-                                  color: AppColors.primary.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: InkWell(
-                                    onTap: _responding
-                                        ? null
-                                        : () => _respond('confirm'),
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 9,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: AppColors.primary.withOpacity(
-                                            0.4,
-                                          ),
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        'Confirm ✓',
-                                        textAlign: TextAlign.center,
-                                        style: AppTextStyles.bodySM(
-                                          color: AppColors.primary,
-                                        ).copyWith(fontWeight: FontWeight.w700),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
+                      )
 
-                  // ── Confirmed: status badge ─────────────
+                    // RECEIVER — show confirm/decline buttons
+                    else if (_responding)
+                      const Center(
+                        child: SizedBox(
+                          width: 22, height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      )
+                    else
+                      Row(
+                        children: [
+                          // Decline
+                          Expanded(
+                            child: Material(
+                              color: AppColors.error.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              child: InkWell(
+                                onTap: _responding
+                                    ? null
+                                    : () => _respond('decline'),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 9),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                        color: AppColors.error.withOpacity(0.3)),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'Decline ✕',
+                                    textAlign: TextAlign.center,
+                                    style: AppTextStyles.bodySM(
+                                      color: AppColors.error,
+                                    ).copyWith(fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Confirm
+                          Expanded(
+                            child: Material(
+                              color: AppColors.primary.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(8),
+                              child: InkWell(
+                                onTap: _responding
+                                    ? null
+                                    : () => _respond('confirm'),
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 9),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                        color:
+                                        AppColors.primary.withOpacity(0.4)),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'Confirm ✓',
+                                    textAlign: TextAlign.center,
+                                    style: AppTextStyles.bodySM(
+                                      color: AppColors.primary,
+                                    ).copyWith(fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+
+                  // ── Confirmed badge ─────────────────────
                   if (isConfirmed)
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                        vertical: 10,
-                        horizontal: 12,
-                      ),
+                          vertical: 10, horizontal: 12),
                       decoration: BoxDecoration(
                         color: AppColors.teal.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: AppColors.teal.withOpacity(0.2),
-                        ),
+                        border:
+                        Border.all(color: AppColors.teal.withOpacity(0.2)),
                       ),
                       child: Row(
                         children: [
@@ -1096,15 +1066,13 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
                                 Text(
                                   'Session Confirmed!',
                                   style: AppTextStyles.subtitle(
-                                    color: AppColors.teal,
-                                  ),
+                                      color: AppColors.teal),
                                 ),
                                 if (dateStr.isNotEmpty)
                                   Text(
                                     'See you on ${dateStr.split('·').first.trim()}',
                                     style: AppTextStyles.bodySM(
-                                      color: AppColors.textMuted,
-                                    ),
+                                        color: AppColors.textMuted),
                                   ),
                               ],
                             ),
@@ -1113,20 +1081,17 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
                       ),
                     ),
 
-                  // ── Declined: status badge ──────────────
+                  // ── Declined badge ──────────────────────
                   if (isDeclined)
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                        vertical: 10,
-                        horizontal: 12,
-                      ),
+                          vertical: 10, horizontal: 12),
                       decoration: BoxDecoration(
                         color: AppColors.error.withOpacity(0.06),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: AppColors.error.withOpacity(0.15),
-                        ),
+                            color: AppColors.error.withOpacity(0.15)),
                       ),
                       child: Row(
                         children: [
@@ -1139,14 +1104,12 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
                                 Text(
                                   'Declined',
                                   style: AppTextStyles.subtitle(
-                                    color: AppColors.error,
-                                  ),
+                                      color: AppColors.error),
                                 ),
                                 Text(
                                   'This session was cancelled',
                                   style: AppTextStyles.bodySM(
-                                    color: AppColors.textMuted,
-                                  ),
+                                      color: AppColors.textMuted),
                                 ),
                               ],
                             ),
@@ -1162,6 +1125,7 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
       ),
     );
   }
+
 
   String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1).toLowerCase();
