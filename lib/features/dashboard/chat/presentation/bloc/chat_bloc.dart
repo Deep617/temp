@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../../../core/errors/app_error.dart';
 import '../../data/repositories/chat_repository.dart';
+import '../../data/response_ml/flash_streakmodel.dart';
 import '../../data/response_ml/message.dart';
 
 part 'chat_event.dart';
@@ -24,10 +25,11 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   Future<void> _onListLoaded(
     ChatListLoaded event,
     Emitter<ChatState> emit,
-  ) async {
+  ) async {  final streaks = await _repo.getMyFlashStreaks();
     emit(state.copyWith(status: ChatStatus.loading, clearError: true));
     try {
       final chats = await _repo.getChats();
+      emit(state.copyWith(flashStreaks: streaks));
       emit(state.copyWith(status: ChatStatus.success, chats: chats));
     } on AppError catch (e) {
       emit(state.copyWith(status: ChatStatus.failure, error: e));

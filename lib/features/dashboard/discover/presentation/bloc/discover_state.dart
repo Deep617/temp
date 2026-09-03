@@ -15,6 +15,9 @@ class DiscoverState extends Equatable {
     this.selectedLevel,
     this.error,
     this.matchedUserId,
+    this.lat,
+    this.lng,
+    this.radiusKm = 5.0,
   });
 
   final DiscoverStatus status;
@@ -24,6 +27,10 @@ class DiscoverState extends Equatable {
   final String? selectedActivity;
   final String? selectedLevel;
   final AppError? error;
+
+  final double?  lat;
+  final double?  lng;
+  final double   radiusKm;
 
   /// Non-null when the most recent right-swipe resulted in a match.
   final String? matchedUserId;
@@ -48,6 +55,9 @@ class DiscoverState extends Equatable {
     bool clearError = false,
     bool clearMatch = false,
     String? matchedUserId,
+    double? lat,
+    double? lng,
+    double? radiusKm,
   }) => DiscoverState(
     status: status ?? this.status,
     profiles: profiles ?? this.profiles,
@@ -57,6 +67,9 @@ class DiscoverState extends Equatable {
     selectedLevel: selectedLevel ?? this.selectedLevel,
     error: clearError ? null : error ?? this.error,
     matchedUserId: clearMatch ? null : matchedUserId ?? this.matchedUserId,
+    lat:      lat      ?? this.lat,
+    lng:      lng      ?? this.lng,
+    radiusKm: radiusKm ?? this.radiusKm,
   );
 
   @override

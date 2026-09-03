@@ -390,4 +390,8 @@ class AppRoutes {
   // Influencer
   static const influencerApply = '/influencer/apply';
   static const influencerProfile = '/influencer/:id';
+
+ static const verifyPhoto = '/verify/photo';
+ static const verifyId    = '/verify/id';
+ 
 }

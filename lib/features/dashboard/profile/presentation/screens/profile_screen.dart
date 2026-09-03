@@ -17,6 +17,7 @@ import '../../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../auth/presentation/bloc/auth_event.dart';
 import '../../../challanges/data/repositories/challenge_repository.dart';
 import '../../../challanges/data/response_ml/challange_model.dart';
+import '../../../discover/presentation/screens/discover_screen.dart';
 import '../../../session/data/repositories/session_repository.dart';
 import '../../../session/data/response_ml/workout_session.dart';
 
@@ -158,11 +159,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                   ),
                                   padding: const EdgeInsets.all(2.5),
-                                  child: AppAvatar(
-                                    name: user.fullName,
-                                    imageUrl: user.avatarUrl,
-                                    size: 67,
-                                    verified: user.idVerified,
+                                  child: PhotoCarousel(
+                                    photos:    user.photos ?? [],
+                                    avatarUrl: user.avatarUrl,
+                                    name:      user.firstName,
+                                    height:    300,
                                   ),
                                 ),
                                 Positioned(
@@ -237,6 +238,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ],
                                     ],
                                   ),
+                                  if (!user.idVerified) ...[
+                                    const SizedBox(width: 5),
+                                    _VerificationSection(user: user),
+                                  ],
                                   const SizedBox(height: 5),
                                   // Location — single row
                                   Row(
@@ -2242,6 +2247,100 @@ class _SubscriptionCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// Sirf yeh widget add karo:
+class _VerificationSection extends StatelessWidget {
+  const _VerificationSection({required this.user});
+
+  final dynamic user; // UserModel
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Verification', style: AppTextStyles.subtitle()),
+          const SizedBox(height: 12),
+
+          // Photo verified
+          _VerifRow(
+            icon: '📷',
+            label: 'Photo Verified',
+            done: user.photoVerified ?? false,
+            onTap: () => context.push(AppRoutes.verifyPhoto),
+          ),
+          const SizedBox(height: 8),
+
+          // ID verified
+          _VerifRow(
+            icon: '✅',
+            label: 'ID Verified',
+            done: user.idVerified ?? false,
+            onTap: () => context.push(AppRoutes.verifyId),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VerifRow extends StatelessWidget {
+  const _VerifRow({
+    required this.icon,
+    required this.label,
+    required this.done,
+    required this.onTap,
+  });
+
+  final String icon;
+  final String label;
+  final bool done;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: done ? null : onTap,
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 16)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: AppTextStyles.body(
+                color: done ? AppColors.teal : AppColors.textSecondary,
+              ),
+            ),
+          ),
+          if (done)
+            Text('Verified', style: AppTextStyles.bodySM(color: AppColors.teal))
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primaryDim,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primaryBorder),
+              ),
+              child: Text(
+                'Verify',
+                style: AppTextStyles.bodySM(color: AppColors.primary),
+              ),
+            ),
+        ],
       ),
     );
   }

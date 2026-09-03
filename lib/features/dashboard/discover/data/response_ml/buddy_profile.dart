@@ -21,8 +21,11 @@ class BuddyProfile {
   final int      sessionCount;
   final double   compatibilityScore;
   final double?  distanceKm;
+  final int?     age;
   final bool     isOnline;
   final String   subscriptionPlan;
+  // ── Fields mein add karo (distanceKm ke baad) ──
+  final List<String> photos;   // max 5 photos
 
   const BuddyProfile({
     required this.id,
@@ -45,12 +48,24 @@ class BuddyProfile {
     this.sessionCount = 0,
     this.compatibilityScore = 0,
     this.distanceKm,
+    this.age,
     this.isOnline = false,
     this.subscriptionPlan = 'free',
+    // ── Constructor mein add karo ──
+    this.photos = const [],
   });
 
   String get fullName => '$firstName $lastName';
   bool get isPro => subscriptionPlan != 'free';
+
+  // ── Getters add karo (isPro ke baad) ──
+  String get displayName => age != null
+      ? '$firstName, $age'
+      : firstName;
+
+  /// First photo ya avatarUrl
+  String? get primaryPhoto =>
+      photos.isNotEmpty ? photos.first : avatarUrl;// ← ADD
 
   factory BuddyProfile.fromJson(Map<String, dynamic> json) => BuddyProfile(
     id:                 json['id']            as String,
@@ -73,7 +88,13 @@ class BuddyProfile {
     sessionCount:       json['sessionCount']  as int?    ?? 0,
     compatibilityScore: (json['compatibilityScore'] as num?)?.toDouble() ?? 0,
     distanceKm:         (json['distanceKm']   as num?)?.toDouble(),
+    age: json['age'] as int?,        // ← ADD
     isOnline:           json['isOnline']      as bool?   ?? false,
     subscriptionPlan:   json['subscriptionPlan'] as String? ?? 'free',
+    // ── fromJson mein add karo ──
+    photos: (json['photos'] as List<dynamic>?)
+        ?.map((e) => e.toString())
+        .toList() ?? [],
+
   );
 }

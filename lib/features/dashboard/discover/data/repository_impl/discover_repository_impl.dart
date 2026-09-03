@@ -22,9 +22,13 @@ class DiscoverRepositoryImpl extends BaseRepository
     String? activity,
     String? level,
     int page = 1,
+    double? lat,
+    double? lng,
+    double? maxDistance,
   }) {
     return remote
-        .getDiscoverProfiles(activity: activity, level: level, page: page)
+        .getDiscoverProfiles(activity: activity, level: level, page: page,
+        lat: lat,lng: lng,maxDistance: maxDistance)
         .catchError((e) {
           throw AppError.fromException(e);
         });

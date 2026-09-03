@@ -1,10 +1,12 @@
 import 'dart:io';
 
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:seshlly/core/api/api_endpoints.dart';
 import 'package:seshlly/core/services/secure_storage_service.dart';
 import 'package:seshlly/di_injection/dependency_injection.dart';
@@ -55,6 +57,8 @@ class _ChatScreenState extends State<ChatScreen> {
   // Debounce timer — emits typing:stop 2 s after the user pauses
   DateTime _lastTyped = DateTime(0);
 
+  bool _showEmoji = false;
+
   @override
   void initState() {
     super.initState();
@@ -91,10 +95,30 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // Open camera → dispatch to StrikeBloc + animate PageView
-  void _openCamera() {
+// AFTER — permission check add kiya:
+  Future<void> _openCamera() async {
+    // Permission check
+    final status = await Permission.camera.request();
+    if (!mounted) return;
+
+    if (status.isDenied || status.isPermanentlyDenied) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Camera permission required for Sesh Flash'),
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: () => openAppSettings(),
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.surface3,
+        ),
+      );
+      return;
+    }
+
+    // Permission granted → open camera
     context.read<StrikeBloc>().add(const StrikeCameraOpened());
-    _pageCtrl.animateToPage(
-      1,
+    _pageCtrl.animateToPage(1,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
@@ -286,301 +310,338 @@ class _ChatScreenState extends State<ChatScreen> {
         onPageChanged: (i) => setState(() => _pageIndex = i),
         children: [
           // ── Page 0: Chat ──────────────────────────────
-          Scaffold(
-            backgroundColor: AppColors.bg,
-            appBar: AppBar(
-              backgroundColor: AppColors.surface1,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => context.pop(),
-              ),
-              titleSpacing: 0,
-              actions: [
-                // 🏋️ Sesh Flash button in app bar
-                GestureDetector(
-                  onTap: _openCamera,
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 14),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0A84FF).withOpacity(0.12),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFF0A84FF).withOpacity(0.3),
+          PopScope(
+            canPop: !_showEmoji,
+            onPopInvoked: (didPop) {
+              if (!didPop && _showEmoji) {
+                setState(() => _showEmoji = false);
+              }
+            },
+            child: Scaffold(
+              backgroundColor: AppColors.bg,
+              appBar: AppBar(
+                backgroundColor: AppColors.surface1,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.pop(),
+                ),
+                titleSpacing: 0,
+                actions: [
+                  // 🏋️ Sesh Flash button in app bar
+                  GestureDetector(
+                    onTap: _openCamera,
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 14),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0A84FF).withOpacity(0.12),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF0A84FF).withOpacity(0.3),
+                        ),
                       ),
-                    ),
-                    child: Image.asset(
-                      'assets/images/sesh_flash.png',
-                      width: 22,
-                      height: 22,
+                      child: Image.asset(
+                        'assets/images/sesh_flash.png',
+                        width: 22,
+                        height: 22,
+                      ),
                     ),
                   ),
-                ),
-              ],
-              title: GestureDetector(
-                onTap: () => context.push(
-                  AppRoutes.buddyProfile.replaceAll(':userId', widget.chatId),
-                ),
-                child: Row(
-                  children: [
-                    AppAvatar(
-                      name: widget.buddyName,
-                      imageUrl: widget.buddyAvatar,
-                      size: 36,
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(widget.buddyName, style: AppTextStyles.subtitle()),
-                        BlocBuilder<ChatBloc, ChatState>(
-                          builder: (_, state) => Text(
-                            _isTyping ? 'typing...' : 'tap to view profile',
-                            style: AppTextStyles.caption(
-                              color: _isTyping
-                                  ? AppColors.primary
-                                  : AppColors.textMuted,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            body: Column(
-              children: [
-                // Streak banner
-                BlocBuilder<StrikeBloc, StrikeState>(
-                  buildWhen: (p, c) => p.streak != c.streak,
-                  builder: (_, st) {
-                    if (st.streak <= 0) return const SizedBox.shrink();
-                    return GestureDetector(
-                      onTap: _openCamera,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 7,
-                          horizontal: 16,
-                        ),
-                        color: const Color(0xFFF59E0B).withOpacity(0.08),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text('🔥', style: TextStyle(fontSize: 14)),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${st.streak} day streak · Send a Strike to keep it!',
-                              style: const TextStyle(
-                                color: Color(0xFFF59E0B),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                ],
+                title: GestureDetector(
+                  onTap: () => context.push(
+                    AppRoutes.buddyProfile.replaceAll(':userId', widget.chatId),
+                  ),
+                  child: Row(
+                    children: [
+                      AppAvatar(
+                        name: widget.buddyName,
+                        imageUrl: widget.buddyAvatar,
+                        size: 36,
+                      ),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(widget.buddyName, style: AppTextStyles.subtitle()),
+                          BlocBuilder<ChatBloc, ChatState>(
+                            builder: (_, state) => Text(
+                              _isTyping ? 'typing...' : 'tap to view profile',
+                              style: AppTextStyles.caption(
+                                color: _isTyping
+                                    ? AppColors.primary
+                                    : AppColors.textMuted,
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            Image.asset(
-                              'assets/images/sesh_flash.png',
-                              width: 18,
-                              height: 18,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-                // Message list
-                Expanded(
-                  child: BlocBuilder<ChatBloc, ChatState>(
-                    builder: (context, state) {
-                      if (state.isLoading && state.messages.isEmpty) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primary,
                           ),
-                        );
-                      }
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
-                      final messages = state.messages;
-
-                      // Scroll to bottom after fresh load
-                      if (messages.isNotEmpty) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (_scroll.hasClients &&
-                              _scroll.position.maxScrollExtent > 0 &&
-                              _scroll.offset <
-                                  _scroll.position.maxScrollExtent - 200) {
-                            _scroll.jumpTo(_scroll.position.maxScrollExtent);
-                          }
-                        });
-                      }
-
-                      return ListView.builder(
-                        controller: _scroll,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+              body: Column(
+                children: [
+                  // Streak banner
+                  BlocBuilder<StrikeBloc, StrikeState>(
+                    buildWhen: (p, c) => p.streak != c.streak,
+                    builder: (_, st) {
+                      if (st.streak <= 0) return const SizedBox.shrink();
+                      return GestureDetector(
+                        onTap: _openCamera,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 7,
+                            horizontal: 16,
+                          ),
+                          color: const Color(0xFFF59E0B).withOpacity(0.08),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text('🔥', style: TextStyle(fontSize: 14)),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${st.streak} day streak · Send a Strike to keep it!',
+                                style: const TextStyle(
+                                  color: Color(0xFFF59E0B),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Image.asset(
+                                'assets/images/sesh_flash.png',
+                                width: 18,
+                                height: 18,
+                              ),
+                            ],
+                          ),
                         ),
-                        itemCount: messages.length + (_isTyping ? 1 : 0),
-                        // Key each item by message ID so Flutter only rebuilds changed items
-                        // This stops the full list rebuild (blink) when session invite responds
-                        itemBuilder: (_, i) {
-                          if (_isTyping && i == messages.length)
-                            return _TypingBubble();
-
-                          final msg = messages[i];
-                          final isMe = msg.senderId == myId;
-                          final showDate =
-                              i == 0 ||
-                              !_sameDay(
-                                messages[i - 1].createdAt,
-                                msg.createdAt,
-                              );
-
-                          return KeyedSubtree(
-                            key: ValueKey(msg.id),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (showDate) _DateDivider(date: msg.createdAt),
-                                _MessageBubble(msg: msg, isMe: isMe),
-                              ],
-                            ),
-                          );
-                        },
                       );
                     },
                   ),
-                ),
-
-
-                // Input bar
-                Container(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface1,
-                    border: Border(top: BorderSide(color: AppColors.border)),
-                  ),
-                  child: SafeArea(
-                    top: false,
+                  // Message list
+                  Expanded(
                     child: BlocBuilder<ChatBloc, ChatState>(
-                      builder: (context, chatState) {
-                        final hasText = _msgCtrl.text.trim().isNotEmpty;
-                        return Row(
-                          children: [
-                            // LEFT — 📷 Camera (feed/gallery ke liye)
-                            GestureDetector(
-                              onTap: _pickFromGallery,
-                              child: Container(
-                                width: 38, height: 38,
-                                margin: const EdgeInsets.only(right: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.06),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: Colors.white.withOpacity(0.12)),
-                                ),
-                                child: const Icon(
-                                  Icons.camera_alt_outlined,
-                                  color: AppColors.textMuted,
-                                  size: 18,
-                                ),
-                              ),
+                      builder: (context, state) {
+                        if (state.isLoading && state.messages.isEmpty) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
                             ),
+                          );
+                        }
 
-                            // MIDDLE — Text field with emoji suffix
-                            Expanded(
-                              child: TextField(
-                                controller: _msgCtrl,
-                                style: AppTextStyles.body(color: AppColors.textPrimary),
-                                maxLines: 4,
-                                minLines: 1,
-                                decoration: InputDecoration(
-                                  hintText: 'Message ${widget.buddyName}...',
-                                  hintStyle: AppTextStyles.body(color: AppColors.textMuted),
-                                  filled: true,
-                                  fillColor: AppColors.surface2,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 10),
-                                  suffixIcon: IconButton(
-                                    icon: const Icon(Icons.emoji_emotions_outlined,
-                                        color: AppColors.textMuted, size: 20),
-                                    onPressed: () {},
-                                  ),
-                                ),
-                                onChanged: (v) {
-                                  setState(() {}); // hasText rebuild ke liye
-                                  if (v.isEmpty) return;
-                                  _lastTyped = DateTime.now();
-                                  _socket?.emit('typing:start', {'chatId': widget.chatId});
-                                  Future.delayed(const Duration(seconds: 2), () {
-                                    if (DateTime.now()
-                                        .difference(_lastTyped).inSeconds >= 2) {
-                                      _socket?.emit('typing:stop', {'chatId': widget.chatId});
-                                    }
-                                  });
-                                },
-                              ),
-                            ),
+                        final messages = state.messages;
 
-                            const SizedBox(width: 8),
+                        // Scroll to bottom after fresh load
+                        if (messages.isNotEmpty) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (_scroll.hasClients &&
+                                _scroll.position.maxScrollExtent > 0 &&
+                                _scroll.offset <
+                                    _scroll.position.maxScrollExtent - 200) {
+                              _scroll.jumpTo(_scroll.position.maxScrollExtent);
+                            }
+                          });
+                        }
 
-                            // RIGHT — Sesh Flash (no text) OR Send (has text)
-                            hasText
-                                ? GestureDetector(
-                              onTap: chatState.isSending ? null : _send,
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 44, height: 44,
-                                decoration: BoxDecoration(
-                                  color: chatState.isSending
-                                      ? AppColors.surface3
-                                      : AppColors.primary,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [BoxShadow(
-                                      color: AppColors.primaryGlow, blurRadius: 12)],
-                                ),
-                                child: chatState.isSending
-                                    ? const Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.black),
-                                )
-                                    : const Icon(Icons.send_rounded,
-                                    color: Colors.black, size: 20),
+                        return ListView.builder(
+                          controller: _scroll,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          itemCount: messages.length + (_isTyping ? 1 : 0),
+                          // Key each item by message ID so Flutter only rebuilds changed items
+                          // This stops the full list rebuild (blink) when session invite responds
+                          itemBuilder: (_, i) {
+                            if (_isTyping && i == messages.length)
+                              return _TypingBubble();
+
+                            final msg = messages[i];
+                            final isMe = msg.senderId == myId;
+                            final showDate =
+                                i == 0 ||
+                                !_sameDay(
+                                  messages[i - 1].createdAt,
+                                  msg.createdAt,
+                                );
+
+                            return KeyedSubtree(
+                              key: ValueKey(msg.id),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (showDate) _DateDivider(date: msg.createdAt),
+                                  _MessageBubble(msg: msg, isMe: isMe),
+                                ],
                               ),
-                            )
-                                : GestureDetector(
-                              onTap: _openCamera,
-                              child: Container(
-                                width: 44, height: 44,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: AppColors.primary.withOpacity(0.3)),
-                                ),
-                                child: Center(
-                                  child: Image.asset(
-                                    'assets/images/sesh_flash.png',
-                                    width: 22, height: 22,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                            );
+                          },
                         );
                       },
                     ),
                   ),
-                ),
-              ],
+                  // Input bar
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                    decoration: const BoxDecoration(
+                      color: AppColors.surface1,
+                      border: Border(top: BorderSide(color: AppColors.border)),
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: BlocBuilder<ChatBloc, ChatState>(
+                        builder: (context, chatState) {
+                          final hasText = _msgCtrl.text.trim().isNotEmpty;
+                          return Row(
+                            children: [
+                              // LEFT — 📷 Camera (feed/gallery ke liye)
+                              GestureDetector(
+                                onTap: _pickFromGallery,
+                                child: Container(
+                                  width: 38, height: 38,
+                                  margin: const EdgeInsets.only(right: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.06),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: Colors.white.withOpacity(0.12)),
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt_outlined,
+                                    color: AppColors.textMuted,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+
+                              // MIDDLE — Text field with emoji suffix
+                              Expanded(
+                                child: TextField(
+                                  controller: _msgCtrl,
+                                  style: AppTextStyles.body(color: AppColors.textPrimary),
+                                  maxLines: 4,
+                                  minLines: 1,
+                                  decoration: InputDecoration(
+                                    hintText: 'Message ${widget.buddyName}...',
+                                    hintStyle: AppTextStyles.body(color: AppColors.textMuted),
+                                    filled: true,
+                                    fillColor: AppColors.surface2,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 10),
+                                    suffixIcon: IconButton(
+                                      icon: const Icon(Icons.emoji_emotions_outlined,
+                                          color: AppColors.textMuted, size: 20),
+                                      onPressed: () {
+                                        FocusScope.of(context).unfocus();
+                                        setState(() => _showEmoji = !_showEmoji);
+                                      },
+                                    ),
+                                  ),
+                                  onChanged: (v) {
+                                    setState(() {}); // hasText rebuild ke liye
+                                    if (v.isEmpty) return;
+                                    _lastTyped = DateTime.now();
+                                    _socket?.emit('typing:start', {'chatId': widget.chatId});
+                                    Future.delayed(const Duration(seconds: 2), () {
+                                      if (DateTime.now()
+                                          .difference(_lastTyped).inSeconds >= 2) {
+                                        _socket?.emit('typing:stop', {'chatId': widget.chatId});
+                                      }
+                                    });
+                                  },
+                                ),
+                              ),
+
+                              const SizedBox(width: 8),
+
+                              // RIGHT — Sesh Flash (no text) OR Send (has text)
+                              hasText
+                                  ? GestureDetector(
+                                onTap: chatState.isSending ? null : _send,
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 44, height: 44,
+                                  decoration: BoxDecoration(
+                                    color: chatState.isSending
+                                        ? AppColors.surface3
+                                        : AppColors.primary,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [BoxShadow(
+                                        color: AppColors.primaryGlow, blurRadius: 12)],
+                                  ),
+                                  child: chatState.isSending
+                                      ? const Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.black),
+                                  )
+                                      : const Icon(Icons.send_rounded,
+                                      color: Colors.black, size: 20),
+                                ),
+                              )
+                                  : GestureDetector(
+                                onTap: _openCamera,
+                                child: Container(
+                                  width: 44, height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: AppColors.primary.withOpacity(0.3)),
+                                  ),
+                                  child: Center(
+                                    child: Image.asset(
+                                      'assets/images/sesh_flash.png',
+                                      width: 22, height: 22,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  if (_showEmoji)
+                    SizedBox(
+                      height: 280,
+                      child: EmojiPicker(
+                        textEditingController: _msgCtrl,
+                        onEmojiSelected: (_, emoji) {setState(() {});},
+                        onBackspacePressed: () {
+                          _msgCtrl.text = _msgCtrl.text.characters.skipLast(1).toString();setState(() {});},
+                        config: Config(
+                          emojiTextStyle: const TextStyle(fontSize: 28),
+                         // bgColor: AppColors.surface1,
+                          categoryViewConfig: const CategoryViewConfig(
+                            backgroundColor: AppColors.surface2,
+                            indicatorColor: AppColors.primary,
+                            iconColor: AppColors.textMuted,
+                            iconColorSelected: AppColors.primary,
+                          ),
+                          bottomActionBarConfig: const BottomActionBarConfig(
+                            backgroundColor: AppColors.surface2,
+                            buttonColor: AppColors.surface2,
+                            buttonIconColor: AppColors.textMuted,
+                          ),
+                          searchViewConfig: const SearchViewConfig(
+                            backgroundColor: AppColors.surface1,
+                            buttonIconColor: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           // ── Page 1: Camera ────────────────────────────────
@@ -781,9 +842,9 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
 
     // ── isScheduler check — sirf receiver ko buttons dikhenge ──
     final myId        = context.read<AuthBloc>().state.user?.id ?? '';
-    final scheduledBy = data['scheduledBy'] as String?    // backend field
-        ?? data['userId']      as String?;   // fallback field
-    final isScheduler = scheduledBy != null && scheduledBy == myId;
+    final scheduledBy =  widget.msg.senderId;
+
+    final isScheduler = scheduledBy == myId;
 
     DateTime? dt;
     DateTime? endDt;
@@ -947,16 +1008,17 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const SizedBox(
+                           /* const SizedBox(
                               width: 12, height: 12,
                               child: CircularProgressIndicator(
                                 strokeWidth: 1.5,
                                 color: AppColors.textMuted,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 8),*/
                             Text(
-                              'Waiting for ${widget.msg.senderName.isNotEmpty ? "confirmation" : "confirmation"}...',
+                              'Waiting for ${widget.msg.senderName.isEmpty ? "confi"
+                                  "rmation" : widget.msg.senderName}...',
                               style: AppTextStyles.bodySM(
                                 color: AppColors.textMuted,
                               ),

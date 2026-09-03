@@ -81,14 +81,15 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     return BlocListener<DiscoverBloc, DiscoverState>(
       // Show match dialog when a match is returned
       listenWhen: (prev, curr) =>
-      curr.matchedUserId != null &&
+          curr.matchedUserId != null &&
           curr.matchedUserId != prev.matchedUserId,
-      listener: (context, state) {        // ← yahan handle karo
+      listener: (context, state) {
+        // ← yahan handle karo
         final profile = state.profiles.firstWhere(
-              (p) => p.id == state.matchedUserId,
+          (p) => p.id == state.matchedUserId,
           orElse: () => state.profiles.first,
         );
-        _showMatchDialog(profile);         // ← sirf ek baar
+        _showMatchDialog(profile); // ← sirf ek baar
       },
       child: BlocBuilder<DiscoverBloc, DiscoverState>(
         builder: (context, state) {
@@ -396,11 +397,11 @@ class _BuddyCard extends StatelessWidget {
             children: [
               profile.avatarUrl != null
                   ? Positioned.fill(
-                      child: Image.network(
-                        profile.avatarUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            _Placeholder(profile: profile),
+                      child: PhotoCarousel(
+                        photos: profile.photos,
+                        avatarUrl: profile.avatarUrl,
+                        name: profile.fullName,
+                        height: double.maxFinite,
                       ),
                     )
                   : _Placeholder(profile: profile),
@@ -737,15 +738,16 @@ class MatchDialog extends StatelessWidget {
             label: '💬 Send First Message',
             onPressed: () {
               Navigator.pop(context);
-            context.push(                                    // ← FIX
-              AppRoutes.chat.replaceAll(':chatId', profile.id),
-              extra: {
-                'buddyName':   profile.firstName,
-                'buddyAvatar': profile.avatarUrl,
-                'buddyId':     profile.id,
-                'matchId':     profile.id,
-              },
-            );
+              context.push(
+                // ← FIX
+                AppRoutes.chat.replaceAll(':chatId', profile.id),
+                extra: {
+                  'buddyName': profile.firstName,
+                  'buddyAvatar': profile.avatarUrl,
+                  'buddyId': profile.id,
+                  'matchId': profile.id,
+                },
+              );
             },
             height: 48,
           ).animate(delay: 500.ms).fadeIn(),
@@ -882,4 +884,143 @@ class _FiltersSheetState extends State<_FiltersSheet> {
       ),
     ),
   );
+}
+
+class PhotoCarousel extends StatefulWidget {
+  const PhotoCarousel({
+    required this.photos,
+    required this.avatarUrl,
+    required this.name,
+    required this.height,
+  });
+
+  final List<String> photos;
+  final String? avatarUrl;
+  final String name;
+  final double height;
+
+  @override
+  State<PhotoCarousel> createState() => _PhotoCarouselState();
+}
+
+class _PhotoCarouselState extends State<PhotoCarousel> {
+  final _ctrl = PageController();
+  int _current = 0;
+
+  // All photos — combine photos list + avatarUrl
+  List<String> get _allPhotos {
+    final list = <String>[];
+    if (widget.photos.isNotEmpty) {
+      list.addAll(widget.photos);
+    } else if (widget.avatarUrl != null) {
+      list.add(widget.avatarUrl!);
+    }
+    return list;
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final photos = _allPhotos;
+
+    if (photos.isEmpty) {
+      // No photos — show initials avatar
+      return SizedBox(
+        height: widget.height,
+        child: Center(child: AppAvatar(name: widget.name, size: 80)),
+      );
+    }
+
+    return SizedBox(
+      height: widget.height,
+      child: Stack(
+        children: [
+          // Photo pageview
+          PageView.builder(
+            controller: _ctrl,
+            itemCount: photos.length,
+            onPageChanged: (i) => setState(() => _current = i),
+            itemBuilder: (_, i) => Image.network(
+              photos[i],
+              fit: BoxFit.cover,
+              width: double.infinity,
+              errorBuilder: (_, __, ___) => Container(
+                color: AppColors.surface2,
+                child: Center(child: AppAvatar(name: widget.name, size: 60)),
+              ),
+            ),
+          ),
+
+          // Tap zones — left/right to change photo
+          if (photos.length > 1) ...[
+            // Left tap
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 80,
+              child: GestureDetector(
+                onTap: () {
+                  if (_current > 0) {
+                    _ctrl.previousPage(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
+                    );
+                  }
+                },
+              ),
+            ),
+            // Right tap
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: 80,
+              child: GestureDetector(
+                onTap: () {
+                  if (_current < photos.length - 1) {
+                    _ctrl.nextPage(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
+                    );
+                  }
+                },
+              ),
+            ),
+          ],
+
+          // Dot indicators — top
+          if (photos.length > 1)
+            Positioned(
+              top: 8,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(photos.length, (i) {
+                  final isActive = i == _current;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    width: isActive ? 20 : 6,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? Colors.white
+                          : Colors.white.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  );
+                }),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }

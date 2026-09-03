@@ -40,6 +40,9 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
       final profiles = await _repo.getProfiles(
         activity: state.selectedActivity,
         level: state.selectedLevel,
+        lat:         state.lat,
+        lng:         state.lng,
+        maxDistance: state.radiusKm.clamp(1.0, 10.0), // hard cap 10km
         page: _page,
       );
       final merged = event.refresh
@@ -94,6 +97,9 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
       state.copyWith(
         selectedActivity: event.activity,
         selectedLevel: event.level,
+        lat:              event.lat,
+        lng:              event.lng,
+        radiusKm:         event.radiusKm.clamp(1.0, 10.0),
       ),
     );
     add(const DiscoverProfilesLoaded(refresh: true));

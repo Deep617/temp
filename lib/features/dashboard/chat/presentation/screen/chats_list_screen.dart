@@ -18,6 +18,7 @@ import '../../../../../routes/app_router.dart';
 import '../../../../auth/data/response_ml/register_response.dart';
 import '../../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../auth/presentation/bloc/auth_state.dart';
+import '../../data/response_ml/flash_streakmodel.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/match_request_bloc.dart';
 
@@ -155,6 +156,164 @@ class _ChatsListScreenState extends State<ChatsListScreen>
   }
 }
 
+
+
+class _FlashTrailing extends StatelessWidget {
+  const _FlashTrailing({
+    required this.buddyId,
+    required this.streaks,
+    required this.onTap,
+  });
+
+  final String              buddyId;
+  final List<FlashStreakModel> streaks;
+  final VoidCallback        onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    // Find streak for this buddy
+    final streak = streaks.firstWhere(
+          (s) => s.buddyId == buddyId,
+      orElse: () => FlashStreakModel(
+        buddyId:       buddyId,
+        buddyName:     '',
+        buddyAvatar:   null,
+        currentStreak: 0,
+        longestStreak: 0,
+        flashStatus:   'send_now',
+      ),
+    );
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize:     MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Kettlebell icon — color shows status
+          _FlashIcon(status: streak.flashStatus),
+          const SizedBox(height: 3),
+          // Streak number — show if > 0
+          if (streak.currentStreak > 0)
+            Text(
+              '🔥 ${streak.currentStreak}',
+              style: AppTextStyles.caption(
+                color: AppColors.textMuted,
+              ).copyWith(fontSize: 10),
+            )
+          else
+            Text(
+              _statusLabel(streak.flashStatus),
+              style: AppTextStyles.caption(
+                color: _statusColor(streak.flashStatus),
+              ).copyWith(fontSize: 10),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'waiting':  return 'Sent';
+      case 'respond':  return 'Respond';
+      case 'done':     return 'Done ✓';
+      default:         return 'Flash';
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'respond':  return AppColors.primary;
+      case 'done':     return AppColors.teal;
+      default:         return AppColors.textMuted;
+    }
+  }
+}
+
+// ── Flash Icon — color/opacity shows status ───────────────
+class _FlashIcon extends StatelessWidget {
+  const _FlashIcon({required this.status});
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    // Status → visual treatment
+    // send_now → normal (action needed)
+    // respond  → glowing blue (buddy sent, respond!)
+    // waiting  → faded (I sent, waiting)
+    // done     → teal checkmark overlay
+
+    final opacity = status == 'waiting' ? 0.4 : 1.0;
+    final glow    = status == 'respond';
+    final isDone  = status == 'done';
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 36, height: 36,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: glow
+                ? AppColors.primary.withOpacity(0.15)
+                : Colors.transparent,
+            border: Border.all(
+              color: glow
+                  ? AppColors.primary.withOpacity(0.4)
+                  : isDone
+                  ? AppColors.teal.withOpacity(0.3)
+                  : Colors.white.withOpacity(0.08),
+            ),
+            boxShadow: glow
+                ? [BoxShadow(
+              color: AppColors.primary.withOpacity(0.3),
+              blurRadius: 8,
+            )]
+                : null,
+          ),
+          child: Center(
+            child: Opacity(
+              opacity: opacity,
+              child: Image.asset(
+                'assets/images/sesh_flash.png',
+                width: 20, height: 20,
+              ),
+            ),
+          ),
+        ),
+        // Done checkmark
+        if (isDone)
+          Positioned(
+            right: -2, bottom: -2,
+            child: Container(
+              width: 14, height: 14,
+              decoration: BoxDecoration(
+                color:  AppColors.teal,
+                shape:  BoxShape.circle,
+                border: Border.all(color: AppColors.bg, width: 1.5),
+              ),
+              child: const Icon(
+                  Icons.check, color: Colors.black, size: 8),
+            ),
+          ),
+        // Respond — notification dot
+        if (status == 'respond')
+          Positioned(
+            right: -2, top: -2,
+            child: Container(
+              width: 10, height: 10,
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 // ── CHATS TAB ─────────────────────────────────────────────
 class _ChatsTab extends StatefulWidget {
   @override
@@ -280,6 +439,19 @@ class _ChatsTabState extends State<_ChatsTab> {
                     final chat = state.chats[i];
                     final unread = chat['unreadCount'] as int? ?? 0;
                     return ListTile(
+                      trailing: _FlashTrailing(
+                        buddyId:  chat['buddyId'] as String? ?? '',
+                        streaks:  state.flashStreaks,
+                        onTap: () {
+      /*                    context.push(
+                          AppRoutes.seshFlash,
+                          extra: {
+                            'matches':        [chat],
+                            'currentMatchId': chat['matchId'],
+                          },
+                        );*/
+                        },
+                      ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 6,

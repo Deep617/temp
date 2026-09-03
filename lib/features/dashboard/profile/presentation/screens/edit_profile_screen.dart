@@ -35,6 +35,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String?      _gender;
   File?        _newAvatar;
 
+   List<File?> _newPhotos = List.filled(5, null);
+   List<String> _existingPhotos = [];
+
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +55,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _level           = user?.experienceLevel;
     _goals           = List.from(user?.goals          ?? []);
     _gender          = user?.gender;
+    _existingPhotos = List.from(user?.photos ?? []);
   }
 
   @override
@@ -362,6 +367,150 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+
+class _PhotosGrid extends StatefulWidget {
+  const _PhotosGrid({
+    required this.existingPhotos,
+    required this.onPhotosChanged,
+  });
+  final List<String>        existingPhotos;
+  final ValueChanged<List<File?>> onPhotosChanged;
+
+  @override
+  State<_PhotosGrid> createState() => _PhotosGridState();
+}
+
+class _PhotosGridState extends State<_PhotosGrid> {
+  final _picker     = ImagePicker();
+  final _newFiles   = <File?>[null, null, null, null, null];
+
+  Future<void> _pickPhoto(int index) async {
+    final img = await _picker.pickImage(
+      source:       ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (img == null) return;
+    setState(() => _newFiles[index] = File(img.path));
+    widget.onPhotosChanged(_newFiles);
+  }
+
+  void _removePhoto(int index) {
+    setState(() => _newFiles[index] = null);
+    widget.onPhotosChanged(_newFiles);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Photos (up to 5)',
+            style: AppTextStyles.subtitle()),
+        const SizedBox(height: 4),
+        Text(
+          'First photo is your main profile photo',
+          style: AppTextStyles.bodySM(color: AppColors.textMuted),
+        ),
+        const SizedBox(height: 12),
+        GridView.builder(
+          shrinkWrap:  true,
+          physics:     const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount:   3,
+            crossAxisSpacing: 8,
+            mainAxisSpacing:  8,
+            childAspectRatio: 0.75,
+          ),
+          itemCount: 5,
+          itemBuilder: (_, i) {
+            final hasNew      = _newFiles[i] != null;
+            final existingUrl = i < widget.existingPhotos.length
+                ? widget.existingPhotos[i]
+                : null;
+            final hasPhoto = hasNew || existingUrl != null;
+            final isMain   = i == 0;
+
+            return GestureDetector(
+              onTap: () => _pickPhoto(i),
+              child: Container(
+                decoration: BoxDecoration(
+                  color:        AppColors.surface2,
+                  borderRadius: BorderRadius.circular(12),
+                  border:       Border.all(
+                    color: isMain && hasPhoto
+                        ? AppColors.primary
+                        : AppColors.border,
+                    width: isMain ? 2 : 1,
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Photo or placeholder
+                    hasNew
+                        ? Image.file(_newFiles[i]!, fit: BoxFit.cover)
+                        : existingUrl != null
+                        ? Image.network(existingUrl, fit: BoxFit.cover)
+                        : Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_photo_alternate_outlined,
+                            color: AppColors.textMuted, size: 28),
+                        const SizedBox(height: 4),
+                        Text(
+                          isMain ? 'Main' : 'Photo ${i + 1}',
+                          style: AppTextStyles.caption(
+                              color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+
+                    // Main badge
+                    if (isMain && hasPhoto)
+                      Positioned(
+                        top: 6, left: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color:        AppColors.primary,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text('Main',
+                              style: AppTextStyles.caption(
+                                  color: Colors.white)),
+                        ),
+                      ),
+
+                    // Remove button
+                    if (hasPhoto)
+                      Positioned(
+                        top: 4, right: 4,
+                        child: GestureDetector(
+                          onTap: () => _removePhoto(i),
+                          child: Container(
+                            width: 22, height: 22,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.close,
+                                color: Colors.white, size: 14),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

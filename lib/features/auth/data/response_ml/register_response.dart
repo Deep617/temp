@@ -81,6 +81,8 @@ class UserModel {
     this.lastActiveAt,
     this.age,
     this.matchScore,
+    this.photos = const [],
+
   });
 
   final String    id;
@@ -130,6 +132,8 @@ class UserModel {
   final DateTime? lastActiveAt;            // Last seen timestamp
   final int?      age;                     // Computed from DOB on backend
   final int?      matchScore;              // 0-100 match % (Requests tab)
+  final List<String> photos;   // max 5 photos
+
 
   // ── Computed ────────────────────────────────────────
   String get fullName       => '$firstName $lastName';
@@ -204,6 +208,10 @@ class UserModel {
         ? DateTime.parse(j['lastActiveAt']         as String) : null,
     age:                j['age']                  as int?,
     matchScore:         j['matchScore']           as int?,
+    // ── fromJson mein add karo ──
+    photos: (j['photos'] as List<dynamic>?)
+        ?.map((e) => e.toString())
+        .toList() ?? [],
   );
 
   Map<String, dynamic> toJson() => {

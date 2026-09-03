@@ -102,12 +102,12 @@ class _BuddyViewScreenState extends State<BuddyViewScreen> {
                     fit: StackFit.expand,
                     children: [
                       p.avatarUrl != null
-                          ? Image.network(
-                              p.avatarUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  _coverFallback(p, actColor),
-                            )
+                          ? PhotoCarousel(
+                        photos:    p.photos,
+                        avatarUrl: p.avatarUrl,
+                        name:      p.firstName,
+                        height:    350,
+                      )
                           : _coverFallback(p, actColor),
                       Container(
                         decoration: BoxDecoration(

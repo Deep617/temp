@@ -7,6 +7,7 @@ class ChatState extends Equatable {
     this.status   = ChatStatus.initial,
     this.chats    = const [],
     this.messages = const [],
+    this.flashStreaks = const [],
     this.error,
     this.activeChatId,
   });
@@ -14,6 +15,7 @@ class ChatState extends Equatable {
   final ChatStatus                    status;
   final List<Map<String, dynamic>>    chats;
   final List<Message>                 messages;
+  final List<FlashStreakModel> flashStreaks;
   final AppError?                     error;
   final String?                       activeChatId;
 
@@ -24,6 +26,7 @@ class ChatState extends Equatable {
     ChatStatus?                  status,
     List<Map<String, dynamic>>?  chats,
     List<Message>?               messages,
+    List<FlashStreakModel>? flashStreaks,
     AppError?                    error,
     bool                         clearError = false,
     String?                      activeChatId,
@@ -32,6 +35,7 @@ class ChatState extends Equatable {
         status:       status       ?? this.status,
         chats:        chats        ?? this.chats,
         messages:     messages     ?? this.messages,
+        flashStreaks:     flashStreaks     ?? this.flashStreaks,
         error:        clearError ? null : error ?? this.error,
         activeChatId: activeChatId ?? this.activeChatId,
       );

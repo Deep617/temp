@@ -10,6 +10,9 @@ abstract class DiscoverRepository {
     String? activity,
     String? level,
     int page = 1,
+    double? lat,
+    double? lng,
+    double? maxDistance,
   });
 
   Future<bool> swipeRight(String userId);
