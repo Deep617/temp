@@ -9,6 +9,8 @@ import 'package:seshlly/features/dashboard/chat/presentation/bloc/chat_bloc.dart
 import 'package:seshlly/features/dashboard/discover/presentation/screens/buddy_view_screen.dart';
 import 'package:seshlly/features/dashboard/profile/presentation/bloc/profile_bloc.dart';
 import 'package:seshlly/features/dashboard/profile/presentation/screens/edit_profile_screen.dart';
+import 'package:seshlly/features/dashboard/profile/presentation/screens/verify_id_screen.dart';
+import 'package:seshlly/features/dashboard/profile/presentation/screens/verify_photo_screen.dart';
 import 'package:seshlly/features/dashboard/session/presentation/bloc/session_bloc.dart';
 import 'package:seshlly/features/notification/presentation/bloc/notification_bloc.dart';
 import 'package:seshlly/features/notification/presentation/screen/notifications_screen.dart';
@@ -84,7 +86,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
       if (status == AuthStatus.authenticated && walkthroughSeen == true) {
         return (location == AppRoutes.onboarding ||
                 location == AppRoutes.splash ||
-                location == AppRoutes.welcome  )
+                location == AppRoutes.welcome)
             ? AppRoutes.home
             : null;
       }
@@ -267,11 +269,25 @@ GoRouter buildRouter(AuthBloc authBloc) {
         path: AppRoutes.influencerApply,
         builder: (_, __) => const InfluencerApplyScreen(),
       ),
+
       GoRoute(
         path: AppRoutes.influencerProfile,
         builder: (ctx, state) =>
             InfluencerProfileScreen(influencerId: state.pathParameters['id']!),
       ),
+
+      // Influencer
+      GoRoute(
+        path: AppRoutes.verifyPhoto,
+        builder: (_, __) => const VerifyPhotoScreen(),
+      ),
+
+      // Influencer
+      GoRoute(
+        path: AppRoutes.verifyId,
+        builder: (_, __) => const VerifyIdScreen(),
+      ),
+
       // ── Feed ─────────────────────────────────────────
       GoRoute(path: AppRoutes.feed, builder: (_, __) => const FeedScreen()),
 
@@ -391,7 +407,6 @@ class AppRoutes {
   static const influencerApply = '/influencer/apply';
   static const influencerProfile = '/influencer/:id';
 
- static const verifyPhoto = '/verify/photo';
- static const verifyId    = '/verify/id';
- 
+  static const verifyPhoto = '/verify/photo';
+  static const verifyId = '/verify/id';
 }

@@ -13,6 +13,7 @@ import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/widgets/common/common_widgets.dart';
+import '../../../../auth/data/response_ml/register_response.dart';
 import '../../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../auth/presentation/bloc/auth_event.dart';
 import '../../../challanges/data/repositories/challenge_repository.dart';
@@ -160,10 +161,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                   padding: const EdgeInsets.all(2.5),
                                   child: PhotoCarousel(
-                                    photos:    user.photos ?? [],
+                                    photos: user.photos ?? [],
                                     avatarUrl: user.avatarUrl,
-                                    name:      user.firstName,
-                                    height:    300,
+                                    name: user.firstName,
+                                    height: 300,
                                   ),
                                 ),
                                 Positioned(
@@ -238,10 +239,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ],
                                     ],
                                   ),
-                                  if (!user.idVerified) ...[
-                                    const SizedBox(width: 5),
-                                    _VerificationSection(user: user),
-                                  ],
                                   const SizedBox(height: 5),
                                   // Location — single row
                                   Row(
@@ -312,7 +309,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ],
                         ),
                       ),
-
+                      if (!user.idVerified) ...[
+                        const SizedBox(width: 5),
+                        _VerificationSection(user: user),
+                      ],
                       // XP bar
                       Container(
                         decoration: const BoxDecoration(
@@ -2256,7 +2256,7 @@ class _SubscriptionCard extends StatelessWidget {
 class _VerificationSection extends StatelessWidget {
   const _VerificationSection({required this.user});
 
-  final dynamic user; // UserModel
+  final UserModel user; // UserModel
 
   @override
   Widget build(BuildContext context) {
@@ -2270,6 +2270,7 @@ class _VerificationSection extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+
         children: [
           Text('Verification', style: AppTextStyles.subtitle()),
           const SizedBox(height: 12),
@@ -2279,7 +2280,9 @@ class _VerificationSection extends StatelessWidget {
             icon: '📷',
             label: 'Photo Verified',
             done: user.photoVerified ?? false,
-            onTap: () => context.push(AppRoutes.verifyPhoto),
+            onTap: () {
+              context.push(AppRoutes.verifyPhoto);
+            },
           ),
           const SizedBox(height: 8),
 
@@ -2288,7 +2291,9 @@ class _VerificationSection extends StatelessWidget {
             icon: '✅',
             label: 'ID Verified',
             done: user.idVerified ?? false,
-            onTap: () => context.push(AppRoutes.verifyId),
+            onTap: () {
+              context.push(AppRoutes.verifyId);
+            },
           ),
         ],
       ),

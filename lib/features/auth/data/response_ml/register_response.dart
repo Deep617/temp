@@ -70,6 +70,7 @@ class UserModel {
     this.instagramFollowers,
     this.trustScore = 30.0,
     this.idVerified = false,
+    this.photoVerified = false,
     this.buddyCount = 0,
     this.sessionCount = 0,
     this.challengeCount = 0,
@@ -121,6 +122,7 @@ class UserModel {
   final int?      instagramFollowers;
   final double    trustScore;
   final bool      idVerified;
+  final bool      photoVerified;
   final int       buddyCount;
   final int       sessionCount;
   final int       challengeCount;
@@ -194,6 +196,7 @@ class UserModel {
     instagramFollowers: j['instagramFollowers'] as int?,
     trustScore:         (j['trustScore']    as num?)?.toDouble() ?? 30.0,
     idVerified:         j['idVerified']     as bool?    ?? false,
+    photoVerified:         j['photoVerified']     as bool?    ?? false,
     buddyCount:         j['buddyCount']      as int? ?? 0,
     sessionCount:       j['sessionCount']    as int? ?? 0,
     challengeCount:     j['challengeCount']  as int? ?? 0,
@@ -237,7 +240,7 @@ class UserModel {
     int?    level,              int?          chatTokens,
     double? latitude,           double?       longitude,
     int?    searchRadius,
-    double? trustScore,         bool?         idVerified,
+    double? trustScore,         bool?         idVerified,         bool?         photoVerified,
     int?    buddyCount,         int?          sessionCount,
     int?    challengeCount,
     String?   subscriptionPlan,   DateTime?  subscriptionExpiry,
@@ -273,6 +276,7 @@ class UserModel {
     chatTokens:         chatTokens         ?? this.chatTokens,
     trustScore:         trustScore         ?? this.trustScore,
     idVerified:         idVerified         ?? this.idVerified,
+    photoVerified:         photoVerified         ?? this.photoVerified,
     buddyCount:         buddyCount         ?? this.buddyCount,
     sessionCount:       sessionCount       ?? this.sessionCount,
     challengeCount:     challengeCount     ?? this.challengeCount,
