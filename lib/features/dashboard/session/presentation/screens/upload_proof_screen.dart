@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:screenshot/screenshot.dart';
 import 'package:seshlly/features/dashboard/session/data/repositories/session_repository.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
@@ -612,6 +615,9 @@ class _PostToFeedSheet extends StatefulWidget {
 class _PostToFeedSheetState extends State<_PostToFeedSheet> {
   final _captionCtrl = TextEditingController();
   bool _posting = false;
+  bool _includeLocation = false;
+  bool _sharing = false;
+  final _screenshotCtrl = ScreenshotController();
 
   @override
   void dispose() {
@@ -739,6 +745,73 @@ class _PostToFeedSheetState extends State<_PostToFeedSheet> {
           ),
         ),
 
+        // ── Location toggle ──────────────────────────────────────
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.surface2,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border2),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.location_on_outlined,
+                color: AppColors.textMuted,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Include Location', style: AppTextStyles.bodySM()),
+                    Text(
+                      _includeLocation
+                          ? (widget.session.gymName ?? 'Location included')
+                          : 'Location hidden',
+                      style: AppTextStyles.caption(color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _includeLocation,
+                onChanged: (v) => setState(() => _includeLocation = v),
+                activeColor: AppColors.primary,
+              ),
+            ],
+          ),
+        ),
+
+        // ── Share to Instagram/WhatsApp button ───────────────────
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _sharing ? null : _shareCard,
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.primary),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+            icon: Image.asset(
+              'assets/images/sesh_flash.png',
+              width: 18,
+              height: 18,
+            ),
+            label: Text(
+              _sharing ? 'Preparing...' : 'Share Sesh Card 🏋️',
+              style: AppTextStyles.bodySM(
+                color: AppColors.primary,
+              ).copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+
         const SizedBox(height: 16),
 
         // Buttons
@@ -788,5 +861,272 @@ class _PostToFeedSheetState extends State<_PostToFeedSheet> {
         ),
       ],
     ),
+  );
+
+  Future<void> _shareCard() async {
+    setState(() => _sharing = true);
+    try {
+      // Capture SeshCard as image
+      final image = await _screenshotCtrl.captureFromWidget(
+        SeshCard(
+          activity: widget.session.activity,
+          gymName: _includeLocation ? widget.session.gymName : null,
+          city: widget.session.city??"",
+          xpEarned: widget.xpAwarded,
+          streakDays: widget.session.streakDays ?? 0,
+          sessionTime: widget.session.scheduledAt,
+          challengeTitle: widget.challengeTitle,
+        ),
+        pixelRatio: 3.0,
+      );
+
+      // Save to temp file
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/sesh_card.png');
+      await file.writeAsBytes(image);
+
+      // Share
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text:
+            'Just crushed a session on Seshlly 🏋️\n'
+            'Find your gym buddy → seshlly.com',
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Could not share. Try again.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
+}
+
+
+
+
+class SeshCard extends StatelessWidget {
+  const SeshCard({
+    super.key,
+    required this.activity,
+    required this.xpEarned,
+    required this.streakDays,
+    required this.sessionTime,
+    this.gymName,
+    this.city,
+    this.challengeTitle,
+  });
+
+  final String   activity;
+  final String?  gymName;       // null = location hidden
+  final String?  city;
+  final int      xpEarned;
+  final int      streakDays;
+  final DateTime sessionTime;
+  final String?  challengeTitle;
+
+  String get _activityEmoji {
+    const map = {
+      'gym': '🏋️', 'running': '🏃', 'cycling': '🚴',
+      'swimming': '🏊', 'boxing': '🥊', 'yoga': '🧘',
+      'hiit': '💥', 'crossfit': '🔥', 'climbing': '🧗',
+    };
+    return map[activity.toLowerCase()] ?? '💪';
+  }
+
+  String get _timeStr {
+    final h = sessionTime.hour;
+    final m = sessionTime.minute.toString().padLeft(2, '0');
+    final period = h >= 12 ? 'PM' : 'AM';
+    final h12 = h > 12 ? h - 12 : (h == 0 ? 12 : h);
+    return '$h12:$m $period';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width:   320,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end:   Alignment.bottomRight,
+          colors: [Color(0xFF0A0F1C), Color(0xFF111827)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF0A84FF).withOpacity(0.3),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        mainAxisSize:       MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top — Seshlly branding
+          Row(
+            children: [
+              Image.asset(
+                  'assets/images/sesh_flash.png',
+                  width: 28, height: 28),
+              const SizedBox(width: 8),
+              const Text(
+                'SESHLLY',
+                style: TextStyle(
+                  color:      Colors.white,
+                  fontSize:   16,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                _timeStr,
+                style: const TextStyle(
+                  color:    Color(0xFF7B8794),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // Activity + emoji
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                  _activityEmoji,
+                  style: const TextStyle(fontSize: 44)),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      challengeTitle ?? '${activity[0].toUpperCase()}'
+                          '${activity.substring(1)} Session',
+                      style: const TextStyle(
+                        color:      Colors.white,
+                        fontSize:   18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (gymName != null)
+                      Text(
+                        gymName!,
+                        style: const TextStyle(
+                          color:    Color(0xFF0A84FF),
+                          fontSize: 13,
+                        ),
+                      )
+                    else if (city != null)
+                      Text(
+                        city!,
+                        style: const TextStyle(
+                          color:    Color(0xFF7B8794),
+                          fontSize: 13,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // Divider
+          Container(
+            height: 1,
+            color: Colors.white.withOpacity(0.08),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Stats row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _StatChip(
+                icon:  '⚡',
+                value: '+$xpEarned XP',
+                color: const Color(0xFFF59E0B),
+              ),
+              if (streakDays > 0)
+                _StatChip(
+                  icon:  '🔥',
+                  value: '$streakDays day streak',
+                  color: const Color(0xFFFF6B00),
+                ),
+              _StatChip(
+                icon:  '✅',
+                value: 'Completed',
+                color: const Color(0xFF00D0A3),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // Bottom — CTA
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+                vertical: 10, horizontal: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0A84FF).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                  color: const Color(0xFF0A84FF).withOpacity(0.2)),
+            ),
+            child: const Text(
+              'Find your gym buddy → seshlly.com',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color:      Color(0xFF0A84FF),
+                fontSize:   12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip({
+    required this.icon,
+    required this.value,
+    required this.color,
+  });
+  final String icon;
+  final String value;
+  final Color  color;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(icon, style: const TextStyle(fontSize: 14)),
+      const SizedBox(width: 4),
+      Text(
+        value,
+        style: TextStyle(
+          color:      color,
+          fontSize:   12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    ],
   );
 }

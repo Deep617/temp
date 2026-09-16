@@ -70,7 +70,6 @@ class UserModel {
     this.instagramFollowers,
     this.trustScore = 30.0,
     this.idVerified = false,
-    this.photoVerified = false,
     this.buddyCount = 0,
     this.sessionCount = 0,
     this.challengeCount = 0,
@@ -82,7 +81,11 @@ class UserModel {
     this.lastActiveAt,
     this.age,
     this.matchScore,
-    this.photos = const [],
+    this.photos              = const [],
+    this.photoVerified       = false,
+    this.referralCode,
+    this.referralCount       = 0,
+    this.flashStreakCount    = 0,
 
   });
 
@@ -134,8 +137,10 @@ class UserModel {
   final DateTime? lastActiveAt;            // Last seen timestamp
   final int?      age;                     // Computed from DOB on backend
   final int?      matchScore;              // 0-100 match % (Requests tab)
-  final List<String> photos;   // max 5 photos
-
+  final List<String> photos;           // 5 profile photos
+  final String?      referralCode;     // unique referral code
+  final int          referralCount;    // kitne log refer kiye
+  final int          flashStreakCount; // active streaks count
 
   // ── Computed ────────────────────────────────────────
   String get fullName       => '$firstName $lastName';
@@ -196,7 +201,6 @@ class UserModel {
     instagramFollowers: j['instagramFollowers'] as int?,
     trustScore:         (j['trustScore']    as num?)?.toDouble() ?? 30.0,
     idVerified:         j['idVerified']     as bool?    ?? false,
-    photoVerified:         j['photoVerified']     as bool?    ?? false,
     buddyCount:         j['buddyCount']      as int? ?? 0,
     sessionCount:       j['sessionCount']    as int? ?? 0,
     challengeCount:     j['challengeCount']  as int? ?? 0,
@@ -211,10 +215,11 @@ class UserModel {
         ? DateTime.parse(j['lastActiveAt']         as String) : null,
     age:                j['age']                  as int?,
     matchScore:         j['matchScore']           as int?,
-    // ── fromJson mein add karo ──
-    photos: (j['photos'] as List<dynamic>?)
-        ?.map((e) => e.toString())
-        .toList() ?? [],
+    photos:           (_strings(j['photos'])),
+    photoVerified:    j['photoVerified']    as bool?   ?? false,
+    referralCode:     j['referralCode']     as String?,
+    referralCount:    j['referralCount']    as int?    ?? 0,
+    flashStreakCount: j['flashStreakCount'] as int?    ?? 0,
   );
 
   Map<String, dynamic> toJson() => {
@@ -248,6 +253,10 @@ class UserModel {
     int?      influencerSessionLimit,
     DateTime? lastActiveAt,          int?     age,
     int?      matchScore,
+    List<String>? photos,
+    String?       referralCode,
+    int?          referralCount,
+    int?          flashStreakCount,
   }) => UserModel(
     id: id, email: email, createdAt: createdAt,
     status: status, emailVerified: emailVerified, isBanned: isBanned,
@@ -288,6 +297,10 @@ class UserModel {
     lastActiveAt:            lastActiveAt            ?? this.lastActiveAt,
     age:                     age                     ?? this.age,
     matchScore:              matchScore              ?? this.matchScore,
+    photos:           photos           ?? this.photos,
+    referralCode:     referralCode     ?? this.referralCode,
+    referralCount:    referralCount    ?? this.referralCount,
+    flashStreakCount: flashStreakCount ?? this.flashStreakCount,
   );
 }
 

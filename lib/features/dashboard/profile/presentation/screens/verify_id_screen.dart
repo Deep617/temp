@@ -7,9 +7,12 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/widgets/common/common_widgets.dart';
+import '../../../../../di_injection/dependency_injection.dart';
+import '../../data/datasource/profile_remote_datasource.dart';
 
 class VerifyIdScreen extends StatefulWidget {
   const VerifyIdScreen({super.key});
+
   @override
   State<VerifyIdScreen> createState() => _VerifyIdScreenState();
 }
@@ -34,10 +37,13 @@ class _VerifyIdScreenState extends State<VerifyIdScreen> {
   Future<void> _submit() async {
     if (_idDoc == null) return;
     setState(() { _loading = true; _error = null; });
+
     try {
-      // TODO: Upload to backend
-      // await profileRepo.submitIdVerification(_idDoc!, _idType);
-      await Future.delayed(const Duration(seconds: 2));
+      final ds = getIt<ProfileRemoteDatasource>();
+      await ds.submitVerification(
+        type:     'id',
+        filePath: _idDoc!.path,
+      );
       if (mounted) setState(() { _loading = false; _done = true; });
     } catch (e) {
       if (mounted) {
@@ -54,17 +60,19 @@ class _VerifyIdScreenState extends State<VerifyIdScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        backgroundColor: AppColors.surface1,
-        title: Text('ID Verification',
-            style: AppTextStyles.subtitle()),
+        backgroundColor: AppColors.bg,
+        elevation:       0,
+        title: Text('ID Verification', style: AppTextStyles.h3()),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => context.pop(),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: _done ? _buildDone() : _buildForm(),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: _done ? _buildDone() : _buildForm(),
+        ),
       ),
     );
   }
@@ -74,19 +82,19 @@ class _VerifyIdScreenState extends State<VerifyIdScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const Text('✅', style: TextStyle(fontSize: 60)),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Text('ID Submitted!', style: AppTextStyles.h2()),
         const SizedBox(height: 8),
         Text(
-          'Admin will verify your ID within 48 hours.\n'
-              'You will get a notification once approved.',
+          'Admin will verify your ID within 48 hours.\nYou will get a notification once approved.',
           textAlign: TextAlign.center,
           style: AppTextStyles.body(color: AppColors.textMuted),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 32),
         PrimaryButton(
           label:     'Back to Profile',
           onPressed: () => context.pop(),
+          height:    50,
         ),
       ],
     ),
@@ -96,8 +104,7 @@ class _VerifyIdScreenState extends State<VerifyIdScreen> {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       // ID type selector
-      Text('Select ID Type',
-          style: AppTextStyles.subtitle()),
+      Text('Select ID Type', style: AppTextStyles.subtitle()),
       const SizedBox(height: 10),
       Row(
         children: ['Aadhaar', 'PAN', 'Passport'].map((type) {
@@ -107,7 +114,7 @@ class _VerifyIdScreenState extends State<VerifyIdScreen> {
             child: Container(
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 7),
+                  horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: selected
                     ? AppColors.primaryDim
@@ -116,15 +123,14 @@ class _VerifyIdScreenState extends State<VerifyIdScreen> {
                 border: Border.all(
                   color: selected
                       ? AppColors.primary
-                      : AppColors.border,
+                      : AppColors.border2,
                 ),
               ),
               child: Text(type,
                   style: AppTextStyles.bodySM(
-                    color: selected
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
-                  )),
+                      color: selected
+                          ? AppColors.primary
+                          : AppColors.textSecondary)),
             ),
           );
         }).toList(),
@@ -135,18 +141,19 @@ class _VerifyIdScreenState extends State<VerifyIdScreen> {
       Text('Upload $_idType Photo',
           style: AppTextStyles.subtitle()),
       const SizedBox(height: 10),
+
       GestureDetector(
         onTap: _pickId,
         child: Container(
-          height: 200,
-          width:  double.infinity,
+          height:    200,
+          width:     double.infinity,
           decoration: BoxDecoration(
             color:        AppColors.surface2,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: _idDoc != null
                   ? AppColors.primary
-                  : AppColors.border,
+                  : AppColors.border2,
               width: _idDoc != null ? 2 : 1,
             ),
           ),
@@ -159,23 +166,26 @@ class _VerifyIdScreenState extends State<VerifyIdScreen> {
               Icon(Icons.upload_file,
                   color: AppColors.textMuted, size: 40),
               const SizedBox(height: 10),
-              Text('Upload clear photo of your $_idType',
-                  style: AppTextStyles.bodySM(
-                      color: AppColors.textMuted),
-                  textAlign: TextAlign.center),
+              Text(
+                'Upload clear photo of $_idType',
+                style: AppTextStyles.bodySM(
+                    color: AppColors.textMuted),
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),
       ),
 
       const SizedBox(height: 12),
+
       // Privacy note
       Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.surface2,
+          color:        AppColors.surface2,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
+          border:       Border.all(color: AppColors.border2),
         ),
         child: Row(
           children: [
@@ -183,8 +193,7 @@ class _VerifyIdScreenState extends State<VerifyIdScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Your ID is only used for verification '
-                    'and is never shared with other users.',
+                'Your ID is only used for verification and is never shared with other users.',
                 style: AppTextStyles.caption(
                     color: AppColors.textMuted),
               ),
@@ -209,7 +218,7 @@ class _VerifyIdScreenState extends State<VerifyIdScreen> {
       const SizedBox(height: 8),
       Center(
         child: Text(
-          'Verified within 48 hours · 🔒 Secure',
+          '🔒 Verified within 48 hours · Secure',
           style: AppTextStyles.caption(color: AppColors.textMuted),
         ),
       ),

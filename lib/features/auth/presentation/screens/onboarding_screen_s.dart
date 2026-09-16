@@ -142,7 +142,7 @@ class _OnboardingScreenState extends State<OnboardingScreenS> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        '\${_page + 1}/\$_totalPages',
+                        '${_page + 1}/$_totalPages',
                         style: AppTextStyles.caption(),
                       ),
                     ],
@@ -380,7 +380,7 @@ class _LevelPage extends StatelessWidget {
                               ),
                               child: Center(
                                 child: Text(
-                                  '\${e.key + 1}',
+                                  '${e.key + 1}',
                                   style: AppTextStyles.h3(
                                     color: isSelected
                                         ? AppColors.primary

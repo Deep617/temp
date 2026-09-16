@@ -78,7 +78,9 @@ GoRouter buildRouter(AuthBloc authBloc) {
       }
 
       // 3. Authenticated but walkthrough required
-      if (status == AuthStatus.authenticated && walkthroughSeen == false) {
+      if ((status == AuthStatus.authenticated ||
+              status == AuthStatus.onboarding) &&
+          walkthroughSeen == false) {
         return location == AppRoutes.onboarding ? null : AppRoutes.onboarding;
       }
 
@@ -409,4 +411,5 @@ class AppRoutes {
 
   static const verifyPhoto = '/verify/photo';
   static const verifyId = '/verify/id';
+
 }

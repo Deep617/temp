@@ -21,6 +21,7 @@ import '../../../challanges/data/response_ml/challange_model.dart';
 import '../../../discover/presentation/screens/discover_screen.dart';
 import '../../../session/data/repositories/session_repository.dart';
 import '../../../session/data/response_ml/workout_session.dart';
+import '../../data/datasource/profile_remote_datasource.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -160,11 +161,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                   ),
                                   padding: const EdgeInsets.all(2.5),
-                                  child: PhotoCarousel(
-                                    photos: user.photos ?? [],
-                                    avatarUrl: user.avatarUrl,
-                                    name: user.firstName,
-                                    height: 300,
+                                  child: ClipOval(
+                                    child: PhotoCarousel(
+                                      photos: user.photos ?? [],
+                                      avatarUrl: user.avatarUrl,
+                                      name: user.firstName,
+                                      height: double.infinity,
+                                    ),
                                   ),
                                 ),
                                 Positioned(
@@ -1816,7 +1819,7 @@ class _SOSButton extends StatelessWidget {
     final ctrl = TextEditingController();
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (builderContext) => AlertDialog(
         backgroundColor: AppColors.surface1,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Set Emergency Contact', style: AppTextStyles.h3()),
@@ -1852,7 +1855,7 @@ class _SOSButton extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(builderContext),
             child: Text(
               'Cancel',
               style: AppTextStyles.bodySM(color: AppColors.textMuted),
@@ -1870,7 +1873,7 @@ class _SOSButton extends StatelessWidget {
               if (number.isNotEmpty) {
                 await prefs.setString(_kEmergencyNumber, number);
                 if (context.mounted) {
-                  Navigator.pop(context);
+                  Navigator.pop(builderContext);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Emergency contact saved: $number'),
@@ -1899,99 +1902,143 @@ class _SOSButton extends StatelessWidget {
 
 // Countdown dialog — 3 seconds before calling
 class _SOSCountdownDialog extends StatefulWidget {
-  const _SOSCountdownDialog({required this.number});
+  const _SOSCountdownDialog({
+    required this.number,
+  });
 
   final String number;
 
   @override
-  State<_SOSCountdownDialog> createState() => _SOSCountdownDialogState();
+  State<_SOSCountdownDialog> createState() =>
+      _SOSCountdownDialogState();
 }
 
-class _SOSCountdownDialogState extends State<_SOSCountdownDialog> {
+class _SOSCountdownDialogState
+    extends State<_SOSCountdownDialog> {
   int _count = 3;
-  late final _timer = Stream.periodic(const Duration(seconds: 1), (i) => 2 - i)
-      .take(3)
-      .listen((c) {
-        if (mounted) setState(() => _count = c);
-        if (c == 0) _makeCall();
-      });
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+          (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+
+        if (_count > 1) {
+          setState(() {
+            _count--;
+          });
+        } else {
+          timer.cancel();
+          _makeCall();
+        }
+      },
+    );
+  }
 
   Future<void> _makeCall() async {
-    _timer.cancel();
     if (!mounted) return;
+
     Navigator.of(context).pop();
+
     final uri = Uri.parse('tel:${widget.number}');
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  void _cancelCountdown() {
+    _timer?.cancel();
+
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
   void dispose() {
-    _timer.cancel();
+    _timer?.cancel();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    backgroundColor: AppColors.surface1,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: AppColors.error.withOpacity(0.1),
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.error, width: 2),
-          ),
-          child: Center(
-            child: Text(
-              '$_count',
-              style: AppTextStyles.h1().copyWith(
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: AppColors.error.withOpacity(0.1),
+              shape: BoxShape.circle,
+              border: Border.all(
                 color: AppColors.error,
-                fontSize: 28,
+                width: 2,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                '$_count',
+                style: AppTextStyles.h1().copyWith(
+                  color: AppColors.error,
+                  fontSize: 28,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Calling Emergency Contact',
+            style: AppTextStyles.h3(),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            widget.number,
+            style: AppTextStyles.subtitle(
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Calling in $_count seconds...',
+            style: AppTextStyles.bodySM(
+              color: AppColors.textMuted,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+      actions: [
+        SizedBox(
+          width: double.infinity,
+          child: TextButton(
+            onPressed: _cancelCountdown,
+            child: Text(
+              'Cancel',
+              style: AppTextStyles.subtitle(
+                color: AppColors.textMuted,
               ),
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        Text(
-          'Calling Emergency Contact',
-          style: AppTextStyles.h3(),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          widget.number,
-          style: AppTextStyles.subtitle(color: AppColors.primary),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Calling in $_count seconds...',
-          style: AppTextStyles.bodySM(color: AppColors.textMuted),
-          textAlign: TextAlign.center,
-        ),
       ],
-    ),
-    actions: [
-      SizedBox(
-        width: double.infinity,
-        child: TextButton(
-          onPressed: () {
-            _timer.cancel();
-            Navigator.pop(context);
-          },
-          child: Text(
-            'Cancel',
-            style: AppTextStyles.subtitle(color: AppColors.textMuted),
-          ),
-        ),
-      ),
-    ],
-  );
+    );
+  }
 }
-
 // ══════════════════════════════════════════════════════════
 //  SHARED SHEET HELPERS
 // ══════════════════════════════════════════════════════════
@@ -2252,48 +2299,66 @@ class _SubscriptionCard extends StatelessWidget {
   }
 }
 
-// Sirf yeh widget add karo:
-class _VerificationSection extends StatelessWidget {
-  const _VerificationSection({required this.user});
 
-  final UserModel user; // UserModel
+class _VerificationSection extends StatefulWidget {
+  const _VerificationSection({required this.user});
+  final dynamic user;
+
+  @override
+  State<_VerificationSection> createState() => _VerificationSectionState();
+}
+
+class _VerificationSectionState extends State<_VerificationSection> {
+  Map<String, dynamic> _status = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStatus();
+  }
+
+  Future<void> _loadStatus() async {
+    try {
+      final ds  = getIt<ProfileRemoteDatasource>();
+      final res = await ds.getVerificationStatus();
+      if (mounted) setState(() => _status = res.data['data'] ?? {});
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
+    final idStatus     = _status['id']?['status']     ?? 'not_submitted';
+    final selfieStatus = _status['selfie']?['status'] ?? 'not_submitted';
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin:  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface2,
+        color:        AppColors.surface2,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border:       Border.all(color: AppColors.border2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-
         children: [
           Text('Verification', style: AppTextStyles.subtitle()),
           const SizedBox(height: 12),
 
-          // Photo verified
           _VerifRow(
-            icon: '📷',
-            label: 'Photo Verified',
-            done: user.photoVerified ?? false,
-            onTap: () {
-              context.push(AppRoutes.verifyPhoto);
-            },
+            icon:   '📷',
+            label:  'Photo Verified',
+            status: selfieStatus,
+            onTap:  () => context.push(AppRoutes.verifyPhoto)
+                .then((_) => _loadStatus()),
           ),
           const SizedBox(height: 8),
 
-          // ID verified
           _VerifRow(
-            icon: '✅',
-            label: 'ID Verified',
-            done: user.idVerified ?? false,
-            onTap: () {
-              context.push(AppRoutes.verifyId);
-            },
+            icon:   '🪪',
+            label:  'ID Verified',
+            status: idStatus,
+            onTap:  () => context.push(AppRoutes.verifyId)
+                .then((_) => _loadStatus()),
           ),
         ],
       ),
@@ -2305,45 +2370,50 @@ class _VerifRow extends StatelessWidget {
   const _VerifRow({
     required this.icon,
     required this.label,
-    required this.done,
+    required this.status,
     required this.onTap,
   });
-
-  final String icon;
-  final String label;
-  final bool done;
+  final String       icon;
+  final String       label;
+  final String       status;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final isVerified = status == 'verified';
+    final isPending  = status == 'pending';
+
     return GestureDetector(
-      onTap: done ? null : onTap,
+      onTap: isVerified ? null : onTap,
       child: Row(
         children: [
           Text(icon, style: const TextStyle(fontSize: 16)),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              label,
-              style: AppTextStyles.body(
-                color: done ? AppColors.teal : AppColors.textSecondary,
-              ),
-            ),
+            child: Text(label,
+                style: AppTextStyles.body(
+                    color: isVerified
+                        ? AppColors.teal
+                        : AppColors.textSecondary)),
           ),
-          if (done)
-            Text('Verified', style: AppTextStyles.bodySM(color: AppColors.teal))
+          if (isVerified)
+            Text('Verified ✅',
+                style: AppTextStyles.bodySM(color: AppColors.teal))
+          else if (isPending)
+            Text('Pending ⏳',
+                style: AppTextStyles.bodySM(color: AppColors.warning))
           else
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.primaryDim,
+                color:        AppColors.primaryDim,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: AppColors.primaryBorder),
               ),
-              child: Text(
-                'Verify',
-                style: AppTextStyles.bodySM(color: AppColors.primary),
-              ),
+              child: Text('Verify',
+                  style: AppTextStyles.bodySM(
+                      color: AppColors.primary)),
             ),
         ],
       ),

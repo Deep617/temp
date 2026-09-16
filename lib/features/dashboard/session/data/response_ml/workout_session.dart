@@ -20,6 +20,8 @@ class WorkoutSession {
     this.xpEarned,
     this.tokensDeducted,
     this.notes,
+    this.city,
+    this.streakDays,
     this.incompleteReason,
     this.challengeId,
     this.challengeTitle,
@@ -34,6 +36,8 @@ class WorkoutSession {
   final String?   buddyName;
   final String?   buddyAvatar;
   final String    activity;
+  final String?    city;
+  final int?    streakDays;
   final String?   gymName;
   final DateTime  scheduledAt;
   final int       durationMins;   // 45 | 60 | 90 | 120
@@ -133,6 +137,8 @@ class WorkoutSession {
     xpEarned:            j['xpEarned']         as int?,
     tokensDeducted:      j['tokensDeducted']   as int?,
     notes:               j['notes']            as String?,
+    city:               j['city']            as String?,
+    streakDays:               j['streakDays']            as int?,
     incompleteReason:    j['incompleteReason'] as String?,
     challengeId:         j['challengeId']      as String?,
     challengeTitle:      j['challengeTitle']   as String?,

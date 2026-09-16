@@ -184,4 +184,25 @@ class AuthRepositoryImpl extends BaseRepository implements AuthRepository {
       throw AppError.fromException(e);
     });
   }
+
+  // GET /users/me/photos
+  Future<List<String>> getMyPhotos() async {
+    return remote.getMyPhotos().catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  // POST /users/me/photos
+  Future<void> addPhoto(String url) async {
+    return remote.addPhoto(url).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  // DELETE /users/me/photos/:photoId
+  Future<void> deletePhoto(String url) async {
+    return remote.deletePhoto(url).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
 }

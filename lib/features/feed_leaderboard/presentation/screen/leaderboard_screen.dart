@@ -279,41 +279,43 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
       ),
       builder: (_) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 36, height: 4,
-            margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(
-              color: AppColors.border2,
-              borderRadius: BorderRadius.circular(2),
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 36, height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: AppColors.border2,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          Text('Filter by Location', style: AppTextStyles.h3()),
-          const SizedBox(height: 16),
-          ...cities.map((city) => ListTile(
-            leading: Icon(
-              city == null ? Icons.public : Icons.location_on,
-              color: _cityFilter == city
-                  ? AppColors.primary
-                  : AppColors.textMuted,
-            ),
-            title: Text(city ?? 'Global',
-                style: AppTextStyles.subtitle(
-                  color: _cityFilter == city
-                      ? AppColors.primary
-                      : AppColors.textPrimary,
-                )),
-            trailing: _cityFilter == city
-                ? const Icon(Icons.check_circle,
-                    color: AppColors.primary, size: 20)
-                : null,
-            onTap: () {
-              Navigator.pop(context);
-              setState(() => _cityFilter = city);
-              _load();
-            },
-          )),
-        ]),
+            Text('Filter by Location', style: AppTextStyles.h3()),
+            const SizedBox(height: 16),
+            ...cities.map((city) => ListTile(
+              leading: Icon(
+                city == null ? Icons.public : Icons.location_on,
+                color: _cityFilter == city
+                    ? AppColors.primary
+                    : AppColors.textMuted,
+              ),
+              title: Text(city ?? 'Global',
+                  style: AppTextStyles.subtitle(
+                    color: _cityFilter == city
+                        ? AppColors.primary
+                        : AppColors.textPrimary,
+                  )),
+              trailing: _cityFilter == city
+                  ? const Icon(Icons.check_circle,
+                      color: AppColors.primary, size: 20)
+                  : null,
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _cityFilter = city);
+                _load();
+              },
+            )),
+          ]),
+        ),
       ),
     );
   }

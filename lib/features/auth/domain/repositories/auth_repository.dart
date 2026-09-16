@@ -62,4 +62,12 @@ abstract class AuthRepository {
     String action = 'like',
   });
 
+  // GET /users/me/photos
+  Future<List<String>> getMyPhotos();
+
+  // POST /users/me/photos
+  Future<void> addPhoto(String url) ;
+
+  // DELETE /users/me/photos/:photoId
+  Future<void> deletePhoto(String url);
 }

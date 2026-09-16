@@ -183,6 +183,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     hint: '••••••••',
                     controller: _passCtrl,
                     obscure: !_showPass,
+                    keyboardType: TextInputType.emailAddress,
                     prefixIcon: Icons.lock_outline,
                     suffix: GestureDetector(
                       onTap: () => setState(() => _showPass = !_showPass),

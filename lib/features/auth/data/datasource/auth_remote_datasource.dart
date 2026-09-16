@@ -154,6 +154,28 @@ class AuthRemoteDataSource {
     return _data(res);
   }
 
+
+  // GET /users/me/photos
+  Future<List<String>> getMyPhotos() async {
+    final res    = await client.get('/users/me/photos');
+    final data   = _data(res);
+    final photos = data['photos'] as List<dynamic>? ?? [];
+    return photos
+        .map((p) => (p as Map<String, dynamic>)['url'] as String)
+        .toList();
+  }
+
+  // POST /users/me/photos
+  Future<void> addPhoto(String url) async {
+    await client.post('/users/me/photos', data: { 'url': url });
+  }
+
+  // DELETE /users/me/photos/:photoId
+  Future<void> deletePhoto(String url) async {
+    // Find photoId from URL or store id separately
+    await client.delete('/users/me/photos/$url');
+  }
+
   dynamic _data(Response res) {
     final body = res.data;
     if (body is Map && body['success'] == true) {
