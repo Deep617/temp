@@ -18,6 +18,12 @@ class DiscoverState extends Equatable {
     this.lat,
     this.lng,
     this.radiusKm = 5.0,
+    // Constructor mein add karo:
+    this.isBoostActive    = false,
+    this.boostExpiresAt,
+    this.superLikeSuccess = false,
+    this.boostError,
+    this.superLikeError,
   });
 
   final DiscoverStatus status;
@@ -34,6 +40,12 @@ class DiscoverState extends Equatable {
 
   /// Non-null when the most recent right-swipe resulted in a match.
   final String? matchedUserId;
+
+  final bool   isBoostActive;
+  final DateTime? boostExpiresAt;
+  final bool   superLikeSuccess;    // show animation
+  final String? boostError;         // "No boosts left" etc
+  final String? superLikeError;     // "Daily limit reached"
 
   bool get isLoading => status == DiscoverStatus.loading;
 
@@ -58,6 +70,15 @@ class DiscoverState extends Equatable {
     double? lat,
     double? lng,
     double? radiusKm,
+    // copyWith mein add karo:
+    bool? isBoostActive,
+    DateTime? boostExpiresAt,
+    bool? superLikeSuccess,
+    String? boostError,
+    String? superLikeError,
+    bool clearBoostError      = false,
+    bool clearSuperLikeError  = false,
+    bool clearSuperLikeSuccess = false,
   }) => DiscoverState(
     status: status ?? this.status,
     profiles: profiles ?? this.profiles,
@@ -70,6 +91,12 @@ class DiscoverState extends Equatable {
     lat:      lat      ?? this.lat,
     lng:      lng      ?? this.lng,
     radiusKm: radiusKm ?? this.radiusKm,
+    // copyWith body mein:
+    isBoostActive:     isBoostActive     ?? this.isBoostActive,
+    boostExpiresAt:    boostExpiresAt    ?? this.boostExpiresAt,
+    superLikeSuccess:  clearSuperLikeSuccess ? false : superLikeSuccess ?? this.superLikeSuccess,
+    boostError:        clearBoostError   ? null : boostError    ?? this.boostError,
+    superLikeError:    clearSuperLikeError ? null : superLikeError ?? this.superLikeError,
   );
 
   @override
@@ -82,5 +109,7 @@ class DiscoverState extends Equatable {
     selectedLevel,
     error,
     matchedUserId,
+    // props mein add karo:
+    isBoostActive, boostExpiresAt, superLikeSuccess, boostError, superLikeError,
   ];
 }

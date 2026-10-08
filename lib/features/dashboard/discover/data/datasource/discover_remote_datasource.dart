@@ -66,6 +66,21 @@ class DiscoverRemoteDatasource {
     await _dio.delete('/match/buddies/$buddyId');
   }
 
+  Future<void> superLike(String targetUserId) async {
+    await _dio.post(
+      '/match/swipe',
+      data: {
+        'targetId': targetUserId,
+        'action':   'super_like',
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> boost() async {
+    final res = await _dio.post('/match/boost');
+    return _body(res);
+  }
+
   Map<String, dynamic> _body(Response res) {
     if (res.statusCode != null &&
         res.statusCode! >= 200 &&

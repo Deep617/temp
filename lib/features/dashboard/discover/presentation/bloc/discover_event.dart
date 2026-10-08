@@ -66,3 +66,13 @@ class ReferralCodeApplied extends DiscoverEvent {
   @override
   List<Object?> get props => [code];
 }
+class DiscoverSuperLiked extends DiscoverEvent {
+  const DiscoverSuperLiked({required this.userId});
+  final String userId;
+  @override
+  List<Object?> get props => [userId];
+}
+
+class DiscoverBoosted extends DiscoverEvent {
+  const DiscoverBoosted();
+}

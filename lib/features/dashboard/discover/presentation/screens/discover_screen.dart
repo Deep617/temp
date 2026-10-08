@@ -90,6 +90,62 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           orElse: () => state.profiles.first,
         );
         _showMatchDialog(profile); // ← sirf ek baar
+
+        if (state.superLikeSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(children: [
+                const Text('⭐ '),
+                Text('Super Like sent!',
+                    style: AppTextStyles.bodySM()),
+              ]),
+              backgroundColor: AppColors.warning.withOpacity(0.9),
+              behavior:        SnackBarBehavior.floating,
+              duration:        const Duration(seconds: 2),
+            ),
+          );
+        }
+
+        // Super like error
+        if (state.superLikeError != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.superLikeError!,
+                  style: AppTextStyles.bodySM()),
+              backgroundColor: AppColors.error,
+              behavior:        SnackBarBehavior.floating,
+            ),
+          );
+        }
+
+        // Boost activated
+        if (state.isBoostActive && state.boostExpiresAt != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(children: [
+                const Text('⚡ '),
+                Text('Profile Boosted for 30 minutes!',
+                    style: AppTextStyles.bodySM()),
+              ]),
+              backgroundColor: AppColors.teal,
+              behavior:        SnackBarBehavior.floating,
+              duration:        const Duration(seconds: 3),
+            ),
+          );
+        }
+
+        // Boost error
+        if (state.boostError != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.boostError!,
+                  style: AppTextStyles.bodySM()),
+              backgroundColor: AppColors.error,
+              behavior:        SnackBarBehavior.floating,
+            ),
+          );
+        }
+
       },
       child: BlocBuilder<DiscoverBloc, DiscoverState>(
         builder: (context, state) {
@@ -292,7 +348,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                             icon: Icons.star,
                             color: AppColors.warning,
                             size: 44,
-                            onTap: () {},
+                            onTap: () {
+                              if (state.currentProfile == null) return;
+                              context.read<DiscoverBloc>().add(
+                                DiscoverSuperLiked(userId: state.currentProfile!.id),
+                              );
+                            },
                           ),
                           ActionBtn(
                             icon: Icons.favorite,
@@ -305,10 +366,31 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                             ),
                           ),
                           ActionBtn(
-                            icon: Icons.bolt,
-                            color: AppColors.teal,
-                            size: 44,
-                            onTap: () {},
+                            icon:  Icons.bolt,
+                            color: state.isBoostActive
+                                ? AppColors.warning   // glowing when active
+                                : AppColors.teal,
+                            size:  44,
+                            onTap: () {
+                              if (state.isBoostActive) {
+                                // Already active — show remaining time
+                                final remaining = state.boostExpiresAt
+                                    ?.difference(DateTime.now())
+                                    .inMinutes ?? 0;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '⚡ Boost active — $remaining mins remaining',
+                                      style: AppTextStyles.bodySM(),
+                                    ),
+                                    backgroundColor: AppColors.surface2,
+                                    behavior:        SnackBarBehavior.floating,
+                                  ),
+                                );
+                                return;
+                              }
+                              context.read<DiscoverBloc>().add(const DiscoverBoosted());
+                            },
                           ),
                           ActionBtn(
                             icon: Icons.refresh,

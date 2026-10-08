@@ -16,6 +16,9 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
     on<DiscoverSwipedRight>(_onSwipedRight);
     on<DiscoverSwipedLeft>(_onSwipedLeft);
     on<DiscoverFilterChanged>(_onFilterChanged);
+    // Constructor mein add karo (on<DiscoverFilterChanged> ke baad):
+    on<DiscoverSuperLiked>(_onSuperLiked);
+    on<DiscoverBoosted>(_onBoosted);
   }
 
   Future<void> _onProfilesLoaded(
@@ -111,6 +114,45 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
     // Pre-load when near the end
     if (next >= state.profiles.length - 3 && state.hasMore) {
       add(const DiscoverProfilesLoaded());
+    }
+  }
+
+  // ── Super Like handler ──────────────────────────────────
+  Future<void> _onSuperLiked(
+      DiscoverSuperLiked event,
+      Emitter<DiscoverState> emit,
+      ) async {
+    _advance(emit); // Advance card immediately
+    try {
+      await _repo.superLike(event.userId);
+      emit(state.copyWith(superLikeSuccess: true));
+      // Clear success after animation
+      await Future.delayed(const Duration(seconds: 2));
+      emit(state.copyWith(clearSuperLikeSuccess: true));
+    } on AppError catch (e) {
+      // Show error — daily limit ya insufficient plan
+      emit(state.copyWith(superLikeError: e.message));
+      await Future.delayed(const Duration(seconds: 3));
+      emit(state.copyWith(clearSuperLikeError: true));
+    }
+  }
+
+  // ── Boost handler ───────────────────────────────────────
+  Future<void> _onBoosted(
+      DiscoverBoosted event,
+      Emitter<DiscoverState> emit,
+      ) async {
+    try {
+      final result = await _repo.boost();
+      final expiresAt = DateTime.parse(result['expiresAt'] as String);
+      emit(state.copyWith(
+        isBoostActive:  true,
+        boostExpiresAt: expiresAt,
+      ));
+    } on AppError catch (e) {
+      emit(state.copyWith(boostError: e.message));
+      await Future.delayed(const Duration(seconds: 3));
+      emit(state.copyWith(clearBoostError: true));
     }
   }
 }

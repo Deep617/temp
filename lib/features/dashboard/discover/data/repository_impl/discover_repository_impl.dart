@@ -72,4 +72,21 @@ class DiscoverRepositoryImpl extends BaseRepository
       throw AppError.fromException(e);
     });
   }
+
+  @override
+  Future<void> superLike(String userId) {
+    return remote.superLike(userId).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  @override
+  Future<Map<String, dynamic>> boost() async {
+    try {
+      final res = await remote.boost();
+      return res['data'] as Map<String, dynamic>;
+    } catch (e) {
+      throw AppError.fromException(e);
+    }
+  }
 }

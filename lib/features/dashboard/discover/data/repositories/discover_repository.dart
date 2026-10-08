@@ -24,4 +24,9 @@ abstract class DiscoverRepository {
   Future<BuddyProfile> getBuddyProfile(String userId);
 
   Future<void> removeBuddy(String buddyId);
+
+  Future<void> superLike(String userId);
+
+  Future<Map<String, dynamic>> boost();
+
 }
