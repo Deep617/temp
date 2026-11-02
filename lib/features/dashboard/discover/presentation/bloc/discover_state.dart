@@ -15,6 +15,9 @@ class DiscoverState extends Equatable {
     this.selectedLevel,
     this.error,
     this.matchedUserId,
+    this.matchedChatId,
+    this.matchedMatchId,
+    this.swipeError,
     this.lat,
     this.lng,
     this.radiusKm = 5.0,
@@ -24,6 +27,8 @@ class DiscoverState extends Equatable {
     this.superLikeSuccess = false,
     this.boostError,
     this.superLikeError,
+    this.boostActivated   = false,
+    this.tokensRemaining,
   });
 
   final DiscoverStatus status;
@@ -40,12 +45,23 @@ class DiscoverState extends Equatable {
 
   /// Non-null when the most recent right-swipe resulted in a match.
   final String? matchedUserId;
+  final String? matchedChatId;   // open the chat right after a match
+  final String? matchedMatchId;
+  final String? swipeError;      // e.g. "Daily swipe limit reached" (one-shot)
 
   final bool   isBoostActive;
   final DateTime? boostExpiresAt;
   final bool   superLikeSuccess;    // show animation
   final String? boostError;         // "No boosts left" etc
   final String? superLikeError;     // "Daily limit reached"
+  final bool   boostActivated;      // one-shot: boost just turned on (snackbar)
+  final int?   tokensRemaining;     // tokens left after boost (badge sync)
+
+  /// Boost is active AND not yet expired.
+  bool get isBoostLive =>
+      isBoostActive &&
+      boostExpiresAt != null &&
+      boostExpiresAt!.isAfter(DateTime.now());
 
   bool get isLoading => status == DiscoverStatus.loading;
 
@@ -67,6 +83,9 @@ class DiscoverState extends Equatable {
     bool clearError = false,
     bool clearMatch = false,
     String? matchedUserId,
+    String? matchedChatId,
+    String? matchedMatchId,
+    String? swipeError,
     double? lat,
     double? lng,
     double? radiusKm,
@@ -79,6 +98,8 @@ class DiscoverState extends Equatable {
     bool clearBoostError      = false,
     bool clearSuperLikeError  = false,
     bool clearSuperLikeSuccess = false,
+    bool? boostActivated,
+    int? tokensRemaining,
   }) => DiscoverState(
     status: status ?? this.status,
     profiles: profiles ?? this.profiles,
@@ -88,6 +109,9 @@ class DiscoverState extends Equatable {
     selectedLevel: selectedLevel ?? this.selectedLevel,
     error: clearError ? null : error ?? this.error,
     matchedUserId: clearMatch ? null : matchedUserId ?? this.matchedUserId,
+    matchedChatId: clearMatch ? null : matchedChatId ?? this.matchedChatId,
+    matchedMatchId: clearMatch ? null : matchedMatchId ?? this.matchedMatchId,
+    swipeError:    swipeError, // one-shot
     lat:      lat      ?? this.lat,
     lng:      lng      ?? this.lng,
     radiusKm: radiusKm ?? this.radiusKm,
@@ -97,6 +121,9 @@ class DiscoverState extends Equatable {
     superLikeSuccess:  clearSuperLikeSuccess ? false : superLikeSuccess ?? this.superLikeSuccess,
     boostError:        clearBoostError   ? null : boostError    ?? this.boostError,
     superLikeError:    clearSuperLikeError ? null : superLikeError ?? this.superLikeError,
+    // one-shot flag: resets to false unless explicitly set
+    boostActivated:    boostActivated ?? false,
+    tokensRemaining:   tokensRemaining ?? this.tokensRemaining,
   );
 
   @override
@@ -108,8 +135,9 @@ class DiscoverState extends Equatable {
     selectedActivity,
     selectedLevel,
     error,
-    matchedUserId,
+    matchedUserId, matchedChatId, matchedMatchId, swipeError,
     // props mein add karo:
     isBoostActive, boostExpiresAt, superLikeSuccess, boostError, superLikeError,
+    boostActivated, tokensRemaining, lat, lng, radiusKm,
   ];
 }

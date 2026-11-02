@@ -8,6 +8,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/widgets/common/common_widgets.dart';
 import '../../../../../di_injection/dependency_injection.dart';
+import '../../../../../core/errors/app_error.dart';
 import '../../data/datasource/profile_remote_datasource.dart';
 
 class VerifyIdScreen extends StatefulWidget {
@@ -49,7 +50,7 @@ class _VerifyIdScreenState extends State<VerifyIdScreen> {
       if (mounted) {
         setState(() {
         _loading = false;
-        _error   = 'Submission failed. Please try again.';
+        _error   = AppError.fromException(e).message;
       });
       }
     }

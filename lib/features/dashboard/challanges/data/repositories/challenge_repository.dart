@@ -31,12 +31,13 @@ abstract class ChallengeRepository {
   // GET /challenges/:id/feed
   Future<List<ChallengeFeedPost>> getChallengeFeed(String id, {int page = 1});
 
-  // POST /challenges/:id/proof  { sessionId, stationId, isCollab? }
+  // POST /challenges/:id/proof  { proofImageUrl | sessionId, stationId? }
+  // imagePath = live camera photo, uploaded before submitting.
   Future<Map<String, dynamic>> submitProof(
     String challengeId, {
-    required String sessionId,
-    required String stationId,
-    bool isCollab = false,
+    String? sessionId,
+    String? stationId,
+    String? imagePath,
   });
 
   // POST /challenges/:id/collab  { stationCompletionId }

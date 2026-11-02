@@ -48,18 +48,19 @@ class ChallengeFeedLoaded extends ChallengeEvent {
 }
 
 // Submit proof for a station
+// Either imagePath (live camera photo) or sessionId (use that session's proof)
 class ChallengeProofSubmitted extends ChallengeEvent {
   const ChallengeProofSubmitted({
     required this.challengeId,
-    required this.sessionId,
-    required this.stationId,
-    this.isCollab = false,
+    this.stationId,
+    this.imagePath,
+    this.sessionId,
   });
-  final String challengeId;
-  final String sessionId;
-  final String stationId;
-  final bool   isCollab;
-  @override List<Object?> get props => [challengeId, sessionId, stationId, isCollab];
+  final String  challengeId;
+  final String? stationId;
+  final String? imagePath;
+  final String? sessionId;
+  @override List<Object?> get props => [challengeId, stationId, imagePath, sessionId];
 }
 
 // Add collab photo to an existing station proof

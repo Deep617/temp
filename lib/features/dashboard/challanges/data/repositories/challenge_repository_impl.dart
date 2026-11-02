@@ -71,19 +71,20 @@ class ChallengeRepositoryImpl extends BaseRepository
     });
   }
 
-  // POST /challenges/:id/proof  { sessionId, stationId, isCollab? }
+  // POST /challenges/:id/proof  { proofImageUrl | sessionId, stationId? }
   @override
   Future<Map<String, dynamic>> submitProof(
     String challengeId, {
-    required String sessionId,
-    required String stationId,
-    bool isCollab = false,
+    String? sessionId,
+    String? stationId,
+    String? imagePath,
   }) async {
     return remote
         .submitChallengeProof(
           challengeId,
           sessionId: sessionId,
           stationId: stationId,
+          imagePath: imagePath,
         )
         .catchError((e) {
           throw AppError.fromException(e);

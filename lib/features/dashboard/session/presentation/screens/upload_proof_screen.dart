@@ -14,6 +14,9 @@ import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../di_injection/dependency_injection.dart';
 import '../../../challanges/data/repositories/challenge_repository.dart';
 import '../../data/response_ml/workout_session.dart';
+import '../widgets/proof_camera.dart';
+import '../../../../../core/services/monitoring_service.dart';
+import '../../../../../core/services/growth_service.dart';
 
 class UploadProofScreen extends StatefulWidget {
   const UploadProofScreen({
@@ -59,25 +62,17 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
     }
   }
 
-  // Pick from gallery
-  Future<void> _pickGallery() async {
-    final picked = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
-    if (picked != null && mounted) {
-      setState(() => _image = File(picked.path));
-    }
-  }
+  // Gallery disabled — proof must be a LIVE photo (anti-fake).
+  // Future<void> _pickGallery() async { ... }
 
-  // Pick from camera
+  // Live in-app camera + date/time stamp on the photo
   Future<void> _pickCamera() async {
-    final picked = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 80,
+    final file = await captureProofPhoto(
+      context,
+      activity: (_session ?? widget.session).activity,
     );
-    if (picked != null && mounted) {
-      setState(() => _image = File(picked.path));
+    if (file != null && mounted) {
+      setState(() => _image = file);
     }
   }
 
@@ -97,30 +92,43 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
 
       if (!mounted) return;
 
-      // Success snack
+      // Success snack — solo gets XP now, buddy session waits for confirm
+      final isBuddy = updatedSession.buddyId != null;
+      MonitoringService.instance.log('proof_uploaded', {
+        'type': isBuddy ? 'buddy' : 'solo',
+        'challenge': updatedSession.challengeId != null ? 1 : 0,
+      });
+      GrowthService.instance.logFirst(GrowthService.firstProof);
+      // Solo sessions are complete right away → maybe ask for a rating
+      if (!isBuddy) GrowthService.instance.onSessionCompleted();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Proof uploaded! +50 XP 🎉'),
+          content: Text(
+            isBuddy
+                ? 'Proof uploaded! 📸 ${updatedSession.buddyName ?? 'Your buddy'} has 2 hours to confirm'
+                : 'Proof uploaded! +${updatedSession.xpEarned ?? 50} XP 🎉',
+          ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
 
-      // ── Show "Post to Feed?" prompt ───────────────────
-      // Proof photo is auto-attached — user just adds caption
-      await showPostToFeedPrompt(
-        context,
-        session: updatedSession,
-        // Pass challenge info if session is part of challenge
-        challengeTitle: updatedSession.challengeTitle,
-        challengeId: updatedSession.challengeId,
-        stationNum: updatedSession.challengeStationNum ?? 0,
-        stationTitle: updatedSession.challengeTitle != null
-            ? 'Station ${updatedSession.challengeStationNum ?? 1}'
-            : '${updatedSession.activity} Session',
-        xpAwarded: updatedSession.xpEarned ?? 50,
-        isGroup: updatedSession.buddyId != null,
-      );
+      // ── "Post to Feed?" — ONLY for challenge workouts ─────
+      // Feed = challenge proofs (engagement + challenge XP).
+      // Normal sessions have no challenge → backend would reject the post.
+      if (updatedSession.challengeId != null) {
+        await showPostToFeedPrompt(
+          context,
+          session: updatedSession,
+          challengeTitle: updatedSession.challengeTitle,
+          challengeId: updatedSession.challengeId,
+          stationNum: updatedSession.challengeStationNum ?? 0,
+          stationTitle:
+              'Station ${updatedSession.challengeStationNum ?? 1}',
+          xpAwarded: updatedSession.xpEarned ?? 0, // display only; server decides
+          isGroup: isBuddy,
+        );
+      }
 
       if (mounted) context.pop();
     } catch (e) {
@@ -321,7 +329,7 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'Camera or Gallery',
+                                'Live camera photo · time stamped',
                                 style: AppTextStyles.bodySM(
                                   color: AppColors.textMuted,
                                 ),
@@ -333,26 +341,12 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
 
                 const SizedBox(height: 12),
 
-                // Quick pick buttons (always visible)
+                // Quick pick button — camera only (gallery disabled for proof)
                 if (_image == null)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _PickButton(
-                          icon: Icons.camera_alt_outlined,
-                          label: 'Camera',
-                          onTap: _pickCamera,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _PickButton(
-                          icon: Icons.photo_library_outlined,
-                          label: 'Gallery',
-                          onTap: _pickGallery,
-                        ),
-                      ),
-                    ],
+                  _PickButton(
+                    icon: Icons.camera_alt_outlined,
+                    label: 'Open Camera',
+                    onTap: _pickCamera,
                   ).animate().fadeIn(delay: 150.ms),
 
                 const SizedBox(height: 28),
@@ -373,7 +367,7 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'After upload, you can share this to the Challenge Feed with your photo — visible for 24 hours.',
+                          'For challenge workouts, you can share this to the Challenge Feed after upload — visible for 24 hours.',
                           style: AppTextStyles.bodySM(
                             color: AppColors.textMuted,
                           ),
@@ -463,17 +457,7 @@ class _UploadProofScreenState extends State<UploadProofScreen> {
                 _pickCamera();
               },
             ),
-            ListTile(
-              leading: const Icon(
-                Icons.photo_library_outlined,
-                color: AppColors.primary,
-              ),
-              title: Text('Gallery', style: AppTextStyles.subtitle()),
-              onTap: () {
-                Navigator.pop(context);
-                _pickGallery();
-              },
-            ),
+            // Gallery disabled — proof must be a live photo
           ],
         ),
       ),
@@ -629,8 +613,10 @@ class _PostToFeedSheetState extends State<_PostToFeedSheet> {
     setState(() => _posting = true);
     try {
       final challengeRepository = getIt<ChallengeRepository>();
-      challengeRepository.postToFeed({
-        'challengeId': widget.challengeId ?? widget.session.id,
+      // awaited — previously failures still showed "Posted!"
+      await challengeRepository.postToFeed({
+        'challengeId': widget.challengeId,
+        'sessionId': widget.session.id, // server takes XP from the session
         'stationNum': widget.stationNum,
         'stationTitle': widget.stationTitle,
         'xpAwarded': widget.xpAwarded,

@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────────
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import '../../../../../core/errors/app_error.dart';
 import 'package:seshlly/features/auth/domain/repositories/auth_repository.dart';
 
 import '../../../../auth/data/response_ml/register_response.dart';
@@ -58,12 +59,13 @@ class MatchRequestBloc extends Bloc<MatchRequestEvent, MatchRequestState> {
         status:          MatchRequestStatus.loaded,
         requests:        updated,
         acceptedMatchId: res['matchId'] as String?,
+        acceptedChatId:  res['chatId'] as String?,
         acceptedUser:    event.user,
         actingSwipeId:   '',
       ));
     } catch (e) {
       emit(state.copyWith(
-        errorMessage:  'Failed to accept request',
+        errorMessage:  e is AppError ? e.message : 'Could not accept the request — try again',
         actingSwipeId: '',
         clearError:    false,
       ));
@@ -84,8 +86,11 @@ class MatchRequestBloc extends Bloc<MatchRequestEvent, MatchRequestState> {
         requests:      updated,
         actingSwipeId: '',
       ));
-    } catch (_) {
-      emit(state.copyWith(actingSwipeId: ''));
+    } catch (e) {
+      emit(state.copyWith(
+        actingSwipeId: '',
+        errorMessage: e is AppError ? e.message : 'Could not decline the request — try again',
+      ));
     }
   }
 }

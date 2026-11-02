@@ -95,14 +95,20 @@ Future<void> _load() async {
           backgroundColor: AppColors.teal,
           behavior: SnackBarBehavior.floating,
         ));
-        context.push(
-          AppRoutes.chat.replaceAll(':chatId', res['matchId']),
-          extra: {
-            'buddyName':   profile.fullName,
-            'buddyId':     profile.id,
-            'buddyAvatar': profile.avatarUrl,
-          },
-        );
+        final chatId = res['chatId'] as String?;
+        if (chatId == null) {
+          context.go(AppRoutes.chats);
+        } else {
+          context.push(
+            AppRoutes.chat.replaceAll(':chatId', chatId),
+            extra: {
+              'buddyName':   profile.fullName,
+              'buddyId':     profile.id,
+              'buddyAvatar': profile.avatarUrl,
+              'matchId':     res['matchId'],
+            },
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(

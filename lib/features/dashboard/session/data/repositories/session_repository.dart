@@ -1,4 +1,5 @@
 import '../../../discover/data/response_ml/buddy_profile.dart';
+import '../response_ml/pending_proof_confirm.dart';
 import '../response_ml/workout_session.dart';
 
 abstract class SessionRepository {
@@ -26,4 +27,13 @@ abstract class SessionRepository {
 
   @override
   Future<void>  respondToSessionInvite(String sessionId, String action) ;
+
+  /// Buddy confirms the uploaded proof (within 2h)
+  Future<Map<String, dynamic>> confirmProof(String sessionId);
+
+  /// "On my way" — notifies the buddy / group (90 min before start → end)
+  Future<void> onMyWay(String sessionId);
+
+  /// Proofs waiting for MY confirmation (home banner)
+  Future<List<PendingProofConfirm>> getPendingConfirmations();
 }

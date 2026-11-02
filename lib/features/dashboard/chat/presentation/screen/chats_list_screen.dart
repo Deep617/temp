@@ -55,9 +55,11 @@ class _ChatsListScreenState extends State<ChatsListScreen>
         backgroundColor: AppColors.bg,
         title: Text('Messages', style: AppTextStyles.h3()),
         actions: [
+          // Received Flashes (photos from buddies) — had no way to open them
           IconButton(
-            icon: const Icon(Icons.search, color: AppColors.textMuted),
-            onPressed: () {},
+            tooltip: 'Flashes',
+            icon: const Icon(Icons.bolt_rounded, color: AppColors.warning),
+            onPressed: () => context.push(AppRoutes.pendingStrikes),
           ),
         ],
         bottom: TabBar(
@@ -116,10 +118,13 @@ class _ChatsListScreenState extends State<ChatsListScreen>
         listenWhen: (p, c) =>
             c.acceptedMatchId != null && p.acceptedMatchId != c.acceptedMatchId,
         listener: (_, reqState) {
-          if (reqState.acceptedMatchId != null &&
+          // New chat must show in the list too
+          context.read<ChatBloc>().add(const ChatListLoaded());
+          if (reqState.acceptedChatId != null &&
               reqState.acceptedUser != null) {
+            // (was pushing the MATCH id as the chat id → "Chat not found")
             context.push(
-              AppRoutes.chat.replaceAll(':chatId', reqState.acceptedMatchId!),
+              AppRoutes.chat.replaceAll(':chatId', reqState.acceptedChatId!),
               extra: {
                 'buddyName': reqState.acceptedUser!.firstName,
                 'buddyId': reqState.acceptedUser!.id,
@@ -128,6 +133,16 @@ class _ChatsListScreenState extends State<ChatsListScreen>
               },
             );
           }
+        },
+        child: BlocListener<MatchRequestBloc, MatchRequestState>(
+        // Accept / decline failed → tell the user
+        listenWhen: (p, c) => c.errorMessage != null && c.errorMessage != p.errorMessage,
+        listener: (context, s) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(s.errorMessage!),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ));
         },
         child: TabBarView(
           controller: _tabs,
@@ -150,6 +165,7 @@ class _ChatsListScreenState extends State<ChatsListScreen>
               ),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -439,7 +455,9 @@ class _ChatsTabState extends State<_ChatsTab> {
                     final chat = state.chats[i];
                     final unread = chat['unreadCount'] as int? ?? 0;
                     return ListTile(
-                      trailing: _FlashTrailing(
+                      trailing: chat['isGroup'] == true
+                          ? null
+                          : _FlashTrailing(
                         buddyId:  chat['buddyId'] as String? ?? '',
                         streaks:  state.flashStreaks,
                         onTap: () {

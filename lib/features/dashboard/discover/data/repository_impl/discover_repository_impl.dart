@@ -42,6 +42,16 @@ class DiscoverRepositoryImpl extends BaseRepository
   }
 
   @override
+  Future<Map<String, dynamic>> likeUser(String userId) async {
+    try {
+      final res = await remote.swipeRight(userId);
+      return Map<String, dynamic>.from(res['data'] as Map? ?? const {});
+    } catch (e) {
+      throw AppError.fromException(e);
+    }
+  }
+
+  @override
   Future<bool> swipeRight(String userId) async {
     try {
       final res = await remote.swipeRight(userId);
@@ -74,17 +84,31 @@ class DiscoverRepositoryImpl extends BaseRepository
   }
 
   @override
-  Future<void> superLike(String userId) {
-    return remote.superLike(userId).catchError((e) {
+  Future<bool> superLike(String userId) async {
+    try {
+      final res = await remote.superLike(userId);
+      final data = res['data'] as Map<String, dynamic>?;
+      return data?['matched'] == true;
+    } catch (e) {
       throw AppError.fromException(e);
-    });
+    }
   }
 
   @override
   Future<Map<String, dynamic>> boost() async {
     try {
       final res = await remote.boost();
-      return res['data'] as Map<String, dynamic>;
+      return (res['data'] as Map<String, dynamic>?) ?? {};
+    } catch (e) {
+      throw AppError.fromException(e);
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> boostStatus() async {
+    try {
+      final res = await remote.boostStatus();
+      return (res['data'] as Map<String, dynamic>?) ?? {};
     } catch (e) {
       throw AppError.fromException(e);
     }

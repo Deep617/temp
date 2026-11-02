@@ -39,6 +39,6 @@ class FlashStreakModel {
     longestStreak: j['longestStreak'] as int?    ?? 0,
     flashStatus:   j['flashStatus']   as String? ?? 'send_now',
     lastStreakAt:  j['lastStreakAt']  != null
-        ? DateTime.parse(j['lastStreakAt'] as String) : null,
+        ? DateTime.parse(j['lastStreakAt'] as String).toLocal() : null,
   );
 }

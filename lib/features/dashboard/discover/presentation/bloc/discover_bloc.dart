@@ -19,6 +19,7 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
     // Constructor mein add karo (on<DiscoverFilterChanged> ke baad):
     on<DiscoverSuperLiked>(_onSuperLiked);
     on<DiscoverBoosted>(_onBoosted);
+    on<DiscoverBoostStatusRequested>(_onBoostStatusRequested);
   }
 
   Future<void> _onProfilesLoaded(
@@ -46,16 +47,19 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
         lat:         state.lat,
         lng:         state.lng,
         maxDistance: state.radiusKm.clamp(1.0, 10.0), // hard cap 10km
-        page: _page,
+        // The server already leaves out everyone I swiped on, so page 1 is
+        // always "the next unseen people". Asking for page 2, 3… skipped
+        // real profiles and showed "You've seen everyone" too early.
+        page: 1,
       );
-      final merged = event.refresh
-          ? profiles
-          : [...state.profiles, ...profiles];
+      final seen = event.refresh ? <String>{} : state.profiles.map((p) => p.id).toSet();
+      final fresh = profiles.where((p) => seen.add(p.id)).toList();
+      final merged = event.refresh ? fresh : [...state.profiles, ...fresh];
       emit(
         state.copyWith(
           status: DiscoverStatus.success,
           profiles: merged,
-          hasMore: profiles.length >= 20,
+          hasMore: fresh.isNotEmpty && profiles.length >= 20,
         ),
       );
       _page++;
@@ -71,12 +75,17 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
     // Advance card immediately so UI is responsive
     _advance(emit);
     try {
-      final matched = await _repo.swipeRight(event.userId);
-      if (matched) {
-        emit(state.copyWith(matchedUserId: event.userId));
+      final res = await _repo.likeUser(event.userId);
+      if (res['matched'] == true) {
+        emit(state.copyWith(
+          matchedUserId:  event.userId,
+          matchedChatId:  res['chatId'] as String?,
+          matchedMatchId: res['matchId'] as String?,
+        ));
       }
-    } on AppError {
-      // Swipe failure is silent — card already advanced
+    } on AppError catch (e) {
+      // Tell the user (e.g. daily limit) instead of silently losing the like
+      emit(state.copyWith(swipeError: e.message));
     }
   }
 
@@ -87,8 +96,8 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
     _advance(emit);
     try {
       await _repo.swipeLeft(event.userId);
-    } on AppError {
-      // Silent
+    } on AppError catch (e) {
+      if (e.statusCode == 429) emit(state.copyWith(swipeError: e.message));
     }
   }
 
@@ -118,19 +127,23 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
   }
 
   // ── Super Like handler ──────────────────────────────────
+  // POST /match/swipe { targetId, action: 'super_like' }
   Future<void> _onSuperLiked(
       DiscoverSuperLiked event,
       Emitter<DiscoverState> emit,
       ) async {
     _advance(emit); // Advance card immediately
     try {
-      await _repo.superLike(event.userId);
-      emit(state.copyWith(superLikeSuccess: true));
+      final matched = await _repo.superLike(event.userId);
+      emit(state.copyWith(
+        superLikeSuccess: true,
+        matchedUserId: matched ? event.userId : null,
+      ));
       // Clear success after animation
       await Future.delayed(const Duration(seconds: 2));
       emit(state.copyWith(clearSuperLikeSuccess: true));
     } on AppError catch (e) {
-      // Show error — daily limit ya insufficient plan
+      // Show error — daily limit / plan / tokens
       emit(state.copyWith(superLikeError: e.message));
       await Future.delayed(const Duration(seconds: 3));
       emit(state.copyWith(clearSuperLikeError: true));
@@ -138,21 +151,47 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
   }
 
   // ── Boost handler ───────────────────────────────────────
+  // POST /match/boost → { boostExpiresAt, tokensRemaining, durationMinutes }
   Future<void> _onBoosted(
       DiscoverBoosted event,
       Emitter<DiscoverState> emit,
       ) async {
     try {
       final result = await _repo.boost();
-      final expiresAt = DateTime.parse(result['expiresAt'] as String);
+      final expiresAt = DateTime.tryParse(
+        result['boostExpiresAt']?.toString() ?? '',
+      )?.toLocal();
       emit(state.copyWith(
-        isBoostActive:  true,
-        boostExpiresAt: expiresAt,
+        isBoostActive:   expiresAt != null,
+        boostExpiresAt:  expiresAt,
+        boostActivated:  expiresAt != null,
+        tokensRemaining: (result['tokensRemaining'] as num?)?.toInt(),
       ));
     } on AppError catch (e) {
       emit(state.copyWith(boostError: e.message));
       await Future.delayed(const Duration(seconds: 3));
       emit(state.copyWith(clearBoostError: true));
+    }
+  }
+
+  // ── Boost status (on screen open) ───────────────────────
+  // GET /match/boost/status → { isActive, boostExpiresAt, remainingMinutes, tokens }
+  Future<void> _onBoostStatusRequested(
+      DiscoverBoostStatusRequested event,
+      Emitter<DiscoverState> emit,
+      ) async {
+    try {
+      final result = await _repo.boostStatus();
+      final isActive = result['isActive'] == true;
+      final expiresAt = DateTime.tryParse(
+        result['boostExpiresAt']?.toString() ?? '',
+      )?.toLocal();
+      emit(state.copyWith(
+        isBoostActive:  isActive && expiresAt != null,
+        boostExpiresAt: expiresAt,
+      ));
+    } on AppError {
+      // Silent — button just stays in default state
     }
   }
 }

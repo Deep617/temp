@@ -1,6 +1,7 @@
 import 'package:seshlly/core/errors/app_error.dart';
 import 'package:seshlly/features/dashboard/session/data/datasource/session_remote_datasource.dart';
 import 'package:seshlly/features/dashboard/session/data/repositories/session_repository.dart';
+import 'package:seshlly/features/dashboard/session/data/response_ml/pending_proof_confirm.dart';
 import 'package:seshlly/features/dashboard/session/data/response_ml/workout_session.dart';
 
 import '../../../../../core/api/base_repository.dart';
@@ -77,6 +78,27 @@ class SessionRepositoryImpl extends BaseRepository
         .catchError((e) {
           throw AppError.fromException(e);
         });
+  }
+
+  @override
+  Future<Map<String, dynamic>> confirmProof(String sessionId) {
+    return remote.confirmProof(sessionId).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  @override
+  Future<void> onMyWay(String sessionId) {
+    return remote.onMyWay(sessionId).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  @override
+  Future<List<PendingProofConfirm>> getPendingConfirmations() {
+    return remote.getPendingConfirmations().catchError((e) {
+      throw AppError.fromException(e);
+    });
   }
 
 

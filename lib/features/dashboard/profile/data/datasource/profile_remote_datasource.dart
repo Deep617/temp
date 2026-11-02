@@ -67,7 +67,9 @@ class ProfileRemoteDatasource {
       '/verification/submit',
       data: {
         'type':      type,
-        if (docUrl != null) 'docUrl':    docUrl,
+        // Backend requires docUrl for every type — for 'selfie' the selfie
+        // image IS the document.
+        if ((docUrl ?? selfieUrl) != null) 'docUrl': docUrl ?? selfieUrl,
         if (selfieUrl != null) 'selfieUrl': selfieUrl,
       },
     );

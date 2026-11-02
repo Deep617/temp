@@ -26,6 +26,23 @@ class ChatRepositoryImpl extends BaseRepository implements ChatRepository {
   }
 
   @override
+  Future<({List<Message> messages, bool disappearing})> getMessagesWithMode(
+    String chatId, {
+    int page = 1,
+  }) {
+    return remote.getMessagesWithMode(chatId, page: page).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  @override
+  Future<Message?> setChatMode(String chatId, bool disappearing) {
+    return remote.setChatMode(chatId, disappearing).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  @override
   Future<void> markRead(String chatId) {
     return remote.markChatRead(chatId).catchError((e) {
       throw AppError.fromException(e);

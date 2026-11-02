@@ -11,10 +11,13 @@ import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/widgets/common/common_widgets.dart';
 import '../../../../../core/widgets/error_widget.dart';
 import '../../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../../auth/presentation/bloc/auth_event.dart';
 import '../../data/response_ml/buddy_profile.dart';
 import '../bloc/discover_bloc.dart';
 import '../bloc/discover_event.dart';
 import '../bloc/discover_state.dart';
+import '../../../../../core/services/monitoring_service.dart';
+import '../../../../../core/services/growth_service.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
@@ -78,75 +81,120 @@ class _DiscoverScreenState extends State<DiscoverScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    return BlocListener<DiscoverBloc, DiscoverState>(
-      // Show match dialog when a match is returned
-      listenWhen: (prev, curr) =>
-          curr.matchedUserId != null &&
-          curr.matchedUserId != prev.matchedUserId,
-      listener: (context, state) {
-        // ← yahan handle karo
-        final profile = state.profiles.firstWhere(
-          (p) => p.id == state.matchedUserId,
-          orElse: () => state.profiles.first,
-        );
-        _showMatchDialog(profile); // ← sirf ek baar
+    return MultiBlocListener(
+      listeners: [
+        // ── Match dialog (right swipe / super like → mutual) ──
+        BlocListener<DiscoverBloc, DiscoverState>(
+          listenWhen: (prev, curr) =>
+              curr.matchedUserId != null &&
+              curr.matchedUserId != prev.matchedUserId,
+          listener: (context, state) {
+            if (state.profiles.isEmpty) return;
+            final profile = state.profiles.firstWhere(
+              (p) => p.id == state.matchedUserId,
+              orElse: () => state.profiles.first,
+            );
+            _showMatchDialog(profile,
+                chatId: state.matchedChatId, matchId: state.matchedMatchId);
+          },
+        ),
 
-        if (state.superLikeSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(children: [
-                const Text('⭐ '),
-                Text('Super Like sent!',
+        // ── Like failed (e.g. daily limit) — say so instead of losing it ──
+        BlocListener<DiscoverBloc, DiscoverState>(
+          listenWhen: (prev, curr) => curr.swipeError != null,
+          listener: (context, state) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.swipeError!, style: AppTextStyles.bodySM()),
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
+        ),
+
+        // ── Super Like sent ──
+        BlocListener<DiscoverBloc, DiscoverState>(
+          listenWhen: (prev, curr) =>
+              !prev.superLikeSuccess && curr.superLikeSuccess,
+          listener: (context, state) {
+            MonitoringService.instance.log('super_like');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(children: [
+                  const Text('⭐ '),
+                  Text('Super Like sent!', style: AppTextStyles.bodySM()),
+                ]),
+                backgroundColor: AppColors.warning.withOpacity(0.9),
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
+        ),
+
+        // ── Super Like error ──
+        BlocListener<DiscoverBloc, DiscoverState>(
+          listenWhen: (prev, curr) =>
+              curr.superLikeError != null &&
+              curr.superLikeError != prev.superLikeError,
+          listener: (context, state) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.superLikeError!,
                     style: AppTextStyles.bodySM()),
-              ]),
-              backgroundColor: AppColors.warning.withOpacity(0.9),
-              behavior:        SnackBarBehavior.floating,
-              duration:        const Duration(seconds: 2),
-            ),
-          );
-        }
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
+        ),
 
-        // Super like error
-        if (state.superLikeError != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.superLikeError!,
-                  style: AppTextStyles.bodySM()),
-              backgroundColor: AppColors.error,
-              behavior:        SnackBarBehavior.floating,
-            ),
-          );
-        }
+        // ── Boost activated ──
+        BlocListener<DiscoverBloc, DiscoverState>(
+          listenWhen: (prev, curr) =>
+              !prev.boostActivated && curr.boostActivated,
+          listener: (context, state) {
+            MonitoringService.instance.log('boost_activated');
+            // Sync token badge with backend's remaining count
+            final authBloc = context.read<AuthBloc>();
+            final me = authBloc.state.user;
+            if (me != null && state.tokensRemaining != null) {
+              authBloc.add(AuthUserUpdated(
+                user: me.copyWith(chatTokens: state.tokensRemaining),
+              ));
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(children: [
+                  const Text('⚡ '),
+                  Text('Profile Boosted for 30 minutes!',
+                      style: AppTextStyles.bodySM()),
+                ]),
+                backgroundColor: AppColors.teal,
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          },
+        ),
 
-        // Boost activated
-        if (state.isBoostActive && state.boostExpiresAt != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(children: [
-                const Text('⚡ '),
-                Text('Profile Boosted for 30 minutes!',
+        // ── Boost error ──
+        BlocListener<DiscoverBloc, DiscoverState>(
+          listenWhen: (prev, curr) =>
+              curr.boostError != null && curr.boostError != prev.boostError,
+          listener: (context, state) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.boostError!,
                     style: AppTextStyles.bodySM()),
-              ]),
-              backgroundColor: AppColors.teal,
-              behavior:        SnackBarBehavior.floating,
-              duration:        const Duration(seconds: 3),
-            ),
-          );
-        }
-
-        // Boost error
-        if (state.boostError != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.boostError!,
-                  style: AppTextStyles.bodySM()),
-              backgroundColor: AppColors.error,
-              behavior:        SnackBarBehavior.floating,
-            ),
-          );
-        }
-
-      },
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
+        ),
+      ],
       child: BlocBuilder<DiscoverBloc, DiscoverState>(
         builder: (context, state) {
           final user = context.watch<AuthBloc>().state.user;
@@ -227,6 +275,46 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                   ),
                   const SizedBox(height: 12),
 
+                  // ── 🗺 Gym Map entry — clearly visible ──
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                    child: Material(
+                      color: AppColors.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => context.push(AppRoutes.gymMap),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.primary.withOpacity(0.35)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.map_rounded, color: AppColors.primary, size: 22),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Gym Map',
+                                        style: AppTextStyles.subtitle(color: AppColors.textPrimary)),
+                                    Text('Gyms near you & buddies training now',
+                                        style: AppTextStyles.caption(),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right, color: AppColors.primary),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
                   // Card Stack
                   if (state.status != DiscoverStatus.failure)
                     Expanded(
@@ -269,7 +357,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                                       scale: 0.94 + 0.03 * (2 - i),
                                       child: SizedBox(
                                         width: size.width - 56,
-                                        height: size.height * 0.62,
+                                        height: size.height * 0.57,
                                         child: _BuddyCard(
                                           profile: state.profiles[idx],
                                         ),
@@ -294,7 +382,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                                         children: [
                                           SizedBox(
                                             width: size.width - 40,
-                                            height: size.height * 0.62,
+                                            height: size.height * 0.57,
                                             child: _BuddyCard(
                                               profile: state
                                                   .profiles[state.currentIndex],
@@ -367,12 +455,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                           ),
                           ActionBtn(
                             icon:  Icons.bolt,
-                            color: state.isBoostActive
+                            color: state.isBoostLive
                                 ? AppColors.warning   // glowing when active
                                 : AppColors.teal,
                             size:  44,
                             onTap: () {
-                              if (state.isBoostActive) {
+                              if (state.isBoostLive) {
                                 // Already active — show remaining time
                                 final remaining = state.boostExpiresAt
                                     ?.difference(DateTime.now())
@@ -422,10 +510,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
-  void _showMatchDialog(BuddyProfile profile) {
+  void _showMatchDialog(BuddyProfile profile, {String? chatId, String? matchId}) {
+    GrowthService.instance.logFirst(GrowthService.firstMatch);
     showDialog(
       context: context,
-      builder: (_) => MatchDialog(profile: profile),
+      builder: (_) => MatchDialog(profile: profile, chatId: chatId, matchId: matchId),
     );
   }
 }
@@ -457,7 +546,10 @@ class _BuddyCard extends StatelessWidget {
             AppRoutes.influencerProfile.replaceAll(':id', profile.id),
           );
         } else {
-          context.push(AppRoutes.buddyView, extra: {'buddyProfile': profile});
+          context.push(AppRoutes.buddyView, extra: {
+            'buddyProfile': profile,
+            'discoverBloc': context.read<DiscoverBloc>(),
+          });
         }
       },
       child: Container(
@@ -477,13 +569,14 @@ class _BuddyCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(23),
           child: Stack(
             children: [
-              profile.avatarUrl != null
+              (profile.avatarUrl != null || profile.photos.isNotEmpty)
                   ? Positioned.fill(
                       child: PhotoCarousel(
                         photos: profile.photos,
                         avatarUrl: profile.avatarUrl,
                         name: profile.fullName,
                         height: double.maxFinite,
+                        swipeable: false, // drag = like/skip; tap edges = photos
                       ),
                     )
                   : _Placeholder(profile: profile),
@@ -538,6 +631,22 @@ class _BuddyCard extends StatelessWidget {
                                     Icons.star,
                                     color: AppColors.gold,
                                     size: 18,
+                                  ),
+                                ],
+                                if (profile.isNew) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.teal.withOpacity(0.18),
+                                      borderRadius: BorderRadius.circular(100),
+                                      border: Border.all(
+                                          color: AppColors.teal.withOpacity(0.5)),
+                                    ),
+                                    child: Text('NEW',
+                                        style: AppTextStyles.label(
+                                            color: AppColors.teal)),
                                   ),
                                 ],
                               ],
@@ -751,9 +860,11 @@ class ActionBtn extends StatelessWidget {
 }
 
 class MatchDialog extends StatelessWidget {
-  const MatchDialog({required this.profile});
+  const MatchDialog({required this.profile, this.chatId, this.matchId});
 
   final BuddyProfile profile;
+  final String? chatId;  // real chat id from the server (null → chat list)
+  final String? matchId;
 
   @override
   Widget build(BuildContext context) => Dialog(
@@ -820,14 +931,19 @@ class MatchDialog extends StatelessWidget {
             label: '💬 Send First Message',
             onPressed: () {
               Navigator.pop(context);
+              // The server returns the real chat id; without it, open the chat list
+              final id = chatId; // local → null-check promotes it
+              if (id == null) {
+                context.go(AppRoutes.chats);
+                return;
+              }
               context.push(
-                // ← FIX
-                AppRoutes.chat.replaceAll(':chatId', profile.id),
+                AppRoutes.chat.replaceAll(':chatId', id),
                 extra: {
                   'buddyName': profile.firstName,
                   'buddyAvatar': profile.avatarUrl,
                   'buddyId': profile.id,
-                  'matchId': profile.id,
+                  'matchId': matchId,
                 },
               );
             },
@@ -974,12 +1090,21 @@ class PhotoCarousel extends StatefulWidget {
     required this.avatarUrl,
     required this.name,
     required this.height,
+    this.swipeable = true,
+    this.onOpenGallery,
   });
 
   final List<String> photos;
   final String? avatarUrl;
   final String name;
   final double height;
+
+  /// false on Discover cards: horizontal drags belong to the card
+  /// (like / skip), so photos change by tapping left / right edges.
+  final bool swipeable;
+
+  /// Optional: tap in the middle opens a full-screen gallery
+  final void Function(int index)? onOpenGallery;
 
   @override
   State<PhotoCarousel> createState() => _PhotoCarouselState();
@@ -989,15 +1114,21 @@ class _PhotoCarouselState extends State<PhotoCarousel> {
   final _ctrl = PageController();
   int _current = 0;
 
-  // All photos — combine photos list + avatarUrl
+  // Main photo first, then the rest (backend already sends this order)
   List<String> get _allPhotos {
-    final list = <String>[];
-    if (widget.photos.isNotEmpty) {
-      list.addAll(widget.photos);
-    } else if (widget.avatarUrl != null) {
-      list.add(widget.avatarUrl!);
-    }
+    final list = <String>[...widget.photos];
+    if (list.isEmpty && widget.avatarUrl != null) list.add(widget.avatarUrl!);
     return list;
+  }
+
+  @override
+  void didUpdateWidget(covariant PhotoCarousel old) {
+    super.didUpdateWidget(old);
+    // Profile changed (e.g. new card) → back to first photo
+    if (old.photos.join() != widget.photos.join() && _current != 0) {
+      _current = 0;
+      if (_ctrl.hasClients) _ctrl.jumpToPage(0);
+    }
   }
 
   @override
@@ -1006,103 +1137,204 @@ class _PhotoCarouselState extends State<PhotoCarousel> {
     super.dispose();
   }
 
+  void _go(int delta, int count) {
+    final next = (_current + delta).clamp(0, count - 1);
+    if (next == _current) return;
+    _ctrl.animateToPage(
+      next,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final photos = _allPhotos;
 
     if (photos.isEmpty) {
-      // No photos — show initials avatar
       return SizedBox(
         height: widget.height,
         child: Center(child: AppAvatar(name: widget.name, size: 80)),
       );
     }
 
-    return SizedBox(
+    return Semantics(
+      label: 'Photo ${_current + 1} of ${photos.length}',
+      child: SizedBox(
       height: widget.height,
-      child: Stack(
-        children: [
-          // Photo pageview
-          PageView.builder(
-            controller: _ctrl,
-            itemCount: photos.length,
-            onPageChanged: (i) => setState(() => _current = i),
-            itemBuilder: (_, i) => Image.network(
-              photos[i],
-              fit: BoxFit.cover,
-              width: double.infinity,
-              errorBuilder: (_, __, ___) => Container(
-                color: AppColors.surface2,
-                child: Center(child: AppAvatar(name: widget.name, size: 60)),
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final zone = box.maxWidth / 3; // left third = back, right third = next
+          return Stack(
+            children: [
+              PageView.builder(
+                controller: _ctrl,
+                itemCount: photos.length,
+                physics: widget.swipeable
+                    ? const PageScrollPhysics()
+                    : const NeverScrollableScrollPhysics(),
+                onPageChanged: (i) => setState(() => _current = i),
+                itemBuilder: (_, i) => Image.network(
+                  photos[i],
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: AppColors.surface2,
+                    child: Center(child: AppAvatar(name: widget.name, size: 60)),
+                  ),
+                ),
               ),
-            ),
-          ),
 
-          // Tap zones — left/right to change photo
-          if (photos.length > 1) ...[
-            // Left tap
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 80,
-              child: GestureDetector(
-                onTap: () {
-                  if (_current > 0) {
-                    _ctrl.previousPage(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeInOut,
-                    );
-                  }
-                },
-              ),
-            ),
-            // Right tap
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: 80,
-              child: GestureDetector(
-                onTap: () {
-                  if (_current < photos.length - 1) {
-                    _ctrl.nextPage(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeInOut,
-                    );
-                  }
-                },
-              ),
-            ),
-          ],
+              if (photos.length > 1) ...[
+                Positioned(
+                  left: 0, top: 0, bottom: 0, width: zone,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () => _go(-1, photos.length),
+                  ),
+                ),
+                Positioned(
+                  right: 0, top: 0, bottom: 0, width: zone,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () => _go(1, photos.length),
+                  ),
+                ),
+              ],
+              if (widget.onOpenGallery != null)
+                Positioned(
+                  left: photos.length > 1 ? zone : 0,
+                  right: photos.length > 1 ? zone : 0,
+                  top: 0, bottom: 0,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () => widget.onOpenGallery!(_current),
+                  ),
+                ),
 
-          // Dot indicators — top
-          if (photos.length > 1)
-            Positioned(
-              top: 8,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(photos.length, (i) {
-                  final isActive = i == _current;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    width: isActive ? 20 : 6,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: isActive
-                          ? Colors.white
-                          : Colors.white.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  );
-                }),
-              ),
-            ),
-        ],
+              // Progress dashes — top
+              if (photos.length > 1)
+                Positioned(
+                  top: 8, left: 8, right: 8,
+                  child: Row(
+                    children: List.generate(photos.length, (i) => Expanded(
+                      child: AnimatedContainer(
+                        key: ValueKey('photo-dash-$i'),
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: i == _current
+                              ? Colors.white
+                              : Colors.white.withOpacity(0.35),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    )),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
       ),
     );
   }
+}
+
+/// Full-screen photo gallery (swipe, pinch to zoom). Use:
+///   showPhotoGallery(context, photos, initialIndex: 0, name: 'Rahul')
+Future<void> showPhotoGallery(
+  BuildContext context,
+  List<String> photos, {
+  int initialIndex = 0,
+  String name = '',
+}) {
+  if (photos.isEmpty) return Future.value();
+  return Navigator.of(context).push(
+    PageRouteBuilder(
+      opaque: false,
+      barrierColor: Colors.black,
+      pageBuilder: (_, __, ___) => _PhotoGallery(
+        photos: photos,
+        initialIndex: initialIndex.clamp(0, photos.length - 1),
+        name: name,
+      ),
+      transitionsBuilder: (_, a, __, child) =>
+          FadeTransition(opacity: a, child: child),
+    ),
+  );
+}
+
+class _PhotoGallery extends StatefulWidget {
+  const _PhotoGallery({
+    required this.photos,
+    required this.initialIndex,
+    required this.name,
+  });
+
+  final List<String> photos;
+  final int initialIndex;
+  final String name;
+
+  @override
+  State<_PhotoGallery> createState() => _PhotoGalleryState();
+}
+
+class _PhotoGalleryState extends State<_PhotoGallery> {
+  late final PageController _ctrl = PageController(initialPage: widget.initialIndex);
+  late int _index = widget.initialIndex;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Colors.black,
+    body: Stack(
+      children: [
+        PageView.builder(
+          controller: _ctrl,
+          itemCount: widget.photos.length,
+          onPageChanged: (i) => setState(() => _index = i),
+          itemBuilder: (_, i) => InteractiveViewer(
+            minScale: 1,
+            maxScale: 4,
+            child: Center(
+              child: Image.network(
+                widget.photos[i],
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.broken_image_outlined, color: Colors.white38, size: 48),
+              ),
+            ),
+          ),
+        ),
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                Expanded(
+                  child: Text(widget.name,
+                      style: AppTextStyles.subtitle(color: Colors.white)),
+                ),
+                if (widget.photos.length > 1)
+                  Text('${_index + 1} / ${widget.photos.length}',
+                      style: AppTextStyles.bodySM(color: Colors.white70)),
+                const SizedBox(width: 12),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }

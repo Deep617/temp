@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:seshlly/routes/app_router.dart';
 
+import 'core/services/monitoring_service.dart';
+import 'core/services/push_service.dart';
 import 'core/theme/app_theme.dart';
 import 'di_injection/dependency_injection.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
@@ -19,6 +21,12 @@ Future<void> main() async {
 
   /// STEP 1: INIT DI
   await setupDependencies();
+
+  /// STEP 2: PUSH (no-op until Firebase config files are added)
+  await PushService.instance.init();
+
+  /// STEP 3: CRASH REPORTS + ANALYTICS (same Firebase config)
+  await MonitoringService.instance.init();
   runApp(MyApp());
 }
 

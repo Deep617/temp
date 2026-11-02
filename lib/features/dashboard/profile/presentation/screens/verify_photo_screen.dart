@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:seshlly/di_injection/dependency_injection.dart';
+import '../../../../../core/errors/app_error.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
@@ -50,7 +51,7 @@ class _VerifyPhotoScreenState extends State<VerifyPhotoScreen> {
     } catch (e) {
       if (mounted) setState(() {
         _loading = false;
-        _error   = 'Submission failed. Please try again.';
+        _error   = AppError.fromException(e).message;
       });
     }
   }

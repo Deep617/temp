@@ -9,7 +9,9 @@ import 'package:seshlly/routes/app_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../../core/api/dio_client.dart';
 import '../../../../../core/constants/app_constants.dart';
+import '../../../../../core/errors/app_error.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/widgets/common/common_widgets.dart';
@@ -22,6 +24,7 @@ import '../../../discover/presentation/screens/discover_screen.dart';
 import '../../../session/data/repositories/session_repository.dart';
 import '../../../session/data/response_ml/workout_session.dart';
 import '../../data/datasource/profile_remote_datasource.dart';
+import '../../../../auth/presentation/widgets/email_verify_banner.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -112,6 +115,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
               children: [
+                // Hidden once the email is verified
+                const EmailVerifyBanner(),
                 // ── HEADER ──────────────────────────────────────
                 Container(
                   color: AppColors.surface1,
@@ -161,12 +166,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                   ),
                                   padding: const EdgeInsets.all(2.5),
-                                  child: ClipOval(
-                                    child: PhotoCarousel(
-                                      photos: user.photos ?? [],
-                                      avatarUrl: user.avatarUrl,
-                                      name: user.firstName,
-                                      height: double.infinity,
+                                  // Main photo; tap → swipe through all photos
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      final all = user.photos.isNotEmpty
+                                          ? user.photos
+                                          : [if (user.avatarUrl != null) user.avatarUrl!];
+                                      if (all.isEmpty) {
+                                        context.push(AppRoutes.editProfile);
+                                      } else {
+                                        showPhotoGallery(context, all, name: user.fullName);
+                                      }
+                                    },
+                                    child: ClipOval(
+                                      child: AppAvatar(
+                                        name: user.firstName,
+                                        imageUrl: user.avatarUrl ??
+                                            (user.photos.isNotEmpty ? user.photos.first : null),
+                                        size: 67,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -800,15 +818,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _showPrivacySheet(context);
                 },
               ),
-              // ── Language ────────────────────────────────
-              _SettingsTile(
-                emoji: '🌐',
-                label: 'Language',
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showLanguageSheet(context);
-                },
-              ),
+              // LANGUAGE — disabled until i18n is implemented (choice did nothing).
+              // To restore: uncomment this tile, _showLanguageSheet and _LanguageSheet.
+//               // ── Language ────────────────────────────────
+//               _SettingsTile(
+//                 emoji: '🌐',
+//                 label: 'Language',
+//                 onTap: () {
+//                   Navigator.pop(ctx);
+//                   _showLanguageSheet(context);
+//                 },
+//               ),
+
               // ── Support ─────────────────────────────────
               _SettingsTile(
                 emoji: '💬',
@@ -876,17 +897,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ── 3. LANGUAGE ──────────────────────────────────────
-  void _showLanguageSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface1,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => const _LanguageSheet(),
-    );
-  }
+  // LANGUAGE — disabled until i18n is implemented.
+//   // ── 3. LANGUAGE ──────────────────────────────────────
+//   void _showLanguageSheet(BuildContext context) {
+//     showModalBottomSheet(
+//       context: context,
+//       backgroundColor: AppColors.surface1,
+//       shape: const RoundedRectangleBorder(
+//         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+//       ),
+//       builder: (_) => const _LanguageSheet(),
+//     );
+//   }
 
   // ── 4. SUPPORT ───────────────────────────────────────
   void _showSupportSheet(BuildContext context) {
@@ -1372,20 +1394,57 @@ class _PrivacySheetState extends State<_PrivacySheet> {
     _load();
   }
 
+  // The server is the source of truth (Discover, distance and online dot
+  // all respect these). Local prefs only make the sheet open instantly.
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _visibility = p.getString(_kVisibility) ?? 'public';
       _location = p.getBool(_kLocation) ?? true;
       _online = p.getBool(_kOnline) ?? true;
     });
+    try {
+      final res = await getIt<DioClient>().get('/auth/me');
+      final body = (res.data as Map)['data'];
+      final u = (body is Map && body['user'] is Map) ? body['user'] as Map : body as Map;
+      if (!mounted) return;
+      setState(() {
+        _visibility = u['profileVisibility'] as String? ?? _visibility;
+        _location = u['shareLocation'] as bool? ?? _location;
+        _online = u['showOnline'] as bool? ?? _online;
+      });
+    } catch (_) {}
   }
 
-  Future<void> _saveStr(String key, String val) async =>
-      (await SharedPreferences.getInstance()).setString(key, val);
+  static const _serverKey = {
+    _kVisibility: 'profileVisibility',
+    _kLocation: 'shareLocation',
+    _kOnline: 'showOnline',
+  };
 
-  Future<void> _saveBool(String key, bool val) async =>
-      (await SharedPreferences.getInstance()).setBool(key, val);
+  Future<void> _push(String key, Object val) async {
+    try {
+      await getIt<DioClient>().put('/users/me', data: {_serverKey[key]!: val});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(AppError.fromException(e).message),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  Future<void> _saveStr(String key, String val) async {
+    (await SharedPreferences.getInstance()).setString(key, val);
+    await _push(key, val);
+  }
+
+  Future<void> _saveBool(String key, bool val) async {
+    (await SharedPreferences.getInstance()).setBool(key, val);
+    await _push(key, val);
+  }
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -1467,7 +1526,11 @@ class _PrivacySheetState extends State<_PrivacySheet> {
           leading: const Text('🚫', style: TextStyle(fontSize: 22)),
           title: Text('Blocked Users', style: AppTextStyles.subtitle()),
           trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
-          onTap: () {},
+          onTap: () {
+            final router = GoRouter.of(context); // grab before the sheet closes
+            Navigator.of(context).maybePop();    // close privacy sheet
+            router.push(AppRoutes.blockedUsers);
+          },
         ),
       ],
     ),
@@ -1519,83 +1582,84 @@ class _VisChip extends StatelessWidget {
   }
 }
 
-// ══════════════════════════════════════════════════════════
-//  3. LANGUAGE SHEET
-// ══════════════════════════════════════════════════════════
-class _LanguageSheet extends StatefulWidget {
-  const _LanguageSheet();
-
-  @override
-  State<_LanguageSheet> createState() => _LanguageSheetState();
-}
-
-class _LanguageSheetState extends State<_LanguageSheet> {
-  static const _kLang = 'app_language';
-  String _lang = 'en';
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final p = await SharedPreferences.getInstance();
-    setState(() => _lang = p.getString(_kLang) ?? 'en');
-  }
-
-  Future<void> _select(String val) async {
-    setState(() => _lang = val);
-    final p = await SharedPreferences.getInstance();
-    await p.setString(_kLang, val);
-    // TODO: apply locale change when i18n is implemented
-  }
-
-  static const _languages = [
-    {'code': 'en', 'label': 'English', 'native': 'English', 'flag': '🇬🇧'},
-    {'code': 'hi', 'label': 'Hindi', 'native': 'हिंदी', 'flag': '🇮🇳'},
-    {'code': '__', 'label': 'More coming soon', 'native': '', 'flag': '🌐'},
-  ];
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _SheetHandle(),
-        _SheetTitle('Language'),
-        const SizedBox(height: 16),
-        ..._languages.map((l) {
-          final isDisabled = l['code'] == '__';
-          final isSelected = l['code'] == _lang;
-          return Opacity(
-            opacity: isDisabled ? 0.4 : 1.0,
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Text(l['flag']!, style: const TextStyle(fontSize: 26)),
-              title: Text(l['label']!, style: AppTextStyles.subtitle()),
-              subtitle: l['native']!.isNotEmpty
-                  ? Text(
-                      l['native']!,
-                      style: AppTextStyles.bodySM(color: AppColors.textMuted),
-                    )
-                  : null,
-              trailing: isSelected
-                  ? const Icon(
-                      Icons.check_circle,
-                      color: AppColors.teal,
-                      size: 22,
-                    )
-                  : null,
-              onTap: isDisabled ? null : () => _select(l['code']!),
-            ),
-          );
-        }),
-      ],
-    ),
-  );
-}
+// LANGUAGE SHEET — disabled until i18n is implemented.
+// // ══════════════════════════════════════════════════════════
+// //  3. LANGUAGE SHEET
+// // ══════════════════════════════════════════════════════════
+// class _LanguageSheet extends StatefulWidget {
+//   const _LanguageSheet();
+//
+//   @override
+//   State<_LanguageSheet> createState() => _LanguageSheetState();
+// }
+//
+// class _LanguageSheetState extends State<_LanguageSheet> {
+//   static const _kLang = 'app_language';
+//   String _lang = 'en';
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _load();
+//   }
+//
+//   Future<void> _load() async {
+//     final p = await SharedPreferences.getInstance();
+//     setState(() => _lang = p.getString(_kLang) ?? 'en');
+//   }
+//
+//   Future<void> _select(String val) async {
+//     setState(() => _lang = val);
+//     final p = await SharedPreferences.getInstance();
+//     await p.setString(_kLang, val);
+//     // TODO: apply locale change when i18n is implemented
+//   }
+//
+//   static const _languages = [
+//     {'code': 'en', 'label': 'English', 'native': 'English', 'flag': '🇬🇧'},
+//     {'code': 'hi', 'label': 'Hindi', 'native': 'हिंदी', 'flag': '🇮🇳'},
+//     {'code': '__', 'label': 'More coming soon', 'native': '', 'flag': '🌐'},
+//   ];
+//
+//   @override
+//   Widget build(BuildContext context) => Padding(
+//     padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+//     child: Column(
+//       mainAxisSize: MainAxisSize.min,
+//       children: [
+//         _SheetHandle(),
+//         _SheetTitle('Language'),
+//         const SizedBox(height: 16),
+//         ..._languages.map((l) {
+//           final isDisabled = l['code'] == '__';
+//           final isSelected = l['code'] == _lang;
+//           return Opacity(
+//             opacity: isDisabled ? 0.4 : 1.0,
+//             child: ListTile(
+//               contentPadding: EdgeInsets.zero,
+//               leading: Text(l['flag']!, style: const TextStyle(fontSize: 26)),
+//               title: Text(l['label']!, style: AppTextStyles.subtitle()),
+//               subtitle: l['native']!.isNotEmpty
+//                   ? Text(
+//                       l['native']!,
+//                       style: AppTextStyles.bodySM(color: AppColors.textMuted),
+//                     )
+//                   : null,
+//               trailing: isSelected
+//                   ? const Icon(
+//                       Icons.check_circle,
+//                       color: AppColors.teal,
+//                       size: 22,
+//                     )
+//                   : null,
+//               onTap: isDisabled ? null : () => _select(l['code']!),
+//             ),
+//           );
+//         }),
+//       ],
+//     ),
+//   );
+// }
 
 // ══════════════════════════════════════════════════════════
 //  4. SUPPORT SHEET
@@ -2278,7 +2342,7 @@ class _SubscriptionCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Unlimited swipes & more',
+                    'Unlimited likes & more',
                     style: AppTextStyles.bodySM(),
                   ),
                 ],

@@ -10,6 +10,7 @@ class MatchRequestState extends Equatable {
     this.status    = MatchRequestStatus.initial,
     this.requests  = const [],
     this.acceptedMatchId,
+    this.acceptedChatId,
     this.acceptedUser,
     this.errorMessage,
     this.actingSwipeId,
@@ -18,6 +19,7 @@ class MatchRequestState extends Equatable {
   final MatchRequestStatus status;
   final List<MatchRequest> requests;
   final String?            acceptedMatchId; // After accept → navigate to chat
+  final String?            acceptedChatId;  // the real chat id (server)
   final UserModel?         acceptedUser;    // For chat screen params
   final String?            errorMessage;
   final String?            actingSwipeId;   // Which request is being acted on
@@ -28,6 +30,7 @@ class MatchRequestState extends Equatable {
     MatchRequestStatus? status,
     List<MatchRequest>? requests,
     String?             acceptedMatchId,
+    String?             acceptedChatId,
     UserModel?          acceptedUser,
     String?             errorMessage,
     String?             actingSwipeId,
@@ -37,6 +40,7 @@ class MatchRequestState extends Equatable {
     status:          status         ?? this.status,
     requests:        requests       ?? this.requests,
     acceptedMatchId: clearAccepted  ? null : (acceptedMatchId ?? this.acceptedMatchId),
+    acceptedChatId:  clearAccepted  ? null : (acceptedChatId  ?? this.acceptedChatId),
     acceptedUser:    clearAccepted  ? null : (acceptedUser    ?? this.acceptedUser),
     errorMessage:    clearError     ? null : (errorMessage    ?? this.errorMessage),
     actingSwipeId:   actingSwipeId  ?? this.actingSwipeId,

@@ -166,7 +166,8 @@ class UserModel {
   // Backend formatUser returns these exact keys.
   factory UserModel.fromJson(Map<String, dynamic> j) => UserModel(
     id:                 j['id']            as String,
-    email:              j['email']          as String,
+    // Other people's profiles (e.g. match requests) don't include email
+    email:              j['email']          as String? ?? '',
     firstName:          j['firstName']      as String,
     lastName:           j['lastName']       as String,
     avatarUrl:          j['avatarUrl']      as String?,
@@ -181,8 +182,8 @@ class UserModel {
     emailVerified:      j['emailVerified']  as bool?    ?? false,
     isBanned:           j['isBanned']       as bool?    ?? false,
     loginCount:         j['loginCount']     as int?     ?? 0,
-    lastLoginAt:        j['lastLoginAt'] != null ? DateTime.parse(j['lastLoginAt'] as String) : null,
-    createdAt:          DateTime.parse(j['createdAt']   as String),
+    lastLoginAt:        DateTime.tryParse(j['lastLoginAt']?.toString() ?? '')?.toLocal(),
+    createdAt:          DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
     primaryActivity:    j['primaryActivity'] as String?,
     activities:         _strings(j['activities']),
     experienceLevel:    j['experienceLevel'] as String?,
@@ -206,13 +207,13 @@ class UserModel {
     challengeCount:     j['challengeCount']  as int? ?? 0,
     subscriptionPlan:   j['subscriptionPlan']   as String? ?? 'free',
     subscriptionExpiry: j['subscriptionExpiry']  != null
-        ? DateTime.parse(j['subscriptionExpiry']  as String) : null,
+        ? DateTime.parse(j['subscriptionExpiry']  as String).toLocal() : null,
     influencerBio:      j['influencerBio']        as String?,
     influencerAppliedAt: j['influencerAppliedAt'] != null
-        ? DateTime.parse(j['influencerAppliedAt'] as String) : null,
+        ? DateTime.parse(j['influencerAppliedAt'] as String).toLocal() : null,
     influencerSessionLimit: j['influencerSessionLimit'] as int? ?? 3,
     lastActiveAt:       j['lastActiveAt']         != null
-        ? DateTime.parse(j['lastActiveAt']         as String) : null,
+        ? DateTime.parse(j['lastActiveAt']         as String).toLocal() : null,
     age:                j['age']                  as int?,
     matchScore:         j['matchScore']           as int?,
     photos:           (_strings(j['photos'])),
@@ -257,9 +258,10 @@ class UserModel {
     String?       referralCode,
     int?          referralCount,
     int?          flashStreakCount,
+    bool?         emailVerified,
   }) => UserModel(
     id: id, email: email, createdAt: createdAt,
-    status: status, emailVerified: emailVerified, isBanned: isBanned,
+    status: status, emailVerified: emailVerified ?? this.emailVerified, isBanned: isBanned,
     isInfluencer: isInfluencer, instagramHandle: instagramHandle,
     instagramFollowers: instagramFollowers,
     firstName:          firstName          ?? this.firstName,
@@ -355,10 +357,10 @@ class BuddyStrike {
     caption:    j['caption']    as String?,
     reactEmoji: j['reactEmoji'] as String?,
     viewedAt:   j['viewedAt'] != null
-        ? DateTime.parse(j['viewedAt'] as String)
+        ? DateTime.parse(j['viewedAt'] as String).toLocal()
         : null,
-    expiresAt:  DateTime.parse(j['expiresAt'] as String),
-    createdAt:  DateTime.parse(j['createdAt'] as String),
+    expiresAt:  DateTime.parse(j['expiresAt'] as String).toLocal(),
+    createdAt:  DateTime.parse(j['createdAt'] as String).toLocal(),
     sender:     j['sender']  as Map<String, dynamic>?,
     streak:     j['streak']  as int? ?? 0,
   );
@@ -466,7 +468,7 @@ class InfluencerProfile {
         level:               j['level']                as int? ?? 1,
         totalSessions:       j['totalSessions']        as int? ?? 0,
         instagramVerifiedAt: j['instagramVerifiedAt'] != null
-            ? DateTime.parse(j['instagramVerifiedAt']) : null,
+            ? DateTime.parse(j['instagramVerifiedAt']).toLocal() : null,
         isLocked:            j['isLocked']             as bool? ?? true,
         influencerSessionLimit:        j['influencerSessionLimit']         as int? ?? 0,
         sessionsUsed:        j['sessionsUsed']         as int? ?? 0,
@@ -531,7 +533,7 @@ class MatchRequest {
   factory MatchRequest.fromJson(Map<String, dynamic> j) => MatchRequest(
     swipeId:     j['swipeId']     as String,
     user:        UserModel.fromJson(j['user'] as Map<String, dynamic>),
-    createdAt:   DateTime.parse(j['createdAt'] as String),
+    createdAt:   DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
     isSuperLike: j['isSuperLike'] as bool? ?? false,
   );
 }

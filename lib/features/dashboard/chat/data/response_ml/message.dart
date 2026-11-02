@@ -26,11 +26,21 @@ class Message {
 
   factory Message.fromJson(Map<String, dynamic> j) => Message(
     id: j['id'], chatId: j['chatId'], senderId: j['senderId'],
-    senderName: j['senderName'], senderAvatar: j['senderAvatar'],
-    content: j['content'], type: j['type'] ?? 'text',
+    senderName: j['senderName'] ?? '', senderAvatar: j['senderAvatar'],
+    content: j['content'] ?? '', type: j['type'] ?? 'text',
     isRead: j['isRead'] ?? false,
-    createdAt: DateTime.parse(j['createdAt']),
-    metadata: j['metadata'],
+    createdAt: DateTime.tryParse(j['createdAt']?.toString() ?? '')?.toLocal() ??
+        DateTime.now(),
+    metadata: j['metadata'] is Map
+        ? Map<String, dynamic>.from(j['metadata'] as Map)
+        : null,
+  );
+
+  Message copyWith({Map<String, dynamic>? metadata, bool? isRead}) => Message(
+    id: id, chatId: chatId, senderId: senderId, senderName: senderName,
+    senderAvatar: senderAvatar, content: content, type: type,
+    isRead: isRead ?? this.isRead, createdAt: createdAt,
+    metadata: metadata ?? this.metadata,
   );
 
   Map<String,dynamic> toJson() => {

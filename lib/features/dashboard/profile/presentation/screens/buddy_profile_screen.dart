@@ -7,11 +7,16 @@ import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/widgets/common/common_widgets.dart';
+import '../../../../../core/api/dio_client.dart';
+import '../../../../../core/errors/app_error.dart';
+import '../../../../../di_injection/dependency_injection.dart';
 import '../../../../../routes/app_router.dart';
 import '../../../discover/data/response_ml/buddy_profile.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
+import '../../../../safety/presentation/widgets/safety_sheet.dart';
+import '../../../discover/presentation/screens/discover_screen.dart';
 
 class BuddyProfileScreen extends StatefulWidget {
   const BuddyProfileScreen({
@@ -28,6 +33,44 @@ class BuddyProfileScreen extends StatefulWidget {
 }
 
 class _BuddyProfileScreenState extends State<BuddyProfileScreen> {
+  bool _openingChat = false;
+
+  // Opened from a chat → just go back to it. Otherwise find our chat on the
+  // server (it used to push "/chat/" with an empty id → 404 page).
+  Future<void> _openChat(String name, String? avatar) async {
+    if (widget.chatId.isNotEmpty && context.canPop()) {
+      context.pop();
+      return;
+    }
+    if (_openingChat) return;
+    _openingChat = true;
+    try {
+      final res = await getIt<DioClient>().get('/chat/with/${widget.userId}');
+      final data = (res.data as Map)['data'] as Map;
+      if (!mounted) return;
+      context.push(
+        AppRoutes.chat.replaceAll(':chatId', data['chatId'] as String),
+        extra: {
+          'buddyName': name,
+          'buddyAvatar': avatar,
+          'buddyId': widget.userId,
+          'matchId': data['matchId'],
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final err = AppError.fromException(e);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(err.statusCode == 404
+            ? 'Match with $name first to start chatting'
+            : err.message),
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      _openingChat = false;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -84,28 +127,47 @@ class _BuddyProfileScreenState extends State<BuddyProfileScreen> {
                   ),
                   onPressed: () => context.pop(),
                 ),
+                actions: [
+                  // ⋮ Report / Block
+                  SafetyMenuButton(
+                    userId: p.id,
+                    name: p.fullName,
+                    source: 'profile',
+                    boxed: true,
+                    onBlocked: () => context.pop(),
+                  ),
+                ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                      p.avatarUrl != null
-                          ? Image.network(
-                              p.avatarUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  _coverFallback(p, actColor),
+                      (p.avatarUrl != null || p.photos.isNotEmpty)
+                          ? PhotoCarousel(
+                              photos: p.photos,
+                              avatarUrl: p.avatarUrl,
+                              name: p.firstName,
+                              height: 350,
+                              onOpenGallery: (i) => showPhotoGallery(
+                                context,
+                                p.photos.isNotEmpty ? p.photos : [p.avatarUrl!],
+                                initialIndex: i,
+                                name: p.fullName,
+                              ),
                             )
                           : _coverFallback(p, actColor),
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withOpacity(0.9),
-                            ],
-                            stops: const [0.4, 1.0],
+                      // Shade only — must not block taps/swipes on the photos
+                      IgnorePointer(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.9),
+                              ],
+                              stops: const [0.4, 1.0],
+                            ),
                           ),
                         ),
                       ),
@@ -203,16 +265,7 @@ class _BuddyProfileScreenState extends State<BuddyProfileScreen> {
                             child: PrimaryButton(
                               label: '💬 Message',
                               height: 44,
-                              onPressed: () => context.push(
-                                AppRoutes.chat.replaceAll(
-                                  ':chatId',
-                                  widget.chatId,
-                                ),
-                                extra: {
-                                  'buddyName': p.firstName,
-                                  'buddyAvatar': p.avatarUrl,
-                                },
-                              ),
+                              onPressed: () => _openChat(p.firstName, p.avatarUrl),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -296,6 +349,41 @@ class _BuddyProfileScreenState extends State<BuddyProfileScreen> {
                           ),
                         ],
                       ).animate(delay: 150.ms).fadeIn(),
+
+                      // "Confirms on time" — buddy reliability
+                      if (p.confirmRate != null) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface1,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              const Text('✅', style: TextStyle(fontSize: 14)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text('Confirms proofs on time',
+                                    style: AppTextStyles.bodySM()),
+                              ),
+                              Text(
+                                '${p.confirmRate}%',
+                                style: AppTextStyles.subtitle(
+                                  color: p.confirmRate! >= 80
+                                      ? AppColors.teal
+                                      : p.confirmRate! >= 50
+                                          ? AppColors.warning
+                                          : AppColors.error,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
 
                       const SizedBox(height: 12),
 

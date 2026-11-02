@@ -1,7 +1,9 @@
 class ApiEndpoints {
   //static const String apiBaseUrl = 'https://api.fitconnect.app/api/v1';
   static const String apiBaseUrl = 'https://api.seshlly.com/api/v1';
-  static const String socketUrl = 'https://api.fitconnect.app';
+  // Socket.io runs on the same server as the REST API (server.js)
+  // (was 'https://api.fitconnect.app' — old domain, sockets never connected)
+  static const String socketUrl = 'https://api.seshlly.com';
 
   //static const String baseUrl = 'https://dummyjson.com';
   //static const String recipes = '/recipes';

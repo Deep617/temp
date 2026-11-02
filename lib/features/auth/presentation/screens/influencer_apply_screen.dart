@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:seshlly/features/auth/domain/repositories/auth_repository.dart';
+import '../../../../core/errors/app_error.dart';
 import '../../../../di_injection/dependency_injection.dart';
 import '../../data/response_ml/register_response.dart';
 
@@ -57,9 +58,11 @@ late AuthRepository _authRepository;
         instagramHandle:  handle,
         claimedFollowers: followers,
       );
+      if (!mounted) return;
       await _loadStatus();
     } catch (e) {
-      setState(() { _error = e.toString(); _submitting = false; });
+      if (!mounted) return;
+      setState(() { _error = e is AppError ? e.message : 'Something went wrong'; _submitting = false; });
     }
   }
 
@@ -67,10 +70,12 @@ late AuthRepository _authRepository;
     setState(() => _submitting = true);
     try {
       await _authRepository.markInfluencerCodeAdded();
+      if (!mounted) return;
       setState(() { _markedAdded = true; _submitting = false; });
       await _loadStatus();
     } catch (e) {
-      setState(() { _error = e.toString(); _submitting = false; });
+      if (!mounted) return;
+      setState(() { _error = e is AppError ? e.message : 'Something went wrong'; _submitting = false; });
     }
   }
 

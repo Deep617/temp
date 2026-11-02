@@ -12,6 +12,8 @@ import '../../../discover/data/response_ml/buddy_profile.dart';
 import '../bloc/discover_bloc.dart';
 import '../bloc/discover_event.dart';
 import 'discover_screen.dart';
+import '../../../../safety/presentation/widgets/safety_sheet.dart';
+import '../../../../../core/services/growth_service.dart';
 
 class BuddyViewScreen extends StatefulWidget {
   const BuddyViewScreen({super.key, required this.buddyProfile});
@@ -30,20 +32,30 @@ class _BuddyViewScreenState extends State<BuddyViewScreen> {
     // .userId));
   }
 
-  void _showMatchDialog(BuddyProfile profile) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      showDialog(
-        context: context,
-        builder: (_) => MatchDialog(profile: profile),
-      );
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<DiscoverBloc, DiscoverState>(
+    // Match dialog once per match (it was opened from build() on every rebuild)
+    return BlocListener<DiscoverBloc, DiscoverState>(
+      listenWhen: (p, c) =>
+          c.matchedUserId != null &&
+          c.matchedUserId == widget.buddyProfile.id &&
+          p.matchedUserId != c.matchedUserId,
+      listener: (context, state) {
+        GrowthService.instance.logFirst(GrowthService.firstMatch);
+        showDialog(
+        context: context,
+        builder: (_) => MatchDialog(
+          profile: widget.buddyProfile,
+          chatId: state.matchedChatId,
+          matchId: state.matchedMatchId,
+        ),
+      );
+      },
+      child: BlocBuilder<DiscoverBloc, DiscoverState>(
       builder: (context, state) {
-        if (state.isLoading || widget.buddyProfile == null) {
+        // Only the profile matters here — Discover loading more cards in the
+        // background must not replace this screen with a spinner
+        if (widget.buddyProfile == null) {
           return Scaffold(
             backgroundColor: AppColors.bg,
             body: state.error != null
@@ -58,9 +70,7 @@ class _BuddyViewScreenState extends State<BuddyViewScreen> {
                   ),
           );
         }
-        if (state.matchedUserId != null) {
-          _showMatchDialog(widget.buddyProfile);
-        }
+        
         /*else{
          if(mounted){
            context.pop();
@@ -97,28 +107,47 @@ class _BuddyViewScreenState extends State<BuddyViewScreen> {
                   ),
                   onPressed: () => context.pop(),
                 ),
+                actions: [
+                  // ⋮ Report / Block
+                  SafetyMenuButton(
+                    userId: p.id,
+                    name: p.fullName,
+                    source: 'profile',
+                    boxed: true,
+                    onBlocked: () => context.pop(),
+                  ),
+                ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                      p.avatarUrl != null
+                      (p.avatarUrl != null || p.photos.isNotEmpty)
                           ? PhotoCarousel(
                         photos:    p.photos,
                         avatarUrl: p.avatarUrl,
                         name:      p.firstName,
                         height:    350,
+                        onOpenGallery: (i) => showPhotoGallery(
+                          context,
+                          p.photos.isNotEmpty ? p.photos : [p.avatarUrl!],
+                          initialIndex: i,
+                          name: p.fullName,
+                        ),
                       )
                           : _coverFallback(p, actColor),
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withOpacity(0.9),
-                            ],
-                            stops: const [0.4, 1.0],
+                      // Shade only — must not block taps/swipes on the photos
+                      IgnorePointer(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.9),
+                              ],
+                              stops: const [0.4, 1.0],
+                            ),
                           ),
                         ),
                       ),
@@ -275,6 +304,41 @@ class _BuddyViewScreenState extends State<BuddyViewScreen> {
                         ],
                       ).animate(delay: 150.ms).fadeIn(),
 
+                      // "Confirms on time" — buddy reliability
+                      if (p.confirmRate != null) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface1,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              const Text('✅', style: TextStyle(fontSize: 14)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text('Confirms proofs on time',
+                                    style: AppTextStyles.bodySM()),
+                              ),
+                              Text(
+                                '${p.confirmRate}%',
+                                style: AppTextStyles.subtitle(
+                                  color: p.confirmRate! >= 80
+                                      ? AppColors.teal
+                                      : p.confirmRate! >= 50
+                                          ? AppColors.warning
+                                          : AppColors.error,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
                       const SizedBox(height: 12),
 
                       // Bio
@@ -424,6 +488,7 @@ class _BuddyViewScreenState extends State<BuddyViewScreen> {
           ),
         );
       },
+    ),
     );
   }
 

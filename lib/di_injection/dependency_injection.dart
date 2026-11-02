@@ -46,6 +46,12 @@ import '../features/dashboard/profile/domain/repositories/profile_repository.dar
 import '../features/dashboard/profile/domain/usecases/update_profile_usecase.dart';
 import '../features/dashboard/profile/presentation/bloc/profile_bloc.dart';
 import '../features/strike/data/repositories/strike_repository_impl.dart';
+import '../features/safety/data/datasource/safety_remote_datasource.dart';
+import '../features/safety/data/repositories/safety_repository.dart';
+import '../features/safety/data/repositories_impl/safety_repository_impl.dart';
+import '../features/gym_map/data/datasource/gym_map_remote_datasource.dart';
+import '../features/gym_map/data/repositories/gym_map_repository.dart';
+import '../features/gym_map/data/repositories_impl/gym_map_repository_impl.dart';
 import '../features/subscription/data/repositories/subscription_repositories_impl.dart';
 
 final getIt = GetIt.instance;
@@ -175,8 +181,24 @@ Future<void> setupDependencies() async {
         () => MatchRequestBloc(api: getIt()),
   );
 
+  // Safety (block / report)
+  getIt.registerLazySingleton<SafetyRemoteDatasource>(
+        () => SafetyRemoteDatasource(getIt()),
+  );
+  getIt.registerLazySingleton<SafetyRepository>(
+        () => SafetyRepositoryImpl(getIt(), getIt()),
+  );
+
+  // Gym map
+  getIt.registerLazySingleton<GymMapRemoteDatasource>(
+        () => GymMapRemoteDatasource(getIt()),
+  );
+  getIt.registerLazySingleton<GymMapRepository>(
+        () => GymMapRepositoryImpl(getIt(), getIt()),
+  );
+
   getIt.registerFactory<StrikeBloc>(
-        () => StrikeBloc(api: getIt()),
+        () => StrikeBloc(api: getIt(), chatRepository: getIt<ChatRepository>()),
   );
 }
 

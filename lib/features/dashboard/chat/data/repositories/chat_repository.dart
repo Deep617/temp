@@ -13,6 +13,15 @@ abstract class ChatRepository {
 
   Future<void> markRead(String chatId);
 
+  /// Messages + whether the chat is in 24h (disappearing) mode
+  Future<({List<Message> messages, bool disappearing})> getMessagesWithMode(
+    String chatId, {
+    int page = 1,
+  });
+
+  /// Switch chat between 24h and Normal mode. Returns the system message.
+  Future<Message?> setChatMode(String chatId, bool disappearing);
+
   //  SESH FLASH STREAK  /api/v1/flash
 
   /// POST /flash/send — record Flash sent (streak logic)

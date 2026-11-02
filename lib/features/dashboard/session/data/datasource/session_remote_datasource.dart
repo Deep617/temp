@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../../core/api/dio_client.dart';
 import '../../../discover/data/response_ml/buddy_profile.dart';
+import '../response_ml/pending_proof_confirm.dart';
 import '../response_ml/workout_session.dart';
 
 class SessionRemoteDatasource {
@@ -52,7 +53,11 @@ class SessionRemoteDatasource {
     required String imagePath,
   }) async {
     final form = FormData.fromMap({
-      'file': await MultipartFile.fromFile(imagePath, filename: 'proof.jpg'),
+      // Stamped proof photos are PNG — keep the extension honest
+      'file': await MultipartFile.fromFile(
+        imagePath,
+        filename: imagePath.toLowerCase().endsWith('.png') ? 'proof.png' : 'proof.jpg',
+      ),
       'folder': 'proofs',
     });
     final uploadRes = await _dio.post('/upload', data: form);
@@ -67,9 +72,30 @@ class SessionRemoteDatasource {
 
   /// GET /match/buddies → List<BuddyProfile>
   Future<List<BuddyProfile>> getMyBuddies({int page = 1}) async {
-    final res = await _dio.get('/match/buddies', queryParameters: {'page': page});
+    // limit 100: with only page 1 (20) loaded, buddy no. 21+ could not be picked
+    final res = await _dio.get('/match/buddies', queryParameters: {'page': page, 'limit': 100});
     final list = _data(res) as List<dynamic>;
     return list.map((e) => BuddyProfile.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// POST /sessions/:id/confirm → buddy confirms uploaded proof
+  Future<Map<String, dynamic>> confirmProof(String sessionId) async {
+    final res = await _dio.post('/sessions/$sessionId/confirm');
+    return (_data(res) as Map<String, dynamic>?) ?? {};
+  }
+
+  /// POST /sessions/:id/on-my-way → tells the others I'm coming
+  Future<void> onMyWay(String sessionId) async {
+    await _dio.post('/sessions/$sessionId/on-my-way');
+  }
+
+  /// GET /sessions/pending-confirm → proofs waiting for my confirmation
+  Future<List<PendingProofConfirm>> getPendingConfirmations() async {
+    final res = await _dio.get('/sessions/pending-confirm');
+    final data = _data(res) as Map<String, dynamic>? ?? {};
+    return (data['sessions'] as List<dynamic>? ?? [])
+        .map((e) => PendingProofConfirm.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// POST /sessions/:id/respond → confirm or decline invite

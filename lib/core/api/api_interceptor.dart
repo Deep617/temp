@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 
@@ -6,10 +7,41 @@ import 'package:flutter/foundation.dart';
 import 'package:seshlly/core/services/secure_storage_service.dart';
 
 import '../../di_injection/dependency_injection.dart';
+import 'idempotency.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/presentation/bloc/auth_event.dart';
 
 class ApiInterceptor extends Interceptor {
-  bool _refreshing = false;
+  // One refresh at a time; every 401 that arrives meanwhile waits for it.
+  // (Before: the flag was never reset after a failed refresh, so after the
+  // first failure no request could ever refresh again until app restart.)
+  static Completer<String?>? _refresh;
+
+  /// Returns the new access token, or null if the session is really over.
+  Future<String?> _refreshAccessToken() {
+    final running = _refresh;
+    if (running != null) return running.future;
+    final c = Completer<String?>();
+    _refresh = c;
+    () async {
+      try {
+        final response = await getIt<AuthRepository>().refreshToken();
+        c.complete(response.data['data']['accessToken'] as String);
+      } catch (e) {
+        final code = e is DioException ? e.response?.statusCode : null;
+        final noToken = e.toString().contains('Refresh token missing');
+        if (code == 401 || code == 403 || noToken) {
+          // Refresh token rejected → sign out cleanly
+          getIt<AuthBloc>().add(const UserTokeExpire());
+        }
+        c.complete(null);
+      } finally {
+        _refresh = null;
+      }
+    }();
+    return c.future;
+  }
 
   @override
   void onRequest(
@@ -23,6 +55,8 @@ class ApiInterceptor extends Interceptor {
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
     }
+    // One key per user action; kept when this same request is retried
+    IdempotencyPolicy.attach(options);
     if (kDebugMode) {
       print("");
       print("╔════════════════ REQUEST ════════════════");
@@ -77,25 +111,41 @@ class ApiInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
-    if (err.response?.statusCode == 401 &&
-        !err.requestOptions.path.contains('/auth/refresh') &&
-        !_refreshing) {
-      _refreshing = true;
+    // Bad network / server busy → re-send the SAME keyed request (server
+    // runs it once). The user just sees it work.
+    final attempt = (err.requestOptions.extra['idemRetry'] as int?) ?? 0;
+    if (IdempotencyPolicy.shouldRetry(err, attempt)) {
+      await Future<void>.delayed(IdempotencyPolicy.backoff(attempt));
+      final request = err.requestOptions..extra['idemRetry'] = attempt + 1;
       try {
-        final authRepo = getIt<AuthRepository>();
-        final response = await authRepo.refreshToken();
-        final newAt = response.data['data']['accessToken'] as String;
-        final request = err.requestOptions;
-        request.headers['Authorization'] = 'Bearer $newAt';
-        final dio = Dio();
-        final retryResponse = await dio.fetch(request);
-        _refreshing = false;
-        return handler.resolve(retryResponse);
-      } catch (e) {
-        // SecureStorageService service = getIt<SecureStorageService>();
-        // await service.clearStorage();
-        return handler.next(err);
+        final token = await getIt<SecureStorageService>().getAccessToken();
+        if (token != null) request.headers['Authorization'] = 'Bearer $token';
+        return handler.resolve(await Dio().fetch(request));
+      } on DioException catch (e) {
+        if (IdempotencyPolicy.shouldRetry(e, attempt + 1)) {
+          return onError(e, handler);
+        }
+        err = e;
       }
+    }
+    final path = err.requestOptions.path;
+    final isAuthCall = path.contains('/auth/refresh') ||
+        path.contains('/auth/login') || path.contains('/auth/register');
+    final alreadyRetried = err.requestOptions.extra['retried'] == true;
+    if (err.response?.statusCode == 401 && !isAuthCall && !alreadyRetried) {
+      final newAt = await _refreshAccessToken();
+      if (newAt != null) {
+        try {
+          final request = err.requestOptions;
+          request.headers['Authorization'] = 'Bearer $newAt';
+          request.extra['retried'] = true;
+          final retryResponse = await Dio().fetch(request);
+          return handler.resolve(retryResponse);
+        } on DioException catch (e) {
+          return handler.next(e);
+        }
+      }
+      return handler.next(err);
     }
 
     if (kDebugMode) {

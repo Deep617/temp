@@ -21,6 +21,7 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../dashboard/challanges/data/repositories/challenge_repository.dart';
 import '../../../dashboard/challanges/data/response_ml/challange_model.dart';
 import '../../../dashboard/session/data/response_ml/workout_session.dart';
+import '../widgets/feed_stories.dart';
 
 
 class FeedScreen extends StatefulWidget {
@@ -95,6 +96,10 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           ]),
         ),
+
+        // Stories (tap → full screen viewer)
+        if (!_loading && _posts.isNotEmpty)
+          const FeedStoryRow(showFeedButton: false),
 
         // Feed list
         Expanded(
@@ -505,7 +510,9 @@ class _PostToFeedSheetState extends State<_PostToFeedSheet> {
     try {
       final api = getIt<ChallengeRepository>();
       await api.postToFeed({
-        'challengeId':   widget.challengeId ?? widget.session.id,
+        // Feed = challenge workouts only (session.id is NOT a challenge)
+        'challengeId':   widget.challengeId,
+        'sessionId':     widget.session.id, // server takes XP from the session
         'stationNum':    widget.stationNum,
         'stationTitle':  widget.stationTitle,
         'xpAwarded':     widget.xpAwarded,

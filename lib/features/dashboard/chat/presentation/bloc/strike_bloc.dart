@@ -2,17 +2,22 @@
 //  bloc/strike/strike_bloc.dart
 //  Handles Strike 2 — camera flow, send, view, react
 // ─────────────────────────────────────────────────────────
+import 'dart:io';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../core/errors/app_error.dart';
 import '../../../../strike/data/repositories/strike_repository.dart';
+import '../../data/repositories/chat_repository.dart';
 
 part 'strike_event.dart';
 part 'strike_state.dart';
 
 class StrikeBloc extends Bloc<StrikeEvent, StrikeState> {
-  StrikeBloc({required StrikeRepository api})
+  StrikeBloc({required StrikeRepository api, ChatRepository? chatRepository})
     : _api = api,
+      _chatRepo = chatRepository,
       super(const StrikeState()) {
     on<StrikeLoadRequested>(_onLoad);
     on<StrikeCameraOpened>(_onCameraOpen);
@@ -27,6 +32,7 @@ class StrikeBloc extends Bloc<StrikeEvent, StrikeState> {
   }
 
   final StrikeRepository _api;
+  final ChatRepository? _chatRepo; // Sesh Flash streak (/flash/send)
 
   // ── Load streak + pending count ───────────────────────
   Future<void> _onLoad(
@@ -109,23 +115,40 @@ class StrikeBloc extends Bloc<StrikeEvent, StrikeState> {
     emit(state.copyWith(caption: event.caption));
   }
 
-  // ── Send Strike ───────────────────────────────────────
-
-  // ── Send Strike ───────────────────────────────────────
+  // ── Send Strike (Sesh Flash) ──────────────────────────
+  // 1. POST /upload (multipart)          → imageUrl
+  // 2. POST /strikes {matchId, imageUrl}  → strike created
+  // 3. POST /flash/send {buddyId}         → flash streak (best effort)
+  // 4. GET  /strikes/streak/:matchId      → refresh banner
   Future<void> _onSend(
     StrikeSendRequested event,
     Emitter<StrikeState> emit,
   ) async {
     emit(state.copyWith(status: StrikeStatus.sending, clearError: true));
     try {
+      final file = event.imageFile;
+      final String imageUrl = file is File
+          ? await _api.uploadFile(file.path)
+          : file.toString(); // already a URL
+
       await _api.sendStrike(
         matchId: event.matchId,
-        imageUrl: event.imageFile,
+        imageUrl: imageUrl,
         caption: event.caption,
       );
+
+      // Flash streak — never fail the send because of this
+      try {
+        await _chatRepo?.recordFlashSent(event.receiverId);
+      } catch (_) {}
+
       // After send, reload streak so banner updates
-      final streakData = await _api.getStrikeStreak(event.matchId);
-      final newStreak = (streakData)['streak'] as int? ?? state.streak;
+      var newStreak = state.streak;
+      try {
+        final streakData = await _api.getStrikeStreak(event.matchId);
+        newStreak = streakData['streak'] as int? ?? state.streak;
+      } catch (_) {}
+
       emit(
         state.copyWith(
           status: StrikeStatus.sent,
@@ -135,10 +158,13 @@ class StrikeBloc extends Bloc<StrikeEvent, StrikeState> {
         ),
       );
     } catch (e) {
+      final msg = e is AppError
+          ? e.message
+          : AppError.fromException(e).message;
       emit(
         state.copyWith(
           status: StrikeStatus.photoPreview,
-          errorMessage: 'Failed to send Strike. Try again.',
+          errorMessage: msg.isNotEmpty ? msg : 'Failed to send Strike. Try again.',
         ),
       );
     }

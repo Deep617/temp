@@ -25,6 +25,12 @@ import '../../../session/data/response_ml/workout_session.dart';
 import '../../../session/presentation/bloc/session_bloc.dart';
 import '../../../session/presentation/bloc/session_event.dart';
 import '../../../session/presentation/bloc/session_state.dart';
+import 'package:share_plus/share_plus.dart';
+import '../../../../../core/errors/app_error.dart';
+import '../../../../../core/services/growth_service.dart';
+import '../../../../../core/services/monitoring_service.dart';
+import '../../../../../di_injection/dependency_injection.dart';
+import '../../../session/data/repositories/session_repository.dart';
 
 class SessionsScreen extends StatefulWidget {
   const SessionsScreen({super.key});
@@ -82,6 +88,12 @@ class _SessionsScreenState extends State<SessionsScreen>
           },
         ),
         actions: [
+          // ── Gym Map: gyms near you + buddies training now ──
+          IconButton(
+            tooltip: 'Gym Map',
+            icon: const Icon(Icons.map_outlined, color: AppColors.textPrimary),
+            onPressed: () => context.push(AppRoutes.gymMap),
+          ),
           // ── + button: only if user has buddies ────────
           if (hasBuddies)
             IconButton(
@@ -94,8 +106,13 @@ class _SessionsScreenState extends State<SessionsScreen>
                 child: const Icon(Icons.add,
                     color: Colors.white, size: 18),
               ),
-              onPressed: () =>
-                  context.push(AppRoutes.scheduleSession),
+              onPressed: () async {
+                await context.push(AppRoutes.scheduleSession);
+                // show the new session right away
+                if (context.mounted) {
+                  context.read<SessionBloc>().add(const SessionsLoaded(status: 'scheduled'));
+                }
+              },
             )
           else
           // No buddies — tap to go to Discover
@@ -539,14 +556,25 @@ class _SessionCard extends StatelessWidget {
             ),
           ),
 
+          // ── On my way + Share (upcoming sessions) ─────
+          if (session.isUpcoming) _SessionActions(session: session),
+
           // ── Upload Proof CTA (within 3hr window) ───────
           if (session.needsProof) ...[
             Container(
               margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: GestureDetector(
-                onTap: () => context.push(
-                    AppRoutes.uploadProof
-                        .replaceAll(':sessionId', session.id)),
+                // `extra: session` — the route needs it (tapping this used to crash)
+                onTap: () async {
+                  await context.push(
+                      AppRoutes.uploadProof
+                          .replaceAll(':sessionId', session.id),
+                      extra: session);
+                  // Refresh so the card stops offering a second upload
+                  if (context.mounted) {
+                    context.read<SessionBloc>().add(const SessionsLoaded(status: 'scheduled'));
+                  }
+                },
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
@@ -614,4 +642,94 @@ class _SessionCard extends StatelessWidget {
 
   String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1).toLowerCase();
+}
+
+// ── "On my way" + "Share my session" ─────────────────────
+class _SessionActions extends StatefulWidget {
+  const _SessionActions({required this.session});
+  final WorkoutSession session;
+
+  @override
+  State<_SessionActions> createState() => _SessionActionsState();
+}
+
+class _SessionActionsState extends State<_SessionActions> {
+  bool _sending = false;
+  bool _sent = false;
+
+  WorkoutSession get s => widget.session;
+
+  Future<void> _onMyWay() async {
+    if (_sending || _sent) return;
+    setState(() => _sending = true);
+    try {
+      await getIt<SessionRepository>().onMyWay(s.id);
+      MonitoringService.instance.log('on_my_way');
+      if (!mounted) return;
+      setState(() => _sent = true);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('🏃 Your buddy knows you are on the way'),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } on AppError catch (e) {
+      if (!mounted) return;
+      // 409 = already sent from another device → show as done
+      if (e.statusCode == 409) setState(() => _sent = true);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.message),
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  void _share() {
+    final when = DateFormat('EEE, dd MMM · h:mm a').format(s.scheduledAt);
+    final where = (s.gymName ?? '').trim().isEmpty ? '' : ' at ${s.gymName}';
+    final activity = s.activity.isEmpty
+        ? 'Workout'
+        : s.activity[0].toUpperCase() + s.activity.substring(1);
+    MonitoringService.instance.log('session_shared');
+    Share.share(
+      '💪 $activity session$where — $when\n'
+      'Training with Seshlly. Find your own gym buddy: '
+      '${GrowthService.playStoreUrl}',
+      subject: 'My Seshlly session',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final myId = context.select((AuthBloc b) => b.state.user?.id);
+    final isHost = myId != null && s.userId == myId;
+    final canSay = s.onMyWayOpen && (isHost || s.isInviteConfirmed);
+    final already = _sent || (myId != null && s.onMyWay.contains(myId));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      child: Row(children: [
+        if (canSay) ...[
+          Expanded(
+            child: PrimaryButton(
+              label: already ? '✓ On my way' : '🏃 On my way',
+              height: 42,
+              loading: _sending,
+              onPressed: already ? null : _onMyWay,
+            ),
+          ),
+          const SizedBox(width: 10),
+        ],
+        Expanded(
+          child: GhostButton(
+            label: 'Share',
+            icon: Icons.ios_share,
+            height: 42,
+            onPressed: _share,
+          ),
+        ),
+      ]),
+    );
+  }
 }

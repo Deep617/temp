@@ -194,11 +194,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             ),
                             const SizedBox(height: 12),
                             for (final f in [
-                              '♾️  Unlimited daily swipes',
-                              '⚡  Priority match algorithm',
-                              '💬  Free chat tokens every month',
+                              '♾️  Unlimited daily likes',
+                              '⭐  5 super-likes a day',
+                              '💬  Up to 50 chat tokens every month',
                               '✅  Pro badge on your profile',
-                              '📊  Advanced analytics',
+                              '🧊  1 streak freeze every 30 days',
                             ])
                               Padding(
                                 padding: const EdgeInsets.only(top: 6),

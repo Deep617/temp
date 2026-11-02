@@ -23,6 +23,7 @@ class ChallengeState extends Equatable {
     this.isFeedLoading     = false,
     this.isJoining         = false,
     this.isSubmittingProof = false,
+    this.lastStationProof,
   });
 
   final ChallengeStatus      status;
@@ -37,6 +38,10 @@ class ChallengeState extends Equatable {
   final bool                 isFeedLoading;
   final bool                 isJoining;
   final bool                 isSubmittingProof;
+  /// Result of the last completed station (POST /challenges/:id/proof):
+  /// stationCompletionId, stationNum, stationTitle, xpAwarded,
+  /// proofImageUrl, challengeCompleted. UI uses it for "Share to feed".
+  final Map<String, dynamic>? lastStationProof;
 
   ChallengeState copyWith({
     ChallengeStatus?          status,
@@ -51,6 +56,8 @@ class ChallengeState extends Equatable {
     bool?                     isFeedLoading,
     bool?                     isJoining,
     bool?                     isSubmittingProof,
+    Map<String, dynamic>?     lastStationProof,
+    bool                      clearStationProof = false,
     bool                      clearError   = false,
     bool                      clearSuccess = false,
   }) {
@@ -67,6 +74,9 @@ class ChallengeState extends Equatable {
       isFeedLoading:     isFeedLoading     ?? this.isFeedLoading,
       isJoining:         isJoining         ?? this.isJoining,
       isSubmittingProof: isSubmittingProof ?? this.isSubmittingProof,
+      lastStationProof:  clearStationProof
+          ? null
+          : (lastStationProof ?? this.lastStationProof),
     );
   }
 
@@ -74,6 +84,6 @@ class ChallengeState extends Equatable {
   List<Object?> get props => [
     status, challenges, myEntries, selectedChallenge,
     feedPosts, leaderboard,globalLeaderBoard, errorMessage, successMessage,
-    isFeedLoading, isJoining, isSubmittingProof,
+    isFeedLoading, isJoining, isSubmittingProof, lastStationProof,
   ];
 }

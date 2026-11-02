@@ -17,6 +17,9 @@ abstract class DiscoverRepository {
 
   Future<bool> swipeRight(String userId);
 
+  /// Like → { matched, matchId?, chatId? }
+  Future<Map<String, dynamic>> likeUser(String userId);
+
   Future<void> swipeLeft(String userId);
 
   Future<List<BuddyProfile>> getBuddies({int page = 1});
@@ -25,8 +28,11 @@ abstract class DiscoverRepository {
 
   Future<void> removeBuddy(String buddyId);
 
-  Future<void> superLike(String userId);
+  /// Returns true when the super like resulted in a mutual match.
+  Future<bool> superLike(String userId);
 
   Future<Map<String, dynamic>> boost();
+
+  Future<Map<String, dynamic>> boostStatus();
 
 }

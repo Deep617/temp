@@ -39,3 +39,39 @@ class ChatMarkedRead extends ChatEvent {
   @override
   List<Object?> get props => [chatId];
 }
+
+/// User picked 24h / Normal from the ⏱ sheet
+class ChatModeChanged extends ChatEvent {
+  const ChatModeChanged({required this.chatId, required this.disappearing});
+  final String chatId;
+  final bool disappearing;
+  @override
+  List<Object?> get props => [chatId, disappearing];
+}
+
+/// Scrolled to the top → load the previous page of history
+class ChatOlderMessagesLoaded extends ChatEvent {
+  const ChatOlderMessagesLoaded({required this.chatId});
+  final String chatId;
+  @override
+  List<Object?> get props => [chatId];
+}
+
+/// A message card changed on the server (socket 'message:updated'),
+/// e.g. session invite confirmed / declined / expired.
+class ChatMessageUpdated extends ChatEvent {
+  const ChatMessageUpdated({required this.messageId, this.metadata});
+  final String messageId;
+  final Map<String, dynamic>? metadata;
+  @override
+  List<Object?> get props => [messageId, metadata];
+}
+
+/// Other user switched the mode (socket 'chat:mode')
+class ChatModeReceived extends ChatEvent {
+  const ChatModeReceived({required this.chatId, required this.disappearing});
+  final String chatId;
+  final bool disappearing;
+  @override
+  List<Object?> get props => [chatId, disappearing];
+}

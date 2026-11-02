@@ -76,3 +76,9 @@ class DiscoverSuperLiked extends DiscoverEvent {
 class DiscoverBoosted extends DiscoverEvent {
   const DiscoverBoosted();
 }
+
+/// Loads current boost state from GET /match/boost/status
+/// (so the ⚡ button is correct after app restart).
+class DiscoverBoostStatusRequested extends DiscoverEvent {
+  const DiscoverBoostStatusRequested();
+}

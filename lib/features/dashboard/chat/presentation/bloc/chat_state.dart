@@ -10,6 +10,9 @@ class ChatState extends Equatable {
     this.flashStreaks = const [],
     this.error,
     this.activeChatId,
+    this.disappearing = false,
+    this.hasOlder = false,
+    this.loadingOlder = false,
   });
 
   final ChatStatus                    status;
@@ -18,6 +21,9 @@ class ChatState extends Equatable {
   final List<FlashStreakModel> flashStreaks;
   final AppError?                     error;
   final String?                       activeChatId;
+  final bool                          disappearing; // active chat is in 24h mode
+  final bool                          hasOlder;     // more history on the server
+  final bool                          loadingOlder;
 
   bool get isLoading => status == ChatStatus.loading;
   bool get isSending => status == ChatStatus.sending;
@@ -30,6 +36,9 @@ class ChatState extends Equatable {
     AppError?                    error,
     bool                         clearError = false,
     String?                      activeChatId,
+    bool?                        disappearing,
+    bool?                        hasOlder,
+    bool?                        loadingOlder,
   }) =>
       ChatState(
         status:       status       ?? this.status,
@@ -38,8 +47,12 @@ class ChatState extends Equatable {
         flashStreaks:     flashStreaks     ?? this.flashStreaks,
         error:        clearError ? null : error ?? this.error,
         activeChatId: activeChatId ?? this.activeChatId,
+        disappearing: disappearing ?? this.disappearing,
+        hasOlder:     hasOlder     ?? this.hasOlder,
+        loadingOlder: loadingOlder ?? this.loadingOlder,
       );
 
   @override
-  List<Object?> get props => [status, chats, messages, error, activeChatId];
+  List<Object?> get props =>
+      [status, chats, messages, error, activeChatId, disappearing, flashStreaks, hasOlder, loadingOlder];
 }

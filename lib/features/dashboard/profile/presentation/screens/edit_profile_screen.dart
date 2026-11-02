@@ -16,6 +16,7 @@ import '../../../../auth/domain/repositories/auth_repository.dart';
 import '../../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../auth/presentation/bloc/auth_event.dart';
 import '../../../../strike/data/datasource/strike_remote_datasource.dart';
+import '../../domain/usecases/update_profile_usecase.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
@@ -108,7 +109,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  // Keep Profile / Discover in sync after any photo change
+  Future<void> _refreshUser() async {
+    try {
+      final me = await getIt<OnloadProfileUseCase>().getMe();
+      if (mounted) context.read<AuthBloc>().add(AuthUserUpdated(user: me));
+    } catch (_) {}
+  }
+
+  Future<void> _makeMain(int index) async {
+    if (index <= 0 || index >= _existingPhotos.length) return;
+    try {
+      await getIt<AuthRepository>().makeMainPhoto(_existingPhotos[index]);
+      await _loadPhotos();
+      await _refreshUser();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Main photo updated', style: AppTextStyles.bodySM()),
+        ));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Could not update main photo', style: AppTextStyles.bodySM()),
+          backgroundColor: AppColors.error,
+        ));
+      }
+    }
+  }
+
+  bool _closing = false; // guards against a double pop after saving
+
   void _save() {
+    if (_closing) return;
     if (!_formKey.currentState!.validate()) return;
     context.read<ProfileBloc>().add(
       ProfileUpdated(
@@ -154,8 +187,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               content: Text('Profile updated! ✅', style: AppTextStyles.body()),
             ),
           );
-          // Navigate back to Profile screen
-          context.pop();
+          // Navigate back to Profile screen — exactly once.
+          // (It used to pop here AND in build(), which popped the page under
+          // Edit Profile too: the bottom menu stopped responding.)
+          if (!_closing && context.canPop()) {
+            _closing = true;
+            context.pop();
+          }
         }
         if (state.status == ProfileStatus.failure && state.error != null) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -170,10 +208,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       },
       builder: (context, state) {
         final user = context.watch<AuthBloc>().state.user;
-        if (state.isUpdated) {
-          // Navigate back to Profile screen
-          context.pop();
-        }
+        // NOTE: never navigate inside build() — the listener above handles it.
         return Scaffold(
           backgroundColor: AppColors.bg,
           appBar: AppBar(
@@ -291,7 +326,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Text('PHOTOS', style: AppTextStyles.label()),
                   const SizedBox(height: 4),
                   Text(
-                    'First photo is your main profile photo',
+                    'First photo is your main profile photo · tap a photo to change it',
                     style: AppTextStyles.bodySM(color: AppColors.textMuted),
                   ),
                   const SizedBox(height: 12),
@@ -311,12 +346,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 await getIt<AuthRepository>().deletePhoto(
                                   _existingPhotos[index],
                                 );
-                                setState(() => _existingPhotos.removeAt(index));
-                              } catch (_) {}
+                                if (mounted) {
+                                  setState(() => _existingPhotos.removeAt(index));
+                                }
+                                await _refreshUser();
+                              } catch (_) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Failed to delete photo',
+                                        style: AppTextStyles.bodySM(),
+                                      ),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
+                              }
                             } else {
                               setState(() => _newPhotos[index] = null);
                             }
                           },
+                          onMakeMain: _makeMain,
                           onSavePhoto: (index, file) async {
                             try {
                               // StrikeRemoteDatasource ka uploadFile use karo
@@ -332,10 +383,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 '/users/me/photos',
                                 data: {'url': url},
                               );
-                              // Refresh
+                              // Refresh — server list is source of truth
                               await _loadPhotos();
+                              await _refreshUser();
+                              if (mounted) {
+                                setState(() => _newPhotos[index] = null);
+                              }
                             } catch (_) {
                               if (mounted) {
+                                setState(() => _newPhotos[index] = null);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
@@ -618,8 +674,10 @@ class _PhotosGrid extends StatelessWidget {
     required this.onPhotoSelected,
     required this.onPhotoDeleted,
     required this.onSavePhoto,
+    required this.onMakeMain,
   });
 
+  final void Function(int) onMakeMain;
   final List<String> existingPhotos;
   final List<File?> newPhotos;
   final void Function(int, File) onPhotoSelected;
@@ -638,15 +696,56 @@ class _PhotosGrid extends StatelessWidget {
     onSavePhoto(index, file);
   }
 
+  // Tap / long-press on an existing photo → Make main / Replace / Delete
+  void _showOptions(BuildContext context, int i) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface1,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            if (i > 0)
+              ListTile(
+                leading: const Icon(Icons.star_outline, color: AppColors.primary),
+                title: Text('Make main photo', style: AppTextStyles.subtitle()),
+                subtitle: Text('Shown first on your profile and in Discover',
+                    style: AppTextStyles.caption()),
+                onTap: () {
+                  Navigator.pop(sheet);
+                  onMakeMain(i);
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: AppColors.error),
+              title: Text('Delete photo',
+                  style: AppTextStyles.subtitle(color: AppColors.error)),
+              onTap: () {
+                Navigator.pop(sheet);
+                onPhotoDeleted(i);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
+      // 5 photos → one row of 5 slots
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
+        crossAxisCount: 5,
+        crossAxisSpacing: 6,
+        mainAxisSpacing: 6,
         childAspectRatio: 0.75,
       ),
       itemCount: 5,
@@ -657,7 +756,10 @@ class _PhotosGrid extends StatelessWidget {
         final hasPhoto = hasExisting || hasNew;
 
         return GestureDetector(
-          onTap: () => _pick(context, i),
+          onTap: () => hasExisting
+              ? _showOptions(context, i)
+              : _pick(context, i),
+          onLongPress: hasExisting ? () => _showOptions(context, i) : null,
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.surface2,
@@ -688,12 +790,12 @@ class _PhotosGrid extends StatelessWidget {
                 // Main badge
                 if (isMain && hasPhoto)
                   Positioned(
-                    top: 6,
-                    left: 6,
+                    bottom: 4,
+                    left: 4,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
+                        horizontal: 4,
+                        vertical: 1,
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
@@ -709,13 +811,13 @@ class _PhotosGrid extends StatelessWidget {
                 // Delete button
                 if (hasPhoto)
                   Positioned(
-                    top: 4,
-                    right: 4,
+                    top: 3,
+                    right: 3,
                     child: GestureDetector(
                       onTap: () => onPhotoDeleted(i),
                       child: Container(
-                        width: 22,
-                        height: 22,
+                        width: 18,
+                        height: 18,
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.6),
                           shape: BoxShape.circle,
@@ -723,7 +825,7 @@ class _PhotosGrid extends StatelessWidget {
                         child: const Icon(
                           Icons.close,
                           color: Colors.white,
-                          size: 14,
+                          size: 12,
                         ),
                       ),
                     ),
@@ -748,15 +850,18 @@ class _EmptySlot extends StatelessWidget {
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
       Icon(
-        Icons.add_photo_alternate_outlined,
-        color: AppColors.textMuted,
-        size: 28,
+        isMain ? Icons.add_a_photo_outlined : Icons.add,
+        color: isMain ? AppColors.primary : AppColors.textMuted,
+        size: 20,
       ),
-      const SizedBox(height: 4),
-      Text(
-        isMain ? 'Main Photo' : 'Photo ${index + 1}',
-        style: AppTextStyles.caption(color: AppColors.textMuted),
-        textAlign: TextAlign.center,
+      const SizedBox(height: 2),
+      FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          isMain ? 'Main' : '${index + 1}',
+          style: AppTextStyles.caption(color: AppColors.textMuted),
+          textAlign: TextAlign.center,
+        ),
       ),
     ],
   );

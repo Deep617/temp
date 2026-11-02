@@ -12,6 +12,11 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/widgets/common/common_widgets.dart';
 import '../../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../../../core/errors/app_error.dart';
+import '../../../../../di_injection/dependency_injection.dart';
+import '../../../discover/data/response_ml/buddy_profile.dart';
+import '../../../session/data/repositories/session_repository.dart';
+import '../../../session/presentation/widgets/proof_camera.dart';
 import '../../data/response_ml/challange_model.dart';
 import '../bloc/challenge_bloc.dart';
 import '../bloc/challenge_event.dart';
@@ -30,6 +35,7 @@ class ChallengeDetailScreen extends StatefulWidget {
 class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabs;
+  Map<String, dynamic>? _shownProof; // share sheet shown once per station
 
   @override
   void initState() {
@@ -52,8 +58,15 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen>
     return BlocConsumer<ChallengeBloc, ChallengeState>(
       listenWhen: (p, c) =>
       c.successMessage != null && c.successMessage != p.successMessage ||
-          c.errorMessage   != null && c.errorMessage   != p.errorMessage,
+          c.errorMessage   != null && c.errorMessage   != p.errorMessage ||
+          c.lastStationProof != null && c.lastStationProof != p.lastStationProof,
       listener: (context, state) {
+        final proof = state.lastStationProof;
+        if (proof != null && proof != _shownProof) {
+          _shownProof = proof;
+          showStationShareSheet(context,
+              challengeId: widget.challengeId, result: proof);
+        }
         if (state.successMessage != null) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(state.successMessage!),
@@ -724,118 +737,204 @@ class _JoinBar extends StatelessWidget {
   final Challenge      challenge;
   final ChallengeState state;
 
+  BoxDecoration get _barDecoration => const BoxDecoration(
+        color: AppColors.surface1,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      );
+
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthBloc>().state.user;
+    final user  = context.watch<AuthBloc>().state.user;
+    final entry = challenge.myEntry;
+    final total = challenge.stations.length;
 
-    if (challenge.isEnrolled) {
-      return Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        decoration: BoxDecoration(
-          color: AppColors.surface1,
-          border: const Border(top: BorderSide(color: AppColors.border)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('In progress',
-                      style: AppTextStyles.label(color: AppColors.success)),
-                  Text(
-                    '${challenge.myEntry?.completions.length ?? 0} / ${challenge.stations.length} stations done',
-                    style: AppTextStyles.bodySM(),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.success.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: AppColors.success.withOpacity(0.3)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check_circle,
-                      size: 16, color: AppColors.success),
-                  const SizedBox(width: 6),
-                  Text('Enrolled',
-                      style:
-                      AppTextStyles.body().copyWith(
-                          color: AppColors.success)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Check level gating
-    final userLevel = user?.level ?? 1;
-    final locked = userLevel < challenge.entryLevelRequired;
-    final trustLocked = (user?.trustScore ?? 50) < challenge.trustRequired;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        border: const Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (locked || trustLocked)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Text(
-                locked
-                    ? 'Requires Level ${challenge.entryLevelRequired}'
-                    : 'Requires Trust Score ${challenge.trustRequired}+',
-                style: AppTextStyles.bodySM(color: AppColors.error),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          Row(
+    // ── Finished every station ──
+    if (entry != null && entry.status == 'completed') {
+      return SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+          decoration: _barDecoration,
+          child: Row(
             children: [
+              const Text('🏆', style: TextStyle(fontSize: 28)),
+              const SizedBox(width: 12),
               Expanded(
-                child: PrimaryButton(
-                  label: state.isJoining ? 'Joining...' : 'Join Solo',
-                  onPressed: (locked || trustLocked || state.isJoining)
-                      ? null
-                      : () => context.read<ChallengeBloc>().add(
-                    ChallengeJoined(challenge.id),
-                  ),
-                  loading: state.isJoining,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: PrimaryButton(
-                  label: 'Invite Buddy',
-                 // variant: AppButtonVariant.secondary,
-                  onPressed: (locked || trustLocked)
-                      ? null
-                      : () => _showBuddyPicker(context),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Challenge complete',
+                        style: AppTextStyles.label(color: AppColors.success)),
+                    Text(
+                      'All $total stations done · +${entry.totalXpEarned} XP earned',
+                      style: AppTextStyles.bodySM(),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-        ],
+        ),
+      );
+    }
+
+    // ── Enrolled: complete the current station ──
+    if (challenge.isEnrolled && entry != null) {
+      final doneCount = entry.completions.length;
+      final current = challenge.stations
+          .where((s) => s.stationNum == entry.currentStation)
+          .toList();
+      final station = current.isEmpty ? null : current.first;
+      final ended   = challenge.endAt.isBefore(DateTime.now());
+      final needsBuddy =
+          station != null && station.buddyRequired && entry.buddyId == null;
+
+      String hint;
+      if (ended) {
+        hint = 'This challenge has ended';
+      } else if (station == null) {
+        hint = '$doneCount / $total stations done';
+      } else if (needsBuddy) {
+        hint = 'Station ${station.stationNum} needs a buddy';
+      } else {
+        hint = 'Station ${station.stationNum} of $total · ${station.title}';
+      }
+
+      return SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+          decoration: _barDecoration,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      hint,
+                      style: AppTextStyles.bodySM(
+                          color: ended ? AppColors.error : AppColors.textMuted),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text('$doneCount / $total',
+                      style: AppTextStyles.label(color: AppColors.success)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: total == 0 ? 0 : doneCount / total,
+                  minHeight: 5,
+                  backgroundColor: AppColors.surface3,
+                  color: AppColors.success,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (!ended && station != null)
+                PrimaryButton(
+                  label: needsBuddy
+                      ? 'Invite a Buddy to Continue'
+                      : state.isSubmittingProof
+                          ? 'Checking proof...'
+                          : '📸 Complete Station ${station.stationNum}',
+                  loading: state.isSubmittingProof,
+                  onPressed: state.isSubmittingProof
+                      ? null
+                      : needsBuddy
+                          ? () => _showBuddyPicker(context)
+                          : () => _completeStation(context, station),
+                ),
+              if (!ended && station != null && !needsBuddy && entry.buddyId == null)
+                TextButton(
+                  onPressed: () => _showBuddyPicker(context),
+                  child: Text('+ Add a buddy (earn collab XP)',
+                      style: AppTextStyles.bodySM(color: AppColors.teal)),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // ── Not joined yet ──
+    final userLevel = user?.level ?? 1;
+    final locked = userLevel < challenge.entryLevelRequired;
+    final trustLocked = (user?.trustScore ?? 50) < challenge.trustRequired;
+    final ended = challenge.endAt.isBefore(DateTime.now());
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+        decoration: _barDecoration,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (locked || trustLocked || ended)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  ended
+                      ? 'This challenge has ended'
+                      : locked
+                          ? 'Requires Level ${challenge.entryLevelRequired}'
+                          : 'Requires Trust Score ${challenge.trustRequired}+',
+                  style: AppTextStyles.bodySM(color: AppColors.error),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            Row(
+              children: [
+                Expanded(
+                  child: PrimaryButton(
+                    label: state.isJoining ? 'Joining...' : 'Join Solo',
+                    onPressed: (locked || trustLocked || ended || state.isJoining)
+                        ? null
+                        : () => context.read<ChallengeBloc>().add(
+                              ChallengeJoined(challenge.id),
+                            ),
+                    loading: state.isJoining,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: PrimaryButton(
+                    label: 'With a Buddy',
+                    onPressed: (locked || trustLocked || ended || state.isJoining)
+                        ? null
+                        : () => _showBuddyPicker(context),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _completeStation(
+      BuildContext context, ChallengeStation station) async {
+    final bloc = context.read<ChallengeBloc>();
+    final photo = await captureProofPhoto(context, activity: station.title);
+    if (photo == null) return;
+    bloc.add(ChallengeProofSubmitted(
+      challengeId: challenge.id,
+      stationId:   station.id,
+      imagePath:   photo.path,
+    ));
   }
 
   void _showBuddyPicker(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: AppColors.surface1,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
@@ -847,39 +946,260 @@ class _JoinBar extends StatelessWidget {
   }
 }
 
-class _BuddyPickerSheet extends StatelessWidget {
+// ── Pick a buddy (your matches) for this challenge ────────
+class _BuddyPickerSheet extends StatefulWidget {
   const _BuddyPickerSheet({required this.challengeId});
   final String challengeId;
 
   @override
+  State<_BuddyPickerSheet> createState() => _BuddyPickerSheetState();
+}
+
+class _BuddyPickerSheetState extends State<_BuddyPickerSheet> {
+  List<BuddyProfile> _buddies = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final list = await getIt<SessionRepository>().getMyBuddies();
+      if (!mounted) return;
+      setState(() {
+        _buddies = list;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e is AppError ? e.message : 'Could not load your buddies';
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Challenge with a buddy', style: AppTextStyles.h3()),
-          const SizedBox(height: 6),
-          Text(
-            'Enter your buddy\'s user ID, or go to their profile and tap "Challenge together."',
-            style: AppTextStyles.bodySM(color: AppColors.textMuted),
+    final maxH = MediaQuery.of(context).size.height * 0.7;
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxH),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Challenge with a buddy', style: AppTextStyles.h3()),
+              const SizedBox(height: 6),
+              Text(
+                'Pick one of your buddies. Buddy stations unlock and you both earn collab XP.',
+                style: AppTextStyles.bodySM(color: AppColors.textMuted),
+              ),
+              const SizedBox(height: 16),
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
+                      child: CircularProgressIndicator(color: AppColors.primary)),
+                )
+              else if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
+                    children: [
+                      Text(_error!,
+                          style: AppTextStyles.bodySM(color: AppColors.error)),
+                      TextButton(onPressed: _load, child: const Text('Try again')),
+                    ],
+                  ),
+                )
+              else if (_buddies.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    'No buddies yet. Match with someone on Discover first, then come back.',
+                    style: AppTextStyles.bodySM(color: AppColors.textMuted),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: _buddies.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, i) {
+                      final b = _buddies[i];
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          context.read<ChallengeBloc>().add(
+                                ChallengeJoined(widget.challengeId, buddyId: b.id),
+                              );
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface2,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              AppAvatar(
+                                name: b.firstName,
+                                imageUrl: b.avatarUrl,
+                                size: 42,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('${b.firstName} ${b.lastName}'.trim(),
+                                        style: AppTextStyles.body()),
+                                    Text(
+                                      'Level ${b.level}${b.city != null ? ' · ${b.city}' : ''}',
+                                      style: AppTextStyles.bodySM(
+                                          color: AppColors.textMuted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right,
+                                  color: AppColors.textMuted),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: 20),
-          AppInput(
-            label: 'Buddy User ID',
-            hint: 'e.g. usr_abc123',
-            onChanged: (_) {},
-          ),
-          const SizedBox(height: 16),
-          PrimaryButton(
-            label: 'Send Challenge Invite',
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
+        ),
       ),
     );
   }
+}
+
+// ── After a station: share the proof to the challenge feed ─
+Future<void> showStationShareSheet(
+  BuildContext context, {
+  required String challengeId,
+  required Map<String, dynamic> result,
+}) {
+  final bloc = context.read<ChallengeBloc>();
+  final xp       = result['xpAwarded'] ?? 0;
+  final done     = result['challengeCompleted'] == true;
+  final imageUrl = result['proofImageUrl'] as String?;
+  var posting = false;
+
+  return showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface1,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (sheetCtx) => StatefulBuilder(
+      builder: (sheetCtx, setSheet) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(done ? '🏆' : '✅',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 44)),
+              const SizedBox(height: 8),
+              Text(
+                done
+                    ? 'Challenge complete!'
+                    : 'Station ${result['stationNum'] ?? ''} done!',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.h3(),
+              ),
+              const SizedBox(height: 4),
+              Text('+$xp XP',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.label(color: AppColors.warning)),
+              if (imageUrl != null) ...[
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(imageUrl,
+                      height: 180,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                ),
+              ],
+              const SizedBox(height: 16),
+              PrimaryButton(
+                label: posting ? 'Sharing...' : 'Share to Challenge Feed',
+                loading: posting,
+                onPressed: posting
+                    ? null
+                    : () async {
+                        setSheet(() => posting = true);
+                        try {
+                          await bloc.challengeRepository.postToFeed({
+                            'challengeId':         challengeId,
+                            'stationNum':          result['stationNum'],
+                            'stationTitle':        result['stationTitle'] ?? 'Station',
+                            'proofImageUrl':       imageUrl,
+                            'stationCompletionId': result['stationCompletionId'],
+                            'isCollab': result['completion'] is Map &&
+                                (result['completion'] as Map)['isCollab'] == true,
+                          });
+                          bloc.add(ChallengeFeedLoaded(challengeId));
+                          if (sheetCtx.mounted) Navigator.pop(sheetCtx);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Shared to the feed 🔥'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setSheet(() => posting = false);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(e is AppError
+                                    ? e.message
+                                    : 'Could not share right now'),
+                                backgroundColor: AppColors.error,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        }
+                      },
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(sheetCtx),
+                child: Text('Not now',
+                    style: AppTextStyles.bodySM(color: AppColors.textMuted)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 // ── Tier / Type badges ────────────────────────────────────

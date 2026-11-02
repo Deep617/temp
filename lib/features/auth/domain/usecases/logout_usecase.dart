@@ -9,7 +9,7 @@ class LogoutUseCase {
 
   LogoutUseCase(this.repository);
 
-  Future<Response> logoutPerform() {
-    return repository.logout();
+  Future<Response> logoutPerform({String? refreshToken}) {
+    return repository.logout(refreshToken: refreshToken);
   }
 }

@@ -14,6 +14,7 @@ import 'package:seshlly/features/auth/domain/repositories/auth_repository.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../routes/app_router.dart';
+import '../../../../core/errors/app_error.dart';
 
 enum _Step { email, otp, newPassword, success }
 
@@ -74,7 +75,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _error = null;
     });
     try {
-      _authRepository.sendForgotPasswordOtp(email);
+      await _authRepository.sendForgotPasswordOtp(email);
+      if (!mounted) return;
       _email = email;
       setState(() {
         _step = _Step.otp;
@@ -82,8 +84,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       });
       _startResendTimer();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = 'No account found with this email';
+        _error = e is AppError ? e.message : 'Could not send the code. Please try again';
         _loading = false;
       });
     }
@@ -101,14 +104,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _error = null;
     });
     try {
-      _authRepository.verifyForgotPasswordOtp(email: _email, otp: otp);
+      await _authRepository.verifyForgotPasswordOtp(email: _email, otp: otp);
+      if (!mounted) return;
       setState(() {
         _step = _Step.newPassword;
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = 'Incorrect code. Please try again';
+        _error = e is AppError ? e.message : 'Incorrect code. Please try again';
         _loading = false;
       });
       // Clear OTP fields on error
@@ -122,8 +127,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final pass = _passwordCtrl.text;
     final confirm = _confirmCtrl.text;
 
+    // Same rules as sign-up (server checks them too)
     if (pass.length < 8) {
       setState(() => _error = 'Password must be at least 8 characters');
+      return;
+    }
+    if (!RegExp(r'[A-Z]').hasMatch(pass) || !RegExp(r'[0-9]').hasMatch(pass)) {
+      setState(() => _error = 'Use at least one capital letter and one number');
       return;
     }
     if (pass != confirm) {
@@ -136,14 +146,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     });
     try {
       final otp = _otpCtrls.map((c) => c.text).join();
-      _authRepository.resetPassword(email: _email, otp: otp, newPassword: pass);
+      await _authRepository.resetPassword(email: _email, otp: otp, newPassword: pass);
+      if (!mounted) return;
       setState(() {
         _step = _Step.success;
         _loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _error = 'Failed to reset password. Please try again';
+        _error = e is AppError ? e.message : 'Failed to reset password. Please try again';
         _loading = false;
       });
     }
@@ -174,14 +186,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       _error = null;
     });
     try {
-      _authRepository.sendForgotPasswordOtp(_email);
+      await _authRepository.sendForgotPasswordOtp(_email);
+      if (!mounted) return;
       setState(() => _loading = false);
       _startResendTimer();
       // Clear old OTP
       for (final c in _otpCtrls) c.clear();
       _otpFocus[0].requestFocus();
-    } catch (_) {
-      setState(() => _loading = false);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e is AppError ? e.message : 'Could not resend the code. Please try again';
+      });
     }
   }
 

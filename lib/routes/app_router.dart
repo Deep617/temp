@@ -29,6 +29,9 @@ import '../features/dashboard/challanges/presentation/screen/challenge_detail_sc
 import '../features/dashboard/challanges/presentation/screen/challenges_screen.dart';
 import '../features/dashboard/challanges/presentation/screen/global_leaderboard_screen.dart';
 import '../features/dashboard/chat/presentation/bloc/strike_bloc.dart';
+import '../features/strike/presentation/screen/pending_strikes_screen.dart';
+import '../features/strike/presentation/screen/strike_view_screen.dart';
+import '../features/auth/data/response_ml/register_response.dart' show BuddyStrike;
 import '../features/dashboard/chat/presentation/screen/chat_screen.dart';
 import '../features/dashboard/chat/presentation/screen/chats_list_screen.dart';
 import '../features/dashboard/discover/presentation/bloc/discover_bloc.dart';
@@ -42,11 +45,19 @@ import '../features/dashboard/session/presentation/screens/sessions_screen.dart'
 import '../features/dashboard/session/presentation/screens/upload_proof_screen.dart';
 import '../features/feed_leaderboard/presentation/screen/feed_screen.dart';
 import '../features/feed_leaderboard/presentation/screen/leaderboard_screen.dart';
+import '../features/feed_leaderboard/presentation/widgets/feed_stories.dart';
+import '../core/services/monitoring_service.dart';
+import '../features/gym_map/presentation/screens/gym_map_screen.dart';
+import '../features/safety/presentation/screens/blocked_users_screen.dart';
 import '../features/match/match_screen.dart';
+import '../core/services/navigation_service.dart';
 
 GoRouter buildRouter(AuthBloc authBloc) {
   return GoRouter(
+    navigatorKey: NavigationService.navigatorKey,
     initialLocation: AppRoutes.splash,
+    // Analytics screen_view events (no-op until Firebase is configured)
+    observers: MonitoringService.instance.navigatorObservers,
     refreshListenable: GoRouterAuthNotifier(authBloc),
     redirect: (context, state) async {
       final location = state.matchedLocation;
@@ -189,6 +200,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
             child: ScheduleSessionScreen(
               buddyId: extra?['buddyId'] ?? '',
               buddyName: extra?['buddyName'] ?? '',
+              gymName: extra?['gymName'] as String?,
             ),
           );
         },
@@ -196,6 +208,9 @@ GoRouter buildRouter(AuthBloc authBloc) {
 
       GoRoute(
         path: AppRoutes.uploadProof,
+        // Without the session (e.g. deep link / app restart) go back to Sessions
+        redirect: (context, state) =>
+            state.extra is WorkoutSession ? null : AppRoutes.sessions,
         builder: (context, state) {
           final extra = state.extra as WorkoutSession;
           return BlocProvider(
@@ -204,6 +219,27 @@ GoRouter buildRouter(AuthBloc authBloc) {
               sessionId: state.pathParameters['sessionId']!,
               session: extra,
             ),
+          );
+        },
+      ),
+
+      // Flash (Strike) — received flashes (constants existed, routes didn't)
+      GoRoute(
+        path: AppRoutes.pendingStrikes,
+        builder: (context, state) => const PendingStrikesScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.strikeView,
+        redirect: (context, state) {
+          final e = state.extra;
+          return (e is Map && e['strike'] is BuddyStrike) ? null : AppRoutes.pendingStrikes;
+        },
+        builder: (context, state) {
+          final e = state.extra as Map;
+          return StrikeViewScreen(
+            strike: e['strike'] as BuddyStrike,
+            buddyName: e['buddyName'] as String? ?? 'Buddy',
+            streak: e['streak'] as int? ?? 0,
           );
         },
       ),
@@ -232,6 +268,15 @@ GoRouter buildRouter(AuthBloc authBloc) {
         path: AppRoutes.buddyView,
         builder: (ctx, state) {
           final extra = state.extra as Map<String, dynamic>?;
+          // Share Discover's bloc: liking here advances the same deck and
+          // the match dialog works (a fresh bloc reloaded profiles + spinner)
+          final shared = extra?['discoverBloc'];
+          if (shared is DiscoverBloc) {
+            return BlocProvider.value(
+              value: shared,
+              child: BuddyViewScreen(buddyProfile: extra?['buddyProfile']),
+            );
+          }
           return BlocProvider(
             create: (_) => getIt<DiscoverBloc>(),
             child: BuddyViewScreen(buddyProfile: extra?['buddyProfile']),
@@ -290,8 +335,44 @@ GoRouter buildRouter(AuthBloc authBloc) {
         builder: (_, __) => const VerifyIdScreen(),
       ),
 
+      // ── Safety ───────────────────────────────────────
+      GoRoute(
+        path: AppRoutes.blockedUsers,
+        builder: (_, __) => const BlockedUsersScreen(),
+      ),
+      // ── Gym map ──────────────────────────────────────
+      GoRoute(
+        path: AppRoutes.gymMap,
+        builder: (_, __) => const GymMapScreen(),
+      ),
+
       // ── Feed ─────────────────────────────────────────
       GoRoute(path: AppRoutes.feed, builder: (_, __) => const FeedScreen()),
+      // Story viewer (feed as stories) — extra: {groups, index}
+      GoRoute(
+        path: AppRoutes.storyViewer,
+        pageBuilder: (_, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? const {};
+          final groups = (extra['groups'] as List?)?.cast<StoryGroup>() ?? const <StoryGroup>[];
+          return CustomTransitionPage(
+            key: state.pageKey,
+            opaque: true,
+            child: groups.isEmpty
+                ? const FeedScreen()
+                : StoryViewerScreen(
+                    groups: groups,
+                    initialIndex: extra['index'] as int? ?? 0,
+                  ),
+            transitionsBuilder: (_, anim, __, child) => FadeTransition(
+              opacity: anim,
+              child: ScaleTransition(
+                scale: Tween(begin: 0.96, end: 1.0).animate(anim),
+                child: child,
+              ),
+            ),
+          );
+        },
+      ),
 
       ShellRoute(
         builder: (context, state, child) => HomeScreen(child: child),
@@ -399,6 +480,9 @@ class AppRoutes {
   // New: Leaderboard + Feed
   static const leaderboard = '/leaderboard';
   static const feed = '/feed';
+  static const storyViewer = '/stories';
+  static const blockedUsers = '/settings/blocked';
+  static const gymMap = '/gyms/map';
 
   // Strike 2 — Buddy Strike
   static const strikeView = '/strike/view';

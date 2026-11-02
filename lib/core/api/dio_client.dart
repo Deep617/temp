@@ -84,9 +84,14 @@ class DioClient {
   Future<Response> patch(
     String path, {
     Map<String, dynamic>? queryParameters,
+    dynamic data,
   }) async {
     final stopwatch = Stopwatch()..start();
-    Response response = await dio.patch(path, queryParameters: queryParameters);
+    Response response = await dio.patch(
+      path,
+      queryParameters: queryParameters,
+      data: data,
+    );
     stopwatch.stop();
     if (kDebugMode) {
       debugPrint("***********************");

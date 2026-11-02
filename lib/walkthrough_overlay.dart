@@ -39,7 +39,7 @@ class _WalkthroughOverlayState extends State<WalkthroughOverlay> {
     _WStep(
       icon: '🏋️',
       title: 'Sessions',
-      desc: 'Schedule a workout. Upload proof within 8 hours to earn +50 XP.',
+      desc: 'Schedule a workout. Upload a proof photo within 3 hours after it ends to earn XP.',
       hint: 'Tab 3 of 5',
     ),
     _WStep(

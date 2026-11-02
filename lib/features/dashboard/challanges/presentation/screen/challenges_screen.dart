@@ -17,6 +17,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../routes/app_router.dart';
 import '../../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../../feed_leaderboard/presentation/widgets/feed_stories.dart';
 import '../../data/response_ml/challange_model.dart';
 import '../bloc/challenge_bloc.dart';
 import '../bloc/challenge_event.dart';
@@ -98,6 +99,8 @@ class _ChallengesScreenState extends State<ChallengesScreen>
           child: Column(
             children: [
               _Header(),
+              // Challenge Feed as stories + "Feed" entry point
+              const FeedStoryRow(),
               _TierTabs(controller: _tabs),
               // Environment filter chips
               _EnvironmentFilter(
@@ -299,6 +302,31 @@ class _ChallengesList extends StatelessWidget {
             ? state.challenges
             : state.challenges.where((c) => c.tier == tier).toList();
 
+        // Load failed → say so and offer Retry (it looked like "no challenges")
+        if (list.isEmpty && state.status == ChallengeStatus.error) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.wifi_off_rounded, color: AppColors.textMuted, size: 40),
+                  const SizedBox(height: 12),
+                  Text('Could not load challenges', style: AppTextStyles.subtitle()),
+                  const SizedBox(height: 4),
+                  Text('Check your connection and try again.',
+                      style: AppTextStyles.bodySM(color: AppColors.textMuted)),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () => context.read<ChallengeBloc>().add(ChallengesLoaded(tier: tier)),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         if (list.isEmpty) {
           return _EmptyState(
             icon: Icons.emoji_events_outlined,
@@ -360,7 +388,8 @@ class _ChallengeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final enrolled = challenge.isEnrolled;
+    final completed = challenge.myEntry?.status == 'completed';
+    final enrolled = challenge.isEnrolled || completed;
     final progress = challenge.progressPercent;
 
     return GestureDetector(
@@ -431,7 +460,7 @@ class _ChallengeCard extends StatelessWidget {
                           Icon(Icons.check_circle,
                               size: 11, color: AppColors.success),
                           const SizedBox(width: 4),
-                          Text('Enrolled',
+                          Text(completed ? 'Completed' : 'Enrolled',
                               style: AppTextStyles.label(
                                   color: AppColors.success)),
                         ],

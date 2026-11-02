@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../../../core/api/dio_client.dart';
 import '../response_ml/flash_streakmodel.dart';
 import '../response_ml/message.dart';
+import '../../../../../core/services/offline_cache.dart';
 
 class ChatRemoteDatasource {
   final DioClient _dio;
@@ -11,8 +12,19 @@ class ChatRemoteDatasource {
 
   // CHAT
   Future<List<Map<String, dynamic>>> getChats({int page = 1}) async {
-    final res = await _dio.get('/chat', queryParameters: {'page': page});
-    return (_body(res)['data'] as List).cast<Map<String, dynamic>>();
+    Future<List<Map<String, dynamic>>> load() async {
+      final res = await _dio.get('/chat', queryParameters: {'page': page});
+      return (_body(res)['data'] as List).cast<Map<String, dynamic>>();
+    }
+
+    if (page != 1) return load();
+    // Offline → last saved chat list instead of an empty screen
+    return OfflineCache.fetch<List<Map<String, dynamic>>>(
+      'chats',
+      load,
+      toJson: (v) => v,
+      fromJson: (j) => (j as List).cast<Map<String, dynamic>>(),
+    );
   }
 
   Future<List<Message>> getMessages(String chatId, {int page = 1}) async {
@@ -23,6 +35,44 @@ class ChatRemoteDatasource {
     return (_body(res)['data'] as List)
         .map((e) => Message.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Same as [getMessages] but also returns the chat's 24h mode flag.
+  Future<({List<Message> messages, bool disappearing})> getMessagesWithMode(
+    String chatId, {
+    int page = 1,
+  }) async {
+    Future<Map<String, dynamic>> load() async {
+      final res = await _dio.get(
+        '/chat/$chatId/messages',
+        queryParameters: {'page': page},
+      );
+      return _body(res);
+    }
+
+    // Latest page is cached per chat → readable offline
+    final body = page == 1
+        ? await OfflineCache.fetch<Map<String, dynamic>>(
+            'messages_$chatId',
+            load,
+            toJson: (v) => v,
+            fromJson: (j) => Map<String, dynamic>.from(j as Map),
+          )
+        : await load();
+    final messages = (body['data'] as List)
+        .map((e) => Message.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return (messages: messages, disappearing: body['disappearing'] == true);
+  }
+
+  /// PATCH /chat/:chatId/mode { disappearing } → returns the system message
+  Future<Message?> setChatMode(String chatId, bool disappearing) async {
+    final res = await _dio.patch(
+      '/chat/$chatId/mode',
+      data: {'disappearing': disappearing},
+    );
+    final msg = (_data(res) as Map<String, dynamic>?)?['message'];
+    return msg is Map<String, dynamic> ? Message.fromJson(msg) : null;
   }
 
   Future<Message> sendMessage(

@@ -4,6 +4,7 @@ import 'package:seshlly/features/dashboard/session/presentation/bloc/session_sta
 
 import '../../../../../core/errors/app_error.dart';
 import '../../data/repositories/session_repository.dart';
+import '../../../../../core/services/growth_service.dart';
 
 class SessionBloc extends Bloc<SessionEvent, SessionState> {
   SessionBloc({required SessionRepository sessionRepository})
@@ -43,6 +44,9 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
         gymName: event.gymName,
         challengeId: event.challengeId,
       );
+      GrowthService.instance.logFirst(GrowthService.firstSessionScheduled, {
+        'with_buddy': event.buddyIds.isNotEmpty ? 1 : 0,
+      });
       emit(
         state.copyWith(
           status: SessionStatus.scheduled,

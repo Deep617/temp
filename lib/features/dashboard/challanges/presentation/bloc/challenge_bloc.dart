@@ -11,6 +11,7 @@
 //   - buddy nudge
 // ─────────────────────────────────────────────────────────
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../../core/errors/app_error.dart';
 import '../../data/repositories/challenge_repository.dart';
 import '../../data/response_ml/challange_model.dart';
 
@@ -54,7 +55,7 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
     } catch (e) {
       emit(state.copyWith(
         status:       ChallengeStatus.error,
-        errorMessage: e.toString(),
+        errorMessage: _msg(e, 'Something went wrong — please try again'),
       ));
     }
   }
@@ -73,7 +74,7 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
     } catch (e) {
       emit(state.copyWith(
         status:       ChallengeStatus.error,
-        errorMessage: e.toString(),
+        errorMessage: _msg(e, 'Something went wrong — please try again'),
       ));
     }
   }
@@ -94,40 +95,12 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
       ) async {
     emit(state.copyWith(isJoining: true));
     try {
-      final entry = await challengeRepository.joinChallenge(
+      await challengeRepository.joinChallenge(
         event.challengeId,
         buddyId: event.buddyId,
       );
-      // Update the selected challenge's myEntry
-      final updated = state.selectedChallenge != null
-          ? Challenge.fromJson({
-        ...{
-          'id':                 state.selectedChallenge!.id,
-          'title':              state.selectedChallenge!.title,
-          'description':        state.selectedChallenge!.description,
-          'type':               state.selectedChallenge!.type,
-          'tier':               state.selectedChallenge!.tier,
-          'startAt':            state.selectedChallenge!.startAt.toIso8601String(),
-          'endAt':              state.selectedChallenge!.endAt.toIso8601String(),
-          'xpPool':             state.selectedChallenge!.xpPool,
-          'entryLevelRequired': state.selectedChallenge!.entryLevelRequired,
-          'trustRequired':      state.selectedChallenge!.trustRequired,
-          'isActive':           state.selectedChallenge!.isActive,
-          'participantCount':   state.selectedChallenge!.participantCount + 1,
-          'myEntry': {
-            'id':             entry.id,
-            'challengeId':    entry.challengeId,
-            'userId':         entry.userId,
-            'buddyId':        entry.buddyId,
-            'status':         entry.status,
-            'currentStation': entry.currentStation,
-            'totalXpEarned':  entry.totalXpEarned,
-            'joinedAt':       entry.joinedAt.toIso8601String(),
-            'completions':    [],
-          },
-        }
-      })
-          : null;
+      // Reload so stations, entry and participant count are all fresh
+      final updated = await challengeRepository.getChallenge(event.challengeId);
       emit(state.copyWith(
         isJoining:         false,
         selectedChallenge: updated,
@@ -135,10 +108,11 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
             ? 'Challenge started with your buddy!'
             : 'You joined the challenge!',
       ));
+      add(const MyChallengesLoaded());
     } catch (e) {
       emit(state.copyWith(
         isJoining:    false,
-        errorMessage: 'Could not join challenge. ${e.toString()}',
+        errorMessage: _msg(e, 'Could not join challenge.'),
       ));
     }
   }
@@ -169,29 +143,39 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
       ChallengeProofSubmitted event,
       Emitter<ChallengeState> emit,
       ) async {
-    emit(state.copyWith(isSubmittingProof: true));
+    emit(state.copyWith(isSubmittingProof: true, clearStationProof: true));
     try {
-      await challengeRepository.submitProof(
+      final result = await challengeRepository.submitProof(
         event.challengeId,
-        sessionId: event.sessionId,
         stationId: event.stationId,
-        isCollab:  event.isCollab,
+        imagePath: event.imagePath,
+        sessionId: event.sessionId,
       );
       // Reload detail to reflect new station completion
       final updated = await challengeRepository.getChallenge(event.challengeId);
+      final xp   = result['xpAwarded'] ?? 0;
+      final done = result['challengeCompleted'] == true;
       emit(state.copyWith(
         isSubmittingProof: false,
         selectedChallenge: updated,
-        successMessage: event.isCollab
-            ? 'Collab proof submitted! +${updated.myEntry?.totalXpEarned ?? 0} XP'
-            : 'Proof submitted! Station progress updated.',
+        lastStationProof:  result,
+        successMessage: done
+            ? '🏆 Challenge complete! +$xp XP'
+            : '✅ Station ${result['stationNum'] ?? ''} done! +$xp XP',
       ));
+      add(const MyChallengesLoaded());
     } catch (e) {
       emit(state.copyWith(
         isSubmittingProof: false,
-        errorMessage:      'Proof submission failed. ${e.toString()}',
+        errorMessage:      _msg(e, 'Proof submission failed.'),
       ));
     }
+  }
+
+  /// Server message when we have one, otherwise a friendly fallback.
+  String _msg(Object e, String fallback) {
+    if (e is AppError && e.message.isNotEmpty) return e.message;
+    return fallback;
   }
 
   Future<void> _onCollabProofAdded(
@@ -205,7 +189,7 @@ class ChallengeBloc extends Bloc<ChallengeEvent, ChallengeState> {
       );
       emit(state.copyWith(successMessage: 'Collab badge earned!'));
     } catch (e) {
-      emit(state.copyWith(errorMessage: e.toString()));
+      emit(state.copyWith(errorMessage: _msg(e, 'Could not add the collab — try again')));
     }
   }
 

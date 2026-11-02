@@ -13,6 +13,8 @@ import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
+import 'package:seshlly/core/services/growth_service.dart';
+import 'package:seshlly/core/services/offline_cache.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
@@ -56,7 +58,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
 
     try {
-      final user = await loginUseCase.getCurrentUserModel();
+      // Flaky network at app start → retry a few times before giving up
+      UserModel? user;
+      for (var attempt = 0;; attempt++) {
+        try {
+          user = await loginUseCase.getCurrentUserModel();
+          break;
+        } on AppError catch (e) {
+          if (e.isNetwork && attempt < 2) {
+            await Future<void>.delayed(Duration(seconds: 2 * (attempt + 1)));
+            continue;
+          }
+          rethrow;
+        }
+      }
       if (user == null) {
         if (kDebugMode) {
           print("******* user not");
@@ -81,6 +96,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (kDebugMode) {
         print("exception on current user${e.toString()}");
       }
+      // Never leave the user on the splash screen forever. Tokens are kept
+      // for network errors, so signing in again is quick once online.
+      emit(state.copyWith(status: AuthStatus.unauthenticated, error: e));
     }
   }
 
@@ -120,6 +138,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       _sStorageService.saveAccessToken(registerResponse.accessToken!);
       _sStorageService.saveRefreshToken(registerResponse.refreshToken!);
+      GrowthService.instance.logFirst(GrowthService.signUp);
 
       emit(
         state.copyWith(
@@ -136,21 +155,34 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthOnboardingCompleted event,
     Emitter<AuthState> emit,
   ) async {
-    await _onboardingCompeted.markWalkthroughSeen();
-    await _storageService.setOnboarding();
-    emit(state.copyWith(status: AuthStatus.authenticated));
+    try {
+      await _onboardingCompeted.markWalkthroughSeen();
+      await _storageService.setOnboarding();
+      // Router checks user.walkthroughSeen — without updating it, new users
+      // were sent straight back to onboarding after tapping Finish.
+      emit(state.copyWith(
+        status: AuthStatus.authenticated,
+        user: state.user?.copyWith(walkthroughSeen: true),
+        clearError: true,
+      ));
+    } on AppError catch (e) {
+      emit(state.copyWith(error: e));
+    } catch (e) {
+      emit(state.copyWith(error: AppError.fromException(e)));
+    }
   }
 
   Future<void> _onLogoutRequested(
     AuthLoggedOut event,
     Emitter<AuthState> emit,
   ) async {
-    final Response logoutResponse = await _logoutUseCase.logoutPerform();
-
-    if (logoutResponse.statusCode == 200) {
-      await _sStorageService.clearStorage();
-      await _storageService.clearStorage();
-    }
+    // Always sign out locally, even if the server call fails (offline, 401)
+    try {
+      final refresh = await _sStorageService.getRefreshToken();
+      await _logoutUseCase.logoutPerform(refreshToken: refresh);
+    } catch (_) {/* server may be unreachable — still sign out here */}
+    await _sStorageService.clearStorage();
+    await _storageService.clearStorage();
     emit(const AuthState(status: AuthStatus.unauthenticated));
   }
 
@@ -162,6 +194,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     UserTokeExpire event,
     Emitter<AuthState> emit,
   ) async {
+    await _sStorageService.clearStorage();
+    await OfflineCache.clear(); // next account must not see this one's data
     emit(state.copyWith(status: AuthStatus.unauthenticated));
   }
 }

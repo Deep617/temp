@@ -18,7 +18,7 @@ class AppNotification {
   factory AppNotification.fromJson(Map<String,dynamic> j) => AppNotification(
     id: j['id'], type: j['type'], title: j['title'], message: j['message'],
     isRead: j['isRead'] ?? false, actionUrl: j['actionUrl'],
-    data: j['data'], createdAt: DateTime.parse(j['createdAt']),
+    data: j['data'], createdAt: DateTime.parse(j['createdAt']).toLocal(),
   );
 
   String get icon {

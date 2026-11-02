@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../../core/api/dio_client.dart';
 import '../response_ml/buddy_profile.dart';
+import '../../../../../core/services/offline_cache.dart';
 
 class DiscoverRemoteDatasource {
   final DioClient _dio;
@@ -17,6 +18,7 @@ class DiscoverRemoteDatasource {
     double? maxDistance,
     int page = 1,
   }) async {
+    Future<List<dynamic>> load() async {
     final res = await _dio.get(
       '/match/discover',
       queryParameters: {
@@ -30,8 +32,21 @@ class DiscoverRemoteDatasource {
         'limit': 20,
       },
     );
-    return (_body(res)['data'] as List)
-        .map((e) => BuddyProfile.fromJson(e as Map<String, dynamic>))
+    return _body(res)['data'] as List;
+    }
+
+    // First page is cached for offline use (only the unfiltered deck)
+    final cacheable = page == 1 && activity == null && level == null;
+    final rows = cacheable
+        ? await OfflineCache.fetch<List<dynamic>>(
+            'discover',
+            load,
+            toJson: (v) => v,
+            fromJson: (j) => j as List<dynamic>,
+          )
+        : await load();
+    return rows
+        .map((e) => BuddyProfile.fromJson(Map<String, dynamic>.from(e as Map)))
         .toList();
   }
 
@@ -66,18 +81,30 @@ class DiscoverRemoteDatasource {
     await _dio.delete('/match/buddies/$buddyId');
   }
 
-  Future<void> superLike(String targetUserId) async {
-    await _dio.post(
+  // POST /match/swipe { targetId, action: 'super_like' }
+  // Response: { success, message, data: { matched, matchId? } }
+  Future<Map<String, dynamic>> superLike(String targetUserId) async {
+    final res = await _dio.post(
       '/match/swipe',
       data: {
         'targetId': targetUserId,
         'action':   'super_like',
       },
     );
+    return _body(res);
   }
 
+  // POST /match/boost
+  // Response data: { boostExpiresAt, tokensRemaining, durationMinutes }
   Future<Map<String, dynamic>> boost() async {
     final res = await _dio.post('/match/boost');
+    return _body(res);
+  }
+
+  // GET /match/boost/status
+  // Response data: { isActive, boostExpiresAt, remainingMinutes, tokens }
+  Future<Map<String, dynamic>> boostStatus() async {
+    final res = await _dio.get('/match/boost/status');
     return _body(res);
   }
 

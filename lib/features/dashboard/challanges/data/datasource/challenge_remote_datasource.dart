@@ -55,21 +55,38 @@ class ChallengeRemoteDatasource {
         .toList();
   }
 
+  /// POST /challenges/:id/proof — completes the current station.
+  /// Send a live camera photo ([imagePath], uploaded first) or a
+  /// [sessionId] whose proof photo should be used.
   Future<Map<String, dynamic>> submitChallengeProof(
     String challengeId, {
-    required String sessionId,
-    required String stationId,
-    bool isCollab = false,
+    String? sessionId,
+    String? stationId,
+    String? imagePath,
   }) async {
+    String? proofImageUrl;
+    if (imagePath != null) {
+      final form = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          imagePath,
+          filename: imagePath.toLowerCase().endsWith('.png')
+              ? 'proof.png'
+              : 'proof.jpg',
+        ),
+        'folder': 'proofs',
+      });
+      final up = await _dio.post('/upload', data: form);
+      proofImageUrl = _data(up)['url'] as String?;
+    }
     final res = await _dio.post(
       '/challenges/$challengeId/proof',
       data: {
-        'sessionId': sessionId,
-        'stationId': stationId,
-        'isCollab': isCollab,
+        if (sessionId != null) 'sessionId': sessionId,
+        if (stationId != null) 'stationId': stationId,
+        if (proofImageUrl != null) 'proofImageUrl': proofImageUrl,
       },
     );
-    return _data(res);
+    return Map<String, dynamic>.from(_data(res) as Map);
   }
 
   Future<void> addCollabProof(

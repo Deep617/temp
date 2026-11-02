@@ -74,7 +74,7 @@ class StationCompletion {
         id:            j['id']            as String,
         stationId:     j['stationId']     as String,
         stationNum:    j['stationNum']    as int,
-        completedAt:   DateTime.parse(j['completedAt'] as String),
+        completedAt:   DateTime.parse(j['completedAt'] as String).toLocal(),
         xpAwarded:     j['xpAwarded']     as int,
         progressValue: j['progressValue'] as int? ?? 0,
         isCollab:      j['isCollab']      as bool? ?? false,
@@ -129,12 +129,12 @@ class ChallengeEntry {
         totalXpEarned:  j['totalXpEarned']  as int? ?? 0,
         rankCity:       j['rankCity']       as int?,
         rankGlobal:     j['rankGlobal']     as int?,
-        joinedAt:       DateTime.parse(j['joinedAt'] as String),
+        joinedAt:       DateTime.parse(j['joinedAt'] as String).toLocal(),
         lastSessionAt:  j['lastSessionAt'] != null
-            ? DateTime.parse(j['lastSessionAt'] as String)
+            ? DateTime.parse(j['lastSessionAt'] as String).toLocal()
             : null,
         completedAt:    j['completedAt'] != null
-            ? DateTime.parse(j['completedAt'] as String)
+            ? DateTime.parse(j['completedAt'] as String).toLocal()
             : null,
         completions:    (j['completions'] as List<dynamic>? ?? [])
             .map((e) => StationCompletion.fromJson(e as Map<String, dynamic>))
@@ -210,8 +210,8 @@ class Challenge {
         activityTag:         j['activityTag']         as String? ?? '🏅 Any activity',
         environment:         j['environment']         as String? ?? 'any',
         cityId:              j['cityId']              as String?,
-        startAt:             DateTime.parse(j['startAt'] as String),
-        endAt:               DateTime.parse(j['endAt']   as String),
+        startAt:             DateTime.parse(j['startAt'] as String).toLocal(),
+        endAt:               DateTime.parse(j['endAt']   as String).toLocal(),
         xpPool:              j['xpPool']              as int,
         entryLevelRequired:  j['entryLevelRequired']  as int? ?? 1,
         trustRequired:       j['trustRequired']       as int? ?? 0,
@@ -332,9 +332,9 @@ class ChallengeFeedPost {
         activityTag:    j['activityTag']    as String?,
         stationNum:     j['stationNum']     as int,
         stationTitle:   j['stationTitle']   as String,
-        postedAt:       DateTime.parse(j['postedAt'] as String),
+        postedAt:       DateTime.parse(j['postedAt'] as String).toLocal(),
         expiresAt:      j['expiresAt'] != null
-            ? DateTime.parse(j['expiresAt'] as String)
+            ? DateTime.parse(j['expiresAt'] as String).toLocal()
             : DateTime.now().add(const Duration(hours: 24)),
         xpAwarded:      j['xpAwarded']      as int,
         proofImageUrl:  j['proofImageUrl']  as String?,

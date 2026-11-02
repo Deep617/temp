@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
-import '../../../../../core/api/api_endpoints.dart';
-import '../../../../../core/api/dio_client.dart';
+import '../../../../core/api/api_endpoints.dart';
+import '../../../../core/api/dio_client.dart';
 import '../request_ml/login_request.dart';
 import '../request_ml/register_request.dart';
 import '../response_ml/register_response.dart';
@@ -37,8 +37,13 @@ class AuthRemoteDataSource {
     return response;
   }
 
-  Future<Response> logout() async {
-    final response = await client.post('/auth/logout');
+  /// Sends the refresh token so the server revokes it (otherwise a stolen
+  /// refresh token kept working for 30 days after "Sign out").
+  Future<Response> logout({String? refreshToken}) async {
+    final response = await client.post(
+      '/auth/logout',
+      data: {if (refreshToken != null) 'refreshToken': refreshToken},
+    );
 
     return response;
   }
@@ -171,9 +176,30 @@ class AuthRemoteDataSource {
   }
 
   // DELETE /users/me/photos/:photoId
+  // Backend needs the photo *id* — UI only keeps URLs, so resolve id first.
   Future<void> deletePhoto(String url) async {
-    // Find photoId from URL or store id separately
-    await client.delete('/users/me/photos/$url');
+    final res    = await client.get('/users/me/photos');
+    final data   = _data(res);
+    final photos = data['photos'] as List<dynamic>? ?? [];
+    final match  = photos
+        .cast<Map<String, dynamic>>()
+        .where((p) => p['url'] == url || p['id'] == url)
+        .toList();
+    if (match.isEmpty) return; // already gone
+    await client.delete('/users/me/photos/${match.first['id']}');
+  }
+
+  // PUT /users/me/photos/:photoId/main — make this the profile photo
+  Future<void> makeMainPhoto(String url) async {
+    final res    = await client.get('/users/me/photos');
+    final data   = _data(res);
+    final photos = data['photos'] as List<dynamic>? ?? [];
+    final match  = photos
+        .cast<Map<String, dynamic>>()
+        .where((p) => p['url'] == url || p['id'] == url)
+        .toList();
+    if (match.isEmpty) return;
+    await client.put('/users/me/photos/${match.first['id']}/main');
   }
 
   dynamic _data(Response res) {

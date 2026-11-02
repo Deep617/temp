@@ -11,7 +11,7 @@ abstract class AuthRepository {
 
   Future<RegisterResponse> register(RegisterRequest request);
 
-  Future<Response> logout();
+  Future<Response> logout({String? refreshToken});
 
   Future<Response> refreshToken();
 
@@ -70,4 +70,7 @@ abstract class AuthRepository {
 
   // DELETE /users/me/photos/:photoId
   Future<void> deletePhoto(String url);
+
+  // PUT /users/me/photos/:photoId/main
+  Future<void> makeMainPhoto(String url);
 }

@@ -28,6 +28,7 @@ class WorkoutSession {
     this.challengeStationNum,
     this.chatId,
     this.participants        = const [],
+    this.onMyWay             = const [],
   });
 
   final String    id;
@@ -67,6 +68,8 @@ class WorkoutSession {
   final int?      challengeStationNum;
   final String?   chatId;
   final List<SessionParticipant> participants;
+  /// userIds who tapped "On my way"
+  final List<String> onMyWay;
   final DateTime  createdAt;
 
   // ── Session status getters ────────────────────────────────
@@ -81,6 +84,18 @@ class WorkoutSession {
 
   // ── Group session ─────────────────────────────────────────
   bool get isGroup => participants.length > 1;
+
+  /// "On my way" is open from 90 min before the start until the end
+  bool get onMyWayOpen {
+    final now = DateTime.now();
+    return isScheduled &&
+        now.isAfter(scheduledAt.subtract(const Duration(minutes: 90))) &&
+        now.isBefore(endTime);
+  }
+
+  /// Upcoming and not answered "no" → worth sharing / planning around
+  bool get isUpcoming =>
+      isScheduled && endTime.isAfter(DateTime.now()) && !isInviteDeclined;
 
   // ── Proof upload logic ────────────────────────────────────
   // needsProof → session ended, within 3hr window, no proof yet
@@ -122,18 +137,18 @@ class WorkoutSession {
     buddyAvatar:         j['buddyAvatar']      as String?,
     activity:            j['activity']         as String,
     gymName:             j['gymName']          as String?,
-    scheduledAt:         DateTime.parse(j['scheduledAt'] as String),
+    scheduledAt:         DateTime.parse(j['scheduledAt'] as String).toLocal(),
     durationMins:        j['durationMins']     as int?    ?? 60,
     endTime:             j['endTime'] != null
-        ? DateTime.parse(j['endTime'] as String)
-        : DateTime.parse(j['scheduledAt'] as String)
+        ? DateTime.parse(j['endTime'] as String).toLocal()
+        : DateTime.parse(j['scheduledAt'] as String).toLocal()
         .add(const Duration(hours: 1)),
     status:              j['status']           as String? ?? 'scheduled',
     inviteStatus:        j['inviteStatus']     as String?,
     proofImageUrl:       j['proofImageUrl']    as String?,
     proofVideoUrl:       j['proofVideoUrl']    as String?,
     proofUploadedAt:     j['proofUploadedAt'] != null
-        ? DateTime.parse(j['proofUploadedAt'] as String) : null,
+        ? DateTime.parse(j['proofUploadedAt'] as String).toLocal() : null,
     xpEarned:            j['xpEarned']         as int?,
     tokensDeducted:      j['tokensDeducted']   as int?,
     notes:               j['notes']            as String?,
@@ -147,7 +162,10 @@ class WorkoutSession {
     participants:        (j['participants'] as List<dynamic>? ?? [])
         .map((e) => SessionParticipant.fromJson(e as Map<String, dynamic>))
         .toList(),
-    createdAt:           DateTime.parse(j['createdAt'] as String),
+    onMyWay:             (j['onMyWay'] as List<dynamic>? ?? [])
+        .map((e) => e.toString())
+        .toList(),
+    createdAt:           DateTime.parse(j['createdAt'] as String).toLocal(),
   );
 }
 

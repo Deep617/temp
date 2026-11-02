@@ -56,9 +56,9 @@ class AuthRepositoryImpl extends BaseRepository implements AuthRepository {
   }
 
   @override
-  Future<Response> logout() async {
+  Future<Response> logout({String? refreshToken}) async {
     return await safeApiCall(() async {
-      final response = await remote.logout();
+      final response = await remote.logout(refreshToken: refreshToken);
       return response;
     });
   }
@@ -202,6 +202,14 @@ class AuthRepositoryImpl extends BaseRepository implements AuthRepository {
   // DELETE /users/me/photos/:photoId
   Future<void> deletePhoto(String url) async {
     return remote.deletePhoto(url).catchError((e) {
+      throw AppError.fromException(e);
+    });
+  }
+
+  // PUT /users/me/photos/:photoId/main
+  @override
+  Future<void> makeMainPhoto(String url) async {
+    return remote.makeMainPhoto(url).catchError((e) {
       throw AppError.fromException(e);
     });
   }

@@ -70,12 +70,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
 
   Future<void> _load() async {
     setState(() => _loading = true);
+    // Fast tab switching: only the LATEST request may update the list
+    final period = _period, city = _cityFilter;
     try {
       final challengeRepository = getIt<ChallengeRepository>();
       final entries = await challengeRepository.getGlobalLeaderboard(
-        period: _period,
-        city:   _cityFilter,
+        period: period,
+        city:   city,
       );
+      if (period != _period || city != _cityFilter) return;
       if (mounted) setState(() { _entries = entries; _loading = false; });
     } catch (_) {
       if (mounted) setState(() => _loading = false);

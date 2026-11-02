@@ -180,8 +180,8 @@ class EliteUpgradeSheet extends StatelessWidget {
                   ...[
                     ('⭐', 'Access to all Influencer profiles'),
                     ('📅', 'Book up to 3 sessions/month per influencer'),
-                    ('🔓', 'Unlimited swipes + 100km radius'),
-                    ('🎟️', '200 chat tokens'),
+                    ('🔓', 'Unlimited likes + 5 super-likes a day'),
+                    ('🎟️', 'Up to 50 chat tokens every month'),
                   ].map((e) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Row(

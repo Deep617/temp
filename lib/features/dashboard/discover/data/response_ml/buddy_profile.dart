@@ -15,6 +15,8 @@ class BuddyProfile {
   final int      level;
   final String   levelName;
   final double   trustScore;
+  /// % of buddy proofs confirmed within 2h (null = no history yet)
+  final int?     confirmRate;
   final bool     idVerified;
   final bool     isInfluencer;
   final int      buddyCount;
@@ -24,6 +26,9 @@ class BuddyProfile {
   final int?     age;
   final bool     isOnline;
   final String   subscriptionPlan;
+  /// Joined in the last 48 h (server ranks them early) → "New" badge
+  final bool     isNew;
+  final bool     isBoosted;
   // ── Fields mein add karo (distanceKm ke baad) ──
   final List<String> photos;   // max 5 photos
 
@@ -51,8 +56,11 @@ class BuddyProfile {
     this.age,
     this.isOnline = false,
     this.subscriptionPlan = 'free',
+    this.isNew = false,
+    this.isBoosted = false,
     // ── Constructor mein add karo ──
     this.photos = const [],
+    this.confirmRate,
   });
 
   String get fullName => '$firstName $lastName';
@@ -91,10 +99,13 @@ class BuddyProfile {
     age: json['age'] as int?,        // ← ADD
     isOnline:           json['isOnline']      as bool?   ?? false,
     subscriptionPlan:   json['subscriptionPlan'] as String? ?? 'free',
+    isNew:              json['isNew']         as bool?   ?? false,
+    isBoosted:          json['isBoosted']     as bool?   ?? false,
     // ── fromJson mein add karo ──
     photos: (json['photos'] as List<dynamic>?)
         ?.map((e) => e.toString())
         .toList() ?? [],
+    confirmRate: (json['confirmRate'] as num?)?.toInt(),
 
   );
 }

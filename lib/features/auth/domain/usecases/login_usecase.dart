@@ -27,12 +27,19 @@ class LoginUseCase {
       if (token == null) return null;
       UserModel userModel = await _profileRepository.getMe();
       return userModel;
-    } on AppError {
-      await   _secureStorageService.clearStorage();
+    } on AppError catch (e) {
+      // Only a rejected login ends the session. No internet / server down
+      // must NOT log the user out (it used to wipe the tokens on any error).
+      if (e.statusCode == 401 || e.statusCode == 403) {
+        await _secureStorageService.clearStorage();
+      }
       rethrow;
     } catch (e) {
-      await  _secureStorageService.clearStorage();
-      throw AppError.fromException(e);
+      final err = AppError.fromException(e);
+      if (err.statusCode == 401 || err.statusCode == 403) {
+        await _secureStorageService.clearStorage();
+      }
+      throw err;
     }
   }
 }

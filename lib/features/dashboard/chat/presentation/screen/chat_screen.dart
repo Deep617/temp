@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
@@ -8,20 +9,28 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:seshlly/core/api/api_endpoints.dart';
+import 'package:seshlly/core/api/dio_client.dart';
 import 'package:seshlly/core/services/secure_storage_service.dart';
 import 'package:seshlly/di_injection/dependency_injection.dart';
 import 'package:seshlly/features/dashboard/session/data/repositories/session_repository.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:timeago/timeago.dart' as timeago;
 
+import '../../../../../core/errors/app_error.dart';
+import '../../../../../core/widgets/camera/sesh_camera_view.dart';
+import '../../../../safety/presentation/widgets/safety_sheet.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/widgets/common/common_widgets.dart';
 import '../../../../../routes/app_router.dart';
 import '../../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../session/presentation/widgets/proof_confirm_sheet.dart';
 import '../../data/response_ml/message.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/strike_bloc.dart';
+import '../widgets/session_invite_status.dart';
+import '../../../../../core/services/monitoring_service.dart';
+import '../../../../../core/services/growth_service.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({
@@ -59,17 +68,49 @@ class _ChatScreenState extends State<ChatScreen> {
 
   bool _showEmoji = false;
 
+  // matchId is needed for Flash + streaks. Most routes into the chat don't
+  // pass it (Flash used to be sent with the USER id → "match not found").
+  String? _matchId;
+  String _lastDraft = '';        // restored if sending fails
+  int _shownCount = 0;           // auto-scroll only when NEW messages arrive
+  Timer? _typingTimeout;         // hide "typing…" if typing:stop never comes
+  Timer? _readDebounce;
+
+  // Near the top → fetch the previous page and keep the view where it was
+  double? _extentBeforeOlder;
+  void _maybeLoadOlder() {
+    if (!_scroll.hasClients || _scroll.position.pixels > 80) return;
+    final bloc = context.read<ChatBloc>();
+    if (!bloc.state.hasOlder || bloc.state.loadingOlder) return;
+    _extentBeforeOlder = _scroll.position.maxScrollExtent;
+    bloc.add(ChatOlderMessagesLoaded(chatId: widget.chatId));
+  }
+
+  Future<void> _resolveMatchId() async {
+    if (_matchId != null || widget.buddyId.isEmpty) return;
+    try {
+      final res = await getIt<DioClient>().get('/chat/with/${widget.buddyId}');
+      final id = ((res.data as Map)['data'] as Map)['matchId'] as String?;
+      if (!mounted || id == null) return;
+      setState(() => _matchId = id);
+      _refreshStreak();
+    } catch (_) {/* Flash stays disabled */}
+  }
+
   @override
   void initState() {
     super.initState();
+    _matchId = widget.matchId;
+    _resolveMatchId();
+    _scroll.addListener(_maybeLoadOlder);
     // Load messages via BLoC
     context.read<ChatBloc>().add(ChatMessagesLoaded(chatId: widget.chatId));
     context.read<ChatBloc>().add(ChatMarkedRead(chatId: widget.chatId));
 
     // Load strike streak + pending count via BLoC
-    if (widget.matchId != null) {
+    if (_matchId != null) {
       context.read<StrikeBloc>().add(
-        StrikeLoadRequested(matchId: widget.matchId!, buddyId: widget.buddyId),
+        StrikeLoadRequested(matchId: _matchId!, buddyId: widget.buddyId),
       );
     }
 
@@ -79,7 +120,11 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _socket?.emit('chat:leave', {'chatId': widget.chatId});
-    _socket?.disconnect();
+    _typingTimeout?.cancel();
+    _readDebounce?.cancel();
+    // remove listeners + free the socket (old screens' handlers leaked before)
+    _socket?.clearListeners();
+    _socket?.dispose();
     _msgCtrl.dispose();
     _scroll.dispose();
     _pageCtrl.dispose();
@@ -88,15 +133,19 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // Refresh strike streak via BLoC
   void _refreshStreak() {
-    if (widget.matchId == null) return;
+    if (_matchId == null) return;
     context.read<StrikeBloc>().add(
-      StrikeLoadRequested(matchId: widget.matchId!, buddyId: widget.buddyId),
+      StrikeLoadRequested(matchId: _matchId!, buddyId: widget.buddyId),
     );
   }
 
   // Open camera → dispatch to StrikeBloc + animate PageView
 // AFTER — permission check add kiya:
+  /// Group session chats have no single buddy (no Flash / profile / block)
+  bool get _isGroup => widget.buddyId.isEmpty;
+
   Future<void> _openCamera() async {
+    if (_isGroup) return;
     // Permission check
     final status = await Permission.camera.request();
     if (!mounted) return;
@@ -160,6 +209,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // Photo captured → dispatch to StrikeBloc + show preview sheet
   void _showStrikePreview(File imageFile) {
+    if (_matchId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Could not load this buddy yet — try again in a moment'),
+        behavior: SnackBarBehavior.floating,
+      ));
+      _resolveMatchId();
+      return;
+    }
     context.read<StrikeBloc>().add(
       StrikePhotoCaptured(imagePath: imageFile.path),
     );
@@ -173,7 +230,7 @@ class _ChatScreenState extends State<ChatScreen> {
         child: _StrikePreviewSheet(
           imageFile: imageFile,
           buddyName: widget.buddyName,
-          matchId: widget.matchId ?? widget.buddyId,
+          matchId: _matchId ?? '',
           receiverId: widget.buddyId,
           streak: strikeBloc.state.streak,
           onSent: () => _refreshStreak(),
@@ -192,6 +249,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ApiEndpoints.socketUrl,
         IO.OptionBuilder()
             .setTransports(['websocket'])
+            .enableForceNew() // own connection per chat screen (no stale handlers)
             .disableAutoConnect()
             .setAuth({'token': token ?? ''})
             .build(),
@@ -210,13 +268,46 @@ class _ChatScreenState extends State<ChatScreen> {
         if (msg.chatId == widget.chatId && mounted) {
           context.read<ChatBloc>().add(ChatMessageReceived(message: msg));
           _scrollToBottom();
+          // I'm looking at it → mark read (debounced) so badges clear
+          _readDebounce?.cancel();
+          _readDebounce = Timer(const Duration(seconds: 1), () {
+            if (mounted) context.read<ChatBloc>().add(ChatMarkedRead(chatId: widget.chatId));
+          });
         }
       });
 
+      // A card changed on the server (invite answered / expired, proof confirmed)
+      _socket!.on('message:updated', (data) {
+        if (!mounted || data is! Map) return;
+        if (data['chatId'] != widget.chatId || data['id'] == null) return;
+        final meta = data['metadata'];
+        context.read<ChatBloc>().add(ChatMessageUpdated(
+          messageId: data['id'] as String,
+          metadata: meta is Map ? Map<String, dynamic>.from(meta) : null,
+        ));
+      });
+
+      // Other user switched 24h / Normal mode
+      _socket!.on('chat:mode', (data) {
+        if (!mounted || data is! Map) return;
+        if (data['chatId'] != widget.chatId) return;
+        context.read<ChatBloc>().add(ChatModeReceived(
+          chatId: widget.chatId,
+          disappearing: data['disappearing'] == true,
+        ));
+      });
+
       _socket!.on('typing:start', (_) {
-        if (mounted) setState(() => _isTyping = true);
+        if (!mounted) return;
+        setState(() => _isTyping = true);
+        // If the buddy leaves mid-typing, typing:stop never arrives
+        _typingTimeout?.cancel();
+        _typingTimeout = Timer(const Duration(seconds: 5), () {
+          if (mounted) setState(() => _isTyping = false);
+        });
       });
       _socket!.on('typing:stop', (_) {
+        _typingTimeout?.cancel();
         if (mounted) setState(() => _isTyping = false);
       });
     }); // end storage.read().then()
@@ -225,6 +316,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _send() {
     final text = _msgCtrl.text.trim();
     if (text.isEmpty) return;
+    _lastDraft = text; // put back if the send fails (no tokens / offline)
     _msgCtrl.clear();
     context.read<ChatBloc>().add(
       ChatMessageSent(chatId: widget.chatId, content: text),
@@ -291,6 +383,10 @@ class _ChatScreenState extends State<ChatScreen> {
       listenWhen: (prev, curr) =>
           curr.status == ChatStatus.failure && curr.error != null,
       listener: (context, state) {
+        if (_lastDraft.isNotEmpty && _msgCtrl.text.isEmpty) {
+          _msgCtrl.text = _lastDraft;
+          _lastDraft = '';
+        }
         if (state.error?.statusCode == 402) {
           _showTokenError(context);
         } else if (state.error != null) {
@@ -304,13 +400,22 @@ class _ChatScreenState extends State<ChatScreen> {
           );
         }
       },
-      child: PageView(
+      // Android back on the Flash camera page closes the camera instead of
+      // leaving the whole chat
+      child: PopScope(
+        canPop: _pageIndex == 0,
+        onPopInvoked: (didPop) {
+          if (!didPop && _pageIndex != 0) _closeCamera();
+        },
+        child: PageView(
         controller: _pageCtrl,
         physics: const NeverScrollableScrollPhysics(), // manual control only
         onPageChanged: (i) => setState(() => _pageIndex = i),
         children: [
           // ── Page 0: Chat ──────────────────────────────
           PopScope(
+            // Back: close emoji first. (The camera page is handled by the
+            // PopScope around the whole PageView below.)
             canPop: !_showEmoji,
             onPopInvoked: (didPop) {
               if (!didPop && _showEmoji) {
@@ -327,11 +432,26 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 titleSpacing: 0,
                 actions: [
-                  // 🏋️ Sesh Flash button in app bar
+                  // ⏱ 24h / Normal messages
+                  BlocBuilder<ChatBloc, ChatState>(
+                    buildWhen: (p, c) => p.disappearing != c.disappearing,
+                    builder: (_, cs) => IconButton(
+                      tooltip: 'Message timer',
+                      onPressed: () => _showModeSheet(cs.disappearing),
+                      icon: Icon(
+                        cs.disappearing ? Icons.timer : Icons.timer_outlined,
+                        color: cs.disappearing
+                            ? AppColors.warning
+                            : AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                  // 🏋️ Sesh Flash button in app bar (1:1 chats only)
+                  if (!_isGroup)
                   GestureDetector(
                     onTap: _openCamera,
                     child: Container(
-                      margin: const EdgeInsets.only(right: 14),
+                      margin: const EdgeInsets.only(right: 2),
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: const Color(0xFF0A84FF).withOpacity(0.12),
@@ -347,11 +467,25 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                     ),
                   ),
+                  // ⋮ Report / Block
+                  if (!_isGroup)
+                  SafetyMenuButton(
+                    userId: widget.buddyId,
+                    name: widget.buddyName,
+                    source: 'chat',
+                    onBlocked: () {
+                      if (mounted) context.pop();
+                    },
+                  ),
                 ],
                 title: GestureDetector(
-                  onTap: () => context.push(
-                    AppRoutes.buddyProfile.replaceAll(':userId', widget.chatId),
-                  ),
+                  // Was passing the CHAT id as the user id → profile never loaded
+                  onTap: _isGroup
+                      ? null
+                      : () => context.push(
+                            AppRoutes.buddyProfile.replaceAll(':userId', widget.buddyId),
+                            extra: {'chatId': widget.chatId},
+                          ),
                   child: Row(
                     children: [
                       AppAvatar(
@@ -383,6 +517,41 @@ class _ChatScreenState extends State<ChatScreen> {
 
               body: Column(
                 children: [
+                  // ⏱ 24h mode banner
+                  BlocBuilder<ChatBloc, ChatState>(
+                    buildWhen: (p, c) => p.disappearing != c.disappearing,
+                    builder: (_, cs) {
+                      if (!cs.disappearing) return const SizedBox.shrink();
+                      return GestureDetector(
+                        onTap: () => _showModeSheet(true),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 7,
+                            horizontal: 16,
+                          ),
+                          color: AppColors.warning.withOpacity(0.10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.timer,
+                                  size: 14, color: AppColors.warning),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Messages disappear after 24 hours',
+                                  style: AppTextStyles.caption(
+                                    color: AppColors.warning,
+                                  ).copyWith(fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                   // Streak banner
                   BlocBuilder<StrikeBloc, StrikeState>(
                     buildWhen: (p, c) => p.streak != c.streak,
@@ -435,16 +604,34 @@ class _ChatScreenState extends State<ChatScreen> {
 
                         final messages = state.messages;
 
-                        // Scroll to bottom after fresh load
-                        if (messages.isNotEmpty) {
+                        // Scroll to bottom only when messages were ADDED
+                        // (it used to yank the user down on every rebuild —
+                        // typing indicator, card updates — while reading history)
+                        // Older page was prepended → stay on the same message
+                        if (_extentBeforeOlder != null && !state.loadingOlder &&
+                            messages.length > _shownCount) {
+                          final before = _extentBeforeOlder!;
+                          _extentBeforeOlder = null;
+                          _shownCount = messages.length;
                           WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (_scroll.hasClients &&
-                                _scroll.position.maxScrollExtent > 0 &&
-                                _scroll.offset <
-                                    _scroll.position.maxScrollExtent - 200) {
-                              _scroll.jumpTo(_scroll.position.maxScrollExtent);
+                            if (!_scroll.hasClients) return;
+                            final pos = _scroll.position;
+                            _scroll.jumpTo(pos.pixels + (pos.maxScrollExtent - before));
+                          });
+                        } else if (messages.length > _shownCount) {
+                          final firstLoad = _shownCount == 0;
+                          if (!firstLoad) _lastDraft = ''; // send went through
+                          _shownCount = messages.length;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!_scroll.hasClients) return;
+                            final pos = _scroll.position;
+                            final nearBottom = pos.maxScrollExtent - pos.pixels < 300;
+                            if (firstLoad || nearBottom) {
+                              _scroll.jumpTo(pos.maxScrollExtent);
                             }
                           });
+                        } else if (messages.length < _shownCount) {
+                          _shownCount = messages.length;
                         }
 
                         return ListView.builder(
@@ -475,7 +662,15 @@ class _ChatScreenState extends State<ChatScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   if (showDate) _DateDivider(date: msg.createdAt),
-                                  _MessageBubble(msg: msg, isMe: isMe),
+                                  if (msg.type == 'system')
+                                    _SystemMessage(msg: msg)
+                                  else
+                                    _MessageBubble(
+                                      msg: msg,
+                                      isMe: isMe,
+                                      myId: myId,
+                                      buddyName: widget.buddyName,
+                                    ),
                                 ],
                               ),
                             );
@@ -525,6 +720,12 @@ class _ChatScreenState extends State<ChatScreen> {
                                   style: AppTextStyles.body(color: AppColors.textPrimary),
                                   maxLines: 4,
                                   minLines: 1,
+                                  onTap: () {
+                                    // Keyboard opens → close emoji panel
+                                    if (_showEmoji) {
+                                      setState(() => _showEmoji = false);
+                                    }
+                                  },
                                   decoration: InputDecoration(
                                     hintText: 'Message ${widget.buddyName}...',
                                     hintStyle: AppTextStyles.body(color: AppColors.textMuted),
@@ -537,8 +738,14 @@ class _ChatScreenState extends State<ChatScreen> {
                                     contentPadding: const EdgeInsets.symmetric(
                                         horizontal: 16, vertical: 10),
                                     suffixIcon: IconButton(
-                                      icon: const Icon(Icons.emoji_emotions_outlined,
-                                          color: AppColors.textMuted, size: 20),
+                                      icon: Icon(
+                                          _showEmoji
+                                              ? Icons.keyboard_outlined
+                                              : Icons.emoji_emotions_outlined,
+                                          color: _showEmoji
+                                              ? AppColors.primary
+                                              : AppColors.textMuted,
+                                          size: 20),
                                       onPressed: () {
                                         FocusScope.of(context).unfocus();
                                         setState(() => _showEmoji = !_showEmoji);
@@ -563,7 +770,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               const SizedBox(width: 8),
 
                               // RIGHT — Sesh Flash (no text) OR Send (has text)
-                              hasText
+                              (hasText || _isGroup)
                                   ? GestureDetector(
                                 onTap: chatState.isSending ? null : _send,
                                 child: AnimatedContainer(
@@ -615,18 +822,29 @@ class _ChatScreenState extends State<ChatScreen> {
                     SizedBox(
                       height: 280,
                       child: EmojiPicker(
+                        // Picker inserts/deletes in _msgCtrl itself (cursor-aware).
+                        // Callbacks only rebuild so Send/Flash button toggles.
                         textEditingController: _msgCtrl,
-                        onEmojiSelected: (_, emoji) {setState(() {});},
-                        onBackspacePressed: () {
-                          _msgCtrl.text = _msgCtrl.text.characters.skipLast(1).toString();setState(() {});},
+                        onEmojiSelected: (_, __) => setState(() {}),
+                        onBackspacePressed: () => setState(() {}),
                         config: Config(
-                          emojiTextStyle: const TextStyle(fontSize: 28),
-                         // bgColor: AppColors.surface1,
+                          height: 280,
+                          emojiViewConfig: EmojiViewConfig(
+                            backgroundColor: AppColors.surface1,
+                            emojiSizeMax: 28,
+                            noRecents: Text(
+                              'No recents',
+                              style: AppTextStyles.bodySM(
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
                           categoryViewConfig: const CategoryViewConfig(
                             backgroundColor: AppColors.surface2,
                             indicatorColor: AppColors.primary,
                             iconColor: AppColors.textMuted,
                             iconColorSelected: AppColors.primary,
+                            backspaceColor: AppColors.primary,
                           ),
                           bottomActionBarConfig: const BottomActionBarConfig(
                             backgroundColor: AppColors.surface2,
@@ -647,29 +865,356 @@ class _ChatScreenState extends State<ChatScreen> {
           // ── Page 1: Camera ────────────────────────────────
           BlocBuilder<StrikeBloc, StrikeState>(
             buildWhen: (p, c) => p.streak != c.streak,
-            builder: (_, st) => _StrikeCameraScreen(
-              buddyName: widget.buddyName,
-              streak: st.streak,
+            builder: (_, st) => SeshCameraView(
+              active: _pageIndex == 1,
+              title: 'Flash to ${widget.buddyName}',
+              badge: st.streak > 0 ? '🔥${st.streak}' : null,
               onClose: _closeCamera,
-              onCapture: _showStrikePreview,
+              onCapture: (file) {
+                _closeCamera();
+                _showStrikePreview(file);
+              },
               onGallery: _pickFromGallery,
             ),
           ),
         ], // end PageView children
       ), // end PageView
+      ), // end PopScope
     );
   }
 
   bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
+  // ⏱ Choose 24h / Normal
+  void _showModeSheet(bool current) {
+    final chatBloc = context.read<ChatBloc>();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface1,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Message timer', style: AppTextStyles.h3()),
+              const SizedBox(height: 4),
+              Text(
+                'Applies to new messages only. Both of you will see the change.',
+                style: AppTextStyles.bodySM(),
+              ),
+              const SizedBox(height: 14),
+              _ModeOption(
+                icon: Icons.chat_bubble_outline,
+                title: 'Normal',
+                subtitle: 'Messages are kept',
+                selected: !current,
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  if (current) {
+                    MonitoringService.instance.log('chat_mode', {'mode': 'normal'});
+                    chatBloc.add(ChatModeChanged(
+                        chatId: widget.chatId, disappearing: false));
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              _ModeOption(
+                icon: Icons.timer_outlined,
+                title: '24 hours',
+                subtitle: 'New messages disappear after 24 hours',
+                selected: current,
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  if (!current) {
+                    MonitoringService.instance.log('chat_mode', {'mode': '24h'});
+                    chatBloc.add(ChatModeChanged(
+                        chatId: widget.chatId, disappearing: true));
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeOption extends StatelessWidget {
+  const _ModeOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(14),
+    child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: selected
+            ? AppColors.primary.withOpacity(0.12)
+            : AppColors.surface2,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: selected
+              ? AppColors.primary.withOpacity(0.5)
+              : AppColors.border2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(icon,
+              color: selected ? AppColors.primary : AppColors.textMuted),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTextStyles.subtitle(
+                    color: AppColors.textPrimary)),
+                Text(subtitle, style: AppTextStyles.caption()),
+              ],
+            ),
+          ),
+          Icon(
+            selected ? Icons.radio_button_checked : Icons.radio_button_off,
+            color: selected ? AppColors.primary : AppColors.textMuted,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ── System message ("⏱ Rahul turned on 24h messages") ─────
+class _SystemMessage extends StatelessWidget {
+  const _SystemMessage({required this.msg});
+
+  final Message msg;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
+    child: Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.surface2,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Text(
+          msg.content,
+          style: AppTextStyles.caption(color: AppColors.textSecondary),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    ),
+  );
+}
+
+// ── Proof card (buddy session) — one-tap confirm ───────────
+// metadata: { sessionId, imageUrl, activity, uploaderId, confirmerId,
+//             deadline, potentialXp, status: pending|confirmed|expired }
+class _ProofCard extends StatefulWidget {
+  const _ProofCard({
+    required this.msg,
+    required this.isMe,
+    required this.myId,
+    required this.buddyName,
+  });
+
+  final Message msg;
+  final bool isMe;
+  final String myId;
+  final String buddyName;
+
+  @override
+  State<_ProofCard> createState() => _ProofCardState();
+}
+
+class _ProofCardState extends State<_ProofCard> {
+  Timer? _ticker;
+  bool _confirming = false;
+  String? _localStatus; // after confirming here
+
+  Map<String, dynamic> get _meta => widget.msg.metadata ?? const {};
+
+  DateTime? get _deadline =>
+      DateTime.tryParse(_meta['deadline']?.toString() ?? '')?.toLocal();
+
+  String get _status {
+    if (_localStatus != null) return _localStatus!;
+    final s = _meta['status']?.toString() ?? 'pending';
+    if (s == 'pending' &&
+        _deadline != null &&
+        _deadline!.isBefore(DateTime.now())) {
+      return 'expired';
+    }
+    return s;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _confirm() async {
+    final sessionId = _meta['sessionId']?.toString();
+    if (sessionId == null || _confirming) return;
+    setState(() => _confirming = true);
+    try {
+      await getIt<SessionRepository>().confirmProof(sessionId);
+      MonitoringService.instance.log('proof_confirmed', {'source': 'chat_card'});
+      GrowthService.instance.onSessionCompleted();
+      if (!mounted) return;
+      setState(() {
+        _confirming = false;
+        _localStatus = 'confirmed';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Confirmed! +${_meta['potentialXp'] ?? ''} XP'),
+          backgroundColor: AppColors.teal,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _confirming = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              e is AppError ? e.message : AppError.fromException(e).message),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = _meta['imageUrl']?.toString();
+    final status = _status;
+    final iConfirm = _meta['confirmerId']?.toString() == widget.myId;
+    final left = _deadline?.difference(DateTime.now()) ?? Duration.zero;
+    final urgent = left.inMinutes < 15;
+    final xp = _meta['potentialXp'];
+
+    String footer;
+    Color footerColor;
+    switch (status) {
+      case 'confirmed':
+        footer = '✅ Confirmed';
+        footerColor = AppColors.teal;
+        break;
+      case 'expired':
+        footer = '⌛ Not confirmed in time';
+        footerColor = AppColors.textMuted;
+        break;
+      default:
+        footer = iConfirm
+            ? '⏳ ${formatTimeLeft(left)} left${xp != null ? ' · +$xp XP' : ''}'
+            : '⏳ Waiting for ${widget.buddyName} to confirm · ${formatTimeLeft(left)} left';
+        footerColor = urgent ? AppColors.error : AppColors.warning;
+    }
+
+    return Container(
+      width: 240,
+      decoration: BoxDecoration(
+        color: AppColors.surface2,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: status == 'pending'
+              ? AppColors.warning.withOpacity(0.4)
+              : AppColors.border,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (imageUrl != null)
+            AspectRatio(
+              aspectRatio: 4 / 3,
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    Container(color: AppColors.surface3),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+            child: Text(
+              '📸 ${_meta['activity'] ?? 'Session'} proof',
+              style: AppTextStyles.subtitle(color: AppColors.textPrimary),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+            child: Text(
+              footer,
+              style: AppTextStyles.caption(color: footerColor)
+                  .copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+          if (status == 'pending' && iConfirm)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: PrimaryButton(
+                label: '✅ Confirm',
+                loading: _confirming,
+                onPressed: _confirming ? null : _confirm,
+                height: 40,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Message Bubble ────────────────────────────────────────
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.msg, required this.isMe});
+  const _MessageBubble({
+    required this.msg,
+    required this.isMe,
+    this.myId = '',
+    this.buddyName = '',
+  });
 
   final Message msg;
   final bool isMe;
+  final String myId;
+  final String buddyName;
 
   @override
   Widget build(BuildContext context) {
@@ -702,7 +1247,14 @@ class _MessageBubble extends StatelessWidget {
               children: [
                 // Session invite — NO bubble wrapper (buttons need direct taps)
                 if (msg.type == 'session_invite')
-                  _SessionInviteCard(msg: msg)
+                  _SessionInviteCard(msg: msg, buddyName: buddyName)
+                else if (msg.type == 'proof' && msg.metadata != null)
+                  _ProofCard(
+                    msg: msg,
+                    isMe: isMe,
+                    myId: myId,
+                    buddyName: buddyName,
+                  )
                 else
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -763,9 +1315,10 @@ class _MessageBubble extends StatelessWidget {
 }
 
 class _SessionInviteCard extends StatefulWidget {
-  const _SessionInviteCard({required this.msg});
+  const _SessionInviteCard({required this.msg, this.buddyName = ''});
 
   final Message msg;
+  final String buddyName; // the other person in this 1:1 chat
 
   @override
   State<_SessionInviteCard> createState() => _SessionInviteCardState();
@@ -773,14 +1326,14 @@ class _SessionInviteCard extends StatefulWidget {
 
 class _SessionInviteCardState extends State<_SessionInviteCard> {
   bool _responding = false;
-  String? _respondedAction; // 'confirm' | 'decline' — after responding
+  String? _respondedAction; // 'confirm' | 'decline' | 'expired' — after responding
 
   Future<void> _respond(String action) async {
+    final data = widget.msg.metadata ?? {};
+    final sessionId = data['sessionId'] as String?;
+    if (sessionId == null) return;
     setState(() => _responding = true);
     try {
-      final data = widget.msg.metadata ?? {};
-      final sessionId = data['sessionId'] as String?;
-      if (sessionId == null) return;
       await getIt<SessionRepository>().respondToSessionInvite(
         sessionId,
         action,
@@ -804,8 +1357,27 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
           ),
         );
       }
-    } catch (_) {
-      if (mounted) setState(() => _responding = false);
+    } catch (e) {
+      if (!mounted) return;
+      final err = e is AppError ? e : AppError.fromException(e);
+      final st = statusFromRespondError(err.statusCode, null);
+      setState(() {
+        _responding = false;
+        if (st == InviteCardStatus.expired && err.statusCode == 410) {
+          _respondedAction = 'expired';
+        }
+      });
+      // 409 = already answered (maybe on another device) → reload real state
+      if (err.statusCode == 409) {
+        context.read<ChatBloc>().add(ChatMessagesLoaded(chatId: widget.msg.chatId));
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err.message),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -846,10 +1418,11 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
 
     final isScheduler = scheduledBy == myId;
 
+    // Server sends UTC — always show the phone's local time
     DateTime? dt;
     DateTime? endDt;
-    if (scheduledAt != null) dt    = DateTime.tryParse(scheduledAt);
-    if (endTimeStr  != null) endDt = DateTime.tryParse(endTimeStr);
+    if (scheduledAt != null) dt    = DateTime.tryParse(scheduledAt)?.toLocal();
+    if (endTimeStr  != null) endDt = DateTime.tryParse(endTimeStr)?.toLocal();
 
     final dateStr = dt != null
         ? '${_weekday(dt.weekday)}, ${dt.day} ${_month(dt.month)} · ${_fmt12(dt)}'
@@ -863,15 +1436,24 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
         ? '1.5 hours'
         : '2 hours';
 
-    // State colors
-    final isConfirmed = _respondedAction == 'confirm';
-    final isDeclined  = _respondedAction == 'decline';
-    final isPending   = _respondedAction == null;
+    // State comes from the server card + time (see session_invite_status.dart)
+    final cardStatus = resolveInviteStatus(
+      metadata:    widget.msg.metadata,
+      myId:        myId,
+      isScheduler: isScheduler,
+      localAction: _respondedAction,
+    );
+    final isConfirmed = cardStatus == InviteCardStatus.confirmed;
+    final isDeclined  = cardStatus == InviteCardStatus.declined;
+    final isExpired   = cardStatus == InviteCardStatus.expired;
+    final isPending   = cardStatus == InviteCardStatus.pending;
 
     final headerBg = isConfirmed
         ? AppColors.teal.withOpacity(0.1)
         : isDeclined
         ? AppColors.error.withOpacity(0.08)
+        : isExpired
+        ? AppColors.surface3
         : AppColors.primary.withOpacity(0.1);
 
     final headerBorder = isConfirmed
@@ -890,22 +1472,32 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
         ? AppColors.teal
         : isDeclined
         ? AppColors.error
+        : isExpired
+        ? AppColors.textMuted
         : AppColors.primary;
 
     final headerLabel = isConfirmed
         ? 'Session Confirmed'
         : isDeclined
         ? 'Session Declined'
+        : isExpired
+        ? 'Invite Expired'
         : 'Session Invite';
 
     final headerIcon = isConfirmed
         ? '✅'
         : isDeclined
         ? '❌'
+        : isExpired
+        ? '⌛'
         : _activityEmoji(activity);
 
+    final otherName = widget.buddyName.trim().isNotEmpty
+        ? widget.buddyName.trim().split(' ').first
+        : 'your buddy';
+
     return Opacity(
-      opacity: isDeclined ? 0.85 : 1.0,
+      opacity: (isDeclined || isExpired) ? 0.85 : 1.0,
       child: Container(
         decoration: BoxDecoration(
           color:        AppColors.surface1,
@@ -950,7 +1542,7 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
                     _capitalize(activity),
                     style: AppTextStyles.subtitle().copyWith(
                       fontSize:   15,
-                      decoration: isDeclined
+                      decoration: (isDeclined || isExpired)
                           ? TextDecoration.lineThrough
                           : TextDecoration.none,
                       color: isDeclined
@@ -1017,8 +1609,7 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
                             ),
                             const SizedBox(width: 8),*/
                             Text(
-                              'Waiting for ${widget.msg.senderName.isEmpty ? "confi"
-                                  "rmation" : widget.msg.senderName}...',
+                              'Waiting for $otherName to confirm…',
                               style: AppTextStyles.bodySM(
                                 color: AppColors.textMuted,
                               ),
@@ -1170,6 +1761,44 @@ class _SessionInviteCardState extends State<_SessionInviteCard> {
                                 ),
                                 Text(
                                   'This session was cancelled',
+                                  style: AppTextStyles.bodySM(
+                                      color: AppColors.textMuted),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // ── Expired badge (start time passed, nobody answered) ──
+                  if (isExpired)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 10, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface3,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          const Text('⌛', style: TextStyle(fontSize: 18)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Invite expired',
+                                  style: AppTextStyles.subtitle(
+                                      color: AppColors.textMuted),
+                                ),
+                                Text(
+                                  isScheduler
+                                      ? 'Not confirmed before the start time'
+                                      : 'The session time has passed',
                                   style: AppTextStyles.bodySM(
                                       color: AppColors.textMuted),
                                 ),
@@ -1344,257 +1973,6 @@ class _DateDivider extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────
-//  _StrikeCameraScreen — Page 1 of PageView (swipe up)
-//  Snapchat-style full screen camera
-// ─────────────────────────────────────────────────────────
-class _StrikeCameraScreen extends StatelessWidget {
-  const _StrikeCameraScreen({
-    required this.buddyName,
-    required this.streak,
-    required this.onClose,
-    required this.onCapture,
-    required this.onGallery,
-  });
-
-  final String buddyName;
-  final int streak;
-  final VoidCallback onClose;
-  final void Function(File) onCapture;
-  final VoidCallback onGallery;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Camera viewfinder (placeholder — real camera uses camera package)
-            Positioned.fill(
-              child: Container(
-                color: const Color(0xFF07090F),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('📸', style: TextStyle(fontSize: 64)),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Camera ready',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Top bar
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Close (swipe down hint)
-                    GestureDetector(
-                      onTap: onClose,
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Center(
-                          child: Text(
-                            '✕',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Buddy + streak info
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Flash to $buddyName',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (streak > 0) ...[
-                            const SizedBox(width: 6),
-                            Text(
-                              '🔥$streak',
-                              style: const TextStyle(
-                                color: Color(0xFFF59E0B),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-
-                    // Flip camera (placeholder)
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Text(
-                          '↺',
-                          style: TextStyle(color: Colors.white, fontSize: 18),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Swipe down hint
-            Positioned(
-              top: 60,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Column(
-                  children: [
-                    const Text(
-                      '↓',
-                      style: TextStyle(color: Colors.white30, fontSize: 18),
-                    ),
-                    Text(
-                      'Swipe down to close',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.25),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Bottom controls
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [Colors.black.withOpacity(0.8), Colors.transparent],
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    // Gallery button
-                    GestureDetector(
-                      onTap: onGallery,
-                      child: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
-                          ),
-                        ),
-                        child: const Center(
-                          child: Text('🖼️', style: TextStyle(fontSize: 22)),
-                        ),
-                      ),
-                    ),
-
-                    // Shutter button
-                    GestureDetector(
-                      onTap: () async {
-                        final picker = ImagePicker();
-                        final img = await picker.pickImage(
-                          source: ImageSource.camera,
-                          imageQuality: 85,
-                        );
-                        if (img != null) {
-                          onCapture(File(img.path));
-                        }
-                      },
-                      child: Container(
-                        width: 70,
-                        height: 70,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.4),
-                            width: 4,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Flash toggle placeholder
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Center(
-                        child: Image.asset(
-                          'assets/images/sesh_flash.png',
-                          width: 32,
-                          height: 32,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────
 //  _StrikePreviewSheet — Preview before sending
 // ─────────────────────────────────────────────────────────
 class _StrikePreviewSheet extends StatefulWidget {
@@ -1626,36 +2004,46 @@ class _StrikePreviewSheetState extends State<_StrikePreviewSheet> {
     if (_sending) return;
     setState(() => _sending = true);
 
-    try {
-      // Dispatch to StrikeBloc — handles upload + send
-      context.read<StrikeBloc>().add(
-        StrikeSendRequested(
-          matchId: widget.matchId,
-          receiverId: widget.receiverId,
-          imageFile: widget.imageFile,
-          caption: _captionCtrl.text.trim().isNotEmpty
-              ? _captionCtrl.text.trim()
-              : null,
-        ),
-      );
+    final bloc = context.read<StrikeBloc>();
+    final messenger = ScaffoldMessenger.of(context);
 
-      if (!mounted) return;
+    // Wait for the BLoC result (upload → /strikes → /flash/send)
+    final resultFuture = bloc.stream.firstWhere(
+      (s) =>
+          s.status == StrikeStatus.sent ||
+          (s.status == StrikeStatus.photoPreview && s.errorMessage != null),
+    );
+
+    bloc.add(
+      StrikeSendRequested(
+        matchId: widget.matchId,
+        receiverId: widget.receiverId,
+        imageFile: widget.imageFile,
+        caption: _captionCtrl.text.trim().isNotEmpty
+            ? _captionCtrl.text.trim()
+            : null,
+      ),
+    );
+
+    final result = await resultFuture;
+    if (!mounted) return;
+
+    if (result.status == StrikeStatus.sent) {
+      MonitoringService.instance.log('flash_sent');
       Navigator.of(context).pop();
       widget.onSent();
-
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Sesh Flash sent to ${widget.buddyName}! 🏋️'),
           backgroundColor: const Color(0xFF0A84FF),
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } catch (e) {
-      if (!mounted) return;
+    } else {
       setState(() => _sending = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not send strike. Try again.'),
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(result.errorMessage ?? 'Could not send strike. Try again.'),
           behavior: SnackBarBehavior.floating,
         ),
       );

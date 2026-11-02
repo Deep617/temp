@@ -21,9 +21,12 @@ class ScheduleSessionScreen extends StatefulWidget {
     super.key,
     this.buddyId,
     this.buddyName,
+    this.gymName,
   });
   final String? buddyId;
   final String? buddyName;
+  /// Pre-filled from the Gym Map ("Plan a session here")
+  final String? gymName;
 
   @override
   State<ScheduleSessionScreen> createState() =>
@@ -51,6 +54,8 @@ class _ScheduleSessionScreenState extends State<ScheduleSessionScreen> {
   @override
   void initState() {
     super.initState();
+    final gym = widget.gymName?.trim();
+    if (gym != null && gym.isNotEmpty) _gymCtrl.text = gym;
     _loadBuddies();
   }
 
