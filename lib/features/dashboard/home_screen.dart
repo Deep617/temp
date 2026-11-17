@@ -11,12 +11,12 @@ import 'package:seshlly/routes/app_router.dart';
 
 import '../../core/services/monitoring_service.dart';
 import '../../core/services/push_service.dart';
+import '../auth/presentation/bloc/auth_bloc.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../di_injection/dependency_injection.dart';
-import '../auth/presentation/bloc/auth_bloc.dart';
-import 'challanges/presentation/bloc/challenge_event.dart';
 import 'chat/data/repositories/chat_repository.dart';
+import 'challanges/presentation/bloc/challenge_event.dart';
 import 'chat/presentation/bloc/chat_bloc.dart';
 import 'chat/presentation/bloc/match_request_bloc.dart';
 import 'chat/presentation/screen/chats_list_screen.dart';
@@ -39,9 +39,10 @@ class HomeScreen extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (ctx) => getIt<DiscoverBloc>()
-            ..add(const DiscoverProfilesLoaded())
-            ..add(const DiscoverBoostStatusRequested()),
+          create: (ctx) =>
+              getIt<DiscoverBloc>()
+                ..add(const DiscoverProfilesLoaded())
+                ..add(const DiscoverBoostStatusRequested()),
         ),
         MultiBlocProvider(
           providers: [
@@ -100,9 +101,8 @@ class _HomeShellState extends State<_HomeShell> with WidgetsBindingObserver {
     _fgSub = push.onForeground.listen(_handleForegroundPush);
     final initialTap = push.takeInitialTap();
     if (initialTap != null) {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _handlePushTap(initialTap),
-      );
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _handlePushTap(initialTap));
     }
 
     _loadPendingProofs();
@@ -112,18 +112,12 @@ class _HomeShellState extends State<_HomeShell> with WidgetsBindingObserver {
   // Unread CHAT messages for the Chats tab badge. (It used to read a brand
   // new, never-loaded NotificationBloc from getIt — so it was always 0.)
   int _unreadChats = 0;
-
   Future<void> _loadUnread() async {
     try {
       final chats = await getIt<ChatRepository>().getChats();
-      final n = chats.fold<int>(
-        0,
-        (sum, c) => sum + ((c['unreadCount'] as num?)?.toInt() ?? 0),
-      );
+      final n = chats.fold<int>(0, (sum, c) => sum + ((c['unreadCount'] as num?)?.toInt() ?? 0));
       if (mounted && n != _unreadChats) setState(() => _unreadChats = n);
-    } catch (_) {
-      /* badge is best-effort */
-    }
+    } catch (_) {/* badge is best-effort */}
   }
 
   @override
@@ -147,9 +141,7 @@ class _HomeShellState extends State<_HomeShell> with WidgetsBindingObserver {
     try {
       final list = await getIt<SessionRepository>().getPendingConfirmations();
       if (mounted) {
-        setState(
-          () => _pendingProofs = list.where((p) => !p.isExpired).toList(),
-        );
+        setState(() => _pendingProofs = list.where((p) => !p.isExpired).toList());
       }
     } catch (_) {
       // banner is best-effort
@@ -199,9 +191,7 @@ class _HomeShellState extends State<_HomeShell> with WidgetsBindingObserver {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          m.notification?.body != null
-              ? '$title\n${m.notification!.body}'
-              : title,
+          m.notification?.body != null ? '$title\n${m.notification!.body}' : title,
           maxLines: 3,
         ),
         behavior: SnackBarBehavior.floating,
@@ -347,9 +337,8 @@ class _PendingProofBanner extends StatelessWidget {
                       count == 1
                           ? '${first.uploaderName ?? 'Your buddy'}\'s proof is waiting for you'
                           : '$count proofs are waiting for you',
-                      style: AppTextStyles.bodySM(
-                        color: AppColors.textPrimary,
-                      ).copyWith(fontWeight: FontWeight.w700),
+                      style: AppTextStyles.bodySM(color: AppColors.textPrimary)
+                          .copyWith(fontWeight: FontWeight.w700),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -361,19 +350,15 @@ class _PendingProofBanner extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: accent,
                   borderRadius: BorderRadius.circular(100),
                 ),
                 child: Text(
                   'Confirm',
-                  style: AppTextStyles.bodySM(
-                    color: Colors.black,
-                  ).copyWith(fontWeight: FontWeight.w800),
+                  style: AppTextStyles.bodySM(color: Colors.black)
+                      .copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
             ],

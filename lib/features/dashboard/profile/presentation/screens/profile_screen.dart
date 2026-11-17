@@ -115,8 +115,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
               children: [
-                // Hidden once the email is verified
-                const EmailVerifyBanner(),
                 // ── HEADER ──────────────────────────────────────
                 Container(
                   color: AppColors.surface1,
@@ -2393,6 +2391,9 @@ class _VerificationSectionState extends State<_VerificationSection> {
   Widget build(BuildContext context) {
     final idStatus     = _status['id']?['status']     ?? 'not_submitted';
     final selfieStatus = _status['selfie']?['status'] ?? 'not_submitted';
+    // Email lives here now (it used to be a card above the profile header).
+    final emailVerified =
+        context.select((AuthBloc b) => b.state.user?.emailVerified ?? true);
 
     return Container(
       margin:  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -2407,6 +2408,14 @@ class _VerificationSectionState extends State<_VerificationSection> {
         children: [
           Text('Verification', style: AppTextStyles.subtitle()),
           const SizedBox(height: 12),
+
+          _VerifRow(
+            icon:   '✉️',
+            label:  'Email Verified',
+            status: emailVerified ? 'verified' : 'not_submitted',
+            onTap:  () => showEmailVerifySheet(context),
+          ),
+          const SizedBox(height: 8),
 
           _VerifRow(
             icon:   '📷',

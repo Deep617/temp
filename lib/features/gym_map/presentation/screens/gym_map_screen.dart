@@ -21,10 +21,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/common/common_widgets.dart';
 import '../../../../di_injection/dependency_injection.dart';
+import '../../../../routes/app_router.dart';
 import '../../data/models/gym_map_utils.dart';
 import '../../data/models/gym_models.dart';
 import '../../data/repositories/gym_map_repository.dart';
-import '../../../../routes/app_router.dart';
 
 class GymMapScreen extends StatefulWidget {
   const GymMapScreen({super.key});
@@ -489,6 +489,16 @@ class _GymMapScreenState extends State<GymMapScreen> {
                   ),
                 ),
               ],
+              // Everyone training here now (strangers are only a number)
+              if (gym.trainingNow > here.length) ...[
+                const SizedBox(height: 8),
+                Text(
+                  here.isEmpty
+                      ? '🏋️ ${gym.trainingNow} training here now'
+                      : '🏋️ +${gym.trainingNow - here.length} other members training here now',
+                  style: AppTextStyles.caption(color: AppColors.textSecondary),
+                ),
+              ],
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -567,7 +577,7 @@ class _GymMapScreenState extends State<GymMapScreen> {
             compassEnabled: false,
             onCameraMove: _onCameraMove,
             onCameraIdle: _onCameraIdle,
-            style: _darkMapStyle,
+            style: kDarkMapStyle,
           ),
 
           // ── Top bar: back + search ──
@@ -887,7 +897,7 @@ class _MyCheckinBanner extends StatelessWidget {
 }
 
 // Dark map to match the app theme
-const String _darkMapStyle = '''
+const String kDarkMapStyle = '''
 [
   {"elementType":"geometry","stylers":[{"color":"#111827"}]},
   {"elementType":"labels.text.fill","stylers":[{"color":"#8a94a6"}]},

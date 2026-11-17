@@ -61,6 +61,18 @@ class GymMapRemoteDatasource {
     await _dio.delete('/gyms/checkin');
   }
 
+  /// GET /gyms/map — Buddy Map (buddies at gyms / ~3 km areas) + my Ghost Mode
+  Future<BuddyMapData> buddyMap() async {
+    final res = await _dio.get('/gyms/map');
+    return BuddyMapData.fromJson(_data(res) as Map<String, dynamic>? ?? {});
+  }
+
+  /// PUT /users/me { ghostMode: off | 3h | 24h | on }
+  Future<void> setGhostMode(String mode) async {
+    final res = await _dio.put('/users/me', data: {'ghostMode': mode});
+    _data(res);
+  }
+
   dynamic _data(Response res) {
     final body = res.data;
     if (body is Map && body['success'] == true) return body['data'];

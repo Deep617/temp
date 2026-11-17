@@ -3,21 +3,27 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:seshlly/routes/app_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../../core/constants/app_assets.dart';
 import '../../../../../core/constants/app_constants.dart';
+import '../../../../../core/services/growth_service.dart';
+import '../../../../../core/services/location_service.dart';
+import '../../../../../core/services/monitoring_service.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/widgets/common/common_widgets.dart';
 import '../../../../../core/widgets/error_widget.dart';
+import '../../../../../di_injection/dependency_injection.dart';
 import '../../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../auth/presentation/bloc/auth_event.dart';
+import '../../../../gym_map/data/models/gym_map_utils.dart';
+import '../../../../gym_map/data/repositories/gym_map_repository.dart';
+import '../../../profile/domain/repositories/profile_repository.dart';
 import '../../data/response_ml/buddy_profile.dart';
 import '../bloc/discover_bloc.dart';
 import '../bloc/discover_event.dart';
 import '../bloc/discover_state.dart';
-import '../../../../../core/services/monitoring_service.dart';
-import '../../../../../core/services/growth_service.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
@@ -27,10 +33,16 @@ class DiscoverScreen extends StatefulWidget {
 }
 
 class _DiscoverScreenState extends State<DiscoverScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _swipeCtrl;
   Offset _dragStart = Offset.zero;
   Offset _dragCurrent = Offset.zero;
+
+  final _location = const LocationService();
+
+  // The "why we need location" sheet shows at most once per app run.
+  static bool _locationPromptShown = false;
+  bool _locating = false;
 
   @override
   void initState() {
@@ -39,12 +51,277 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncLocation());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _swipeCtrl.dispose();
     super.dispose();
+  }
+
+  // Back from the phone's settings (or the background) → read it again.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState s) {
+    if (s == AppLifecycleState.resumed && mounted) _syncLocation(prompt: false);
+  }
+
+  // ── Location: ask, read, send to Discover, keep on the profile ──
+  Future<void> _syncLocation({bool prompt = true}) async {
+    if (_locating) return;
+    _locating = true;
+    try {
+      final bloc = context.read<DiscoverBloc>();
+      final access = await _location.access();
+      if (!mounted) return;
+
+      // Not asked yet (or "Don't allow" once) → explain first, then the
+      // phone's own permission dialog.
+      if (access == LocationAccess.denied) {
+        if (!prompt || _locationPromptShown) {
+          bloc.add(const DiscoverLocationUnavailable(LocationAccess.denied));
+          return;
+        }
+        _locationPromptShown = true;
+        final ok = await _showLocationPrompt();
+        if (!mounted) return;
+        if (!ok) {
+          bloc.add(const DiscoverLocationUnavailable(LocationAccess.denied));
+          return;
+        }
+      }
+
+      final r = await _location.current(ask: true);
+      if (!mounted) return;
+      if (!r.hasPosition) {
+        bloc.add(DiscoverLocationUnavailable(r.access));
+        return;
+      }
+      // Save first: the server ignores a search point far from the saved
+      // one (e.g. after travelling to another city) until it is updated.
+      await _saveLocation(r.lat!, r.lng!);
+      if (!mounted) return;
+      bloc.add(DiscoverLocationUpdated(lat: r.lat!, lng: r.lng!));
+      _maybePromptCheckin(r.lat!, r.lng!);
+    } finally {
+      _locating = false;
+    }
+  }
+
+  // ── "Are you at <gym>? Check in" — one tap, so buddies see you training ──
+  // Asked at most once per gym per day, and the gym list is looked up at
+  // most every 20 minutes (or after moving 200 m) to keep Places calls low.
+  static DateTime? _gymCheckAt;
+  static double? _gymCheckLat, _gymCheckLng;
+
+  Future<void> _maybePromptCheckin(double lat, double lng) async {
+    final now = DateTime.now();
+    if (_gymCheckAt != null &&
+        now.difference(_gymCheckAt!) < const Duration(minutes: 20) &&
+        _gymCheckLat != null &&
+        distanceMeters(_gymCheckLat!, _gymCheckLng!, lat, lng) < 200) {
+      return;
+    }
+    _gymCheckAt = now;
+    _gymCheckLat = lat;
+    _gymCheckLng = lng;
+    try {
+      final repo = getIt<GymMapRepository>();
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'gym_prompted_${now.toIso8601String().substring(0, 10)}';
+      final prompted = (prefs.getStringList(key) ?? const <String>[]).toSet();
+      final mine = await repo.myCheckin();
+      final gyms = await repo.nearby(lat: lat, lng: lng, radiusM: 500);
+      final gym = pickGymToPrompt(
+        gyms: gyms,
+        lat: lat,
+        lng: lng,
+        alreadyCheckedIn: mine?.isActive == true,
+        promptedPlaceIds: prompted,
+      );
+      if (gym == null || !mounted) return;
+      await prefs.setStringList(key, [...prompted, gym.placeId]);
+      if (!mounted) return;
+      final ok = await showModalBottomSheet<bool>(
+        context: context,
+        backgroundColor: AppColors.surface1,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (sheet) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.fitness_center_rounded,
+                  color: AppColors.teal,
+                  size: 36,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'At ${gym.name}?',
+                  style: AppTextStyles.h3(),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Check in so your buddies see you\'re training. It shows for 2 hours.',
+                  style: AppTextStyles.bodySM(color: AppColors.textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(sheet, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.teal,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text('Check in'),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(sheet, false),
+                  child: Text(
+                    'Not now',
+                    style: AppTextStyles.bodySM(color: AppColors.textMuted),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (ok != true || !mounted) return;
+      await repo.checkIn(gym, myLat: lat, myLng: lng);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Checked in at ${gym.name}. Your buddies can see it for 2 hours.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      // Not important enough to bother the user (no network, Places down…)
+    }
+  }
+
+  // Others find you by distance from the profile's position (the server
+  // shows them a rounded one). Saved only when it moved 500 m or more.
+  Future<void> _saveLocation(double lat, double lng) async {
+    final auth = context.read<AuthBloc>();
+    final user = auth.state.user;
+    if (user == null) return;
+    if (!shouldSaveLocation(
+      savedLat: user.latitude,
+      savedLng: user.longitude,
+      lat: lat,
+      lng: lng,
+    )) {
+      return;
+    }
+    try {
+      final updated = await getIt<ProfileRepository>().updateProfile({
+        'latitude': lat,
+        'longitude': lng,
+      });
+      if (mounted) auth.add(AuthUserUpdated(user: updated));
+    } catch (_) {
+      // Not fatal: Discover already uses the position; next open retries.
+    }
+  }
+
+  // Banner button: ask again, or open the right settings page.
+  Future<void> _turnOnLocation(LocationAccess access) async {
+    if (access == LocationAccess.deniedForever ||
+        access == LocationAccess.serviceOff) {
+      await _location.openSettings(access); // resume → _syncLocation
+      return;
+    }
+    _locationPromptShown = true;
+    await _syncLocation(prompt: false);
+  }
+
+  Future<bool> _showLocationPrompt() async {
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: AppColors.surface1,
+      isDismissible: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheet) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.location_on_rounded,
+                  color: AppColors.primary,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Find buddies near you',
+                style: AppTextStyles.h3(),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Seshlly shows people who train within 10 km of you. '
+                'Others only see a rounded distance, never your exact location.',
+                style: AppTextStyles.bodySM(color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(sheet, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text('Turn on location'),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(sheet, false),
+                child: Text(
+                  'Not now',
+                  style: AppTextStyles.bodySM(color: AppColors.textMuted),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return ok == true;
   }
 
   Future<void> _onDragEnd(DragEndDetails d, DiscoverState discoverState) async {
@@ -94,8 +371,11 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               (p) => p.id == state.matchedUserId,
               orElse: () => state.profiles.first,
             );
-            _showMatchDialog(profile,
-                chatId: state.matchedChatId, matchId: state.matchedMatchId);
+            _showMatchDialog(
+              profile,
+              chatId: state.matchedChatId,
+              matchId: state.matchedMatchId,
+            );
           },
         ),
 
@@ -121,10 +401,12 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             MonitoringService.instance.log('super_like');
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Row(children: [
-                  const Text('⭐ '),
-                  Text('Super Like sent!', style: AppTextStyles.bodySM()),
-                ]),
+                content: Row(
+                  children: [
+                    const Text('⭐ '),
+                    Text('Super Like sent!', style: AppTextStyles.bodySM()),
+                  ],
+                ),
                 backgroundColor: AppColors.warning.withOpacity(0.9),
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 2),
@@ -141,8 +423,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           listener: (context, state) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.superLikeError!,
-                    style: AppTextStyles.bodySM()),
+                content: Text(
+                  state.superLikeError!,
+                  style: AppTextStyles.bodySM(),
+                ),
                 backgroundColor: AppColors.error,
                 behavior: SnackBarBehavior.floating,
               ),
@@ -160,17 +444,23 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             final authBloc = context.read<AuthBloc>();
             final me = authBloc.state.user;
             if (me != null && state.tokensRemaining != null) {
-              authBloc.add(AuthUserUpdated(
-                user: me.copyWith(chatTokens: state.tokensRemaining),
-              ));
+              authBloc.add(
+                AuthUserUpdated(
+                  user: me.copyWith(chatTokens: state.tokensRemaining),
+                ),
+              );
             }
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Row(children: [
-                  const Text('⚡ '),
-                  Text('Profile Boosted for 30 minutes!',
-                      style: AppTextStyles.bodySM()),
-                ]),
+                content: Row(
+                  children: [
+                    const Text('⚡ '),
+                    Text(
+                      'Profile Boosted for 30 minutes!',
+                      style: AppTextStyles.bodySM(),
+                    ),
+                  ],
+                ),
                 backgroundColor: AppColors.teal,
                 behavior: SnackBarBehavior.floating,
                 duration: const Duration(seconds: 3),
@@ -186,8 +476,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           listener: (context, state) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.boostError!,
-                    style: AppTextStyles.bodySM()),
+                content: Text(state.boostError!, style: AppTextStyles.bodySM()),
                 backgroundColor: AppColors.error,
                 behavior: SnackBarBehavior.floating,
               ),
@@ -200,309 +489,330 @@ class _DiscoverScreenState extends State<DiscoverScreen>
           final user = context.watch<AuthBloc>().state.user;
           return Scaffold(
             backgroundColor: AppColors.bg,
-            body: SafeArea(
-              child: Column(
-                children: [
-                  // Top Bar
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Center(
-                            child: Image.asset(
-                              AppImages.logo,
-                              height: 45,
-                              width: 45,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text('Discover', style: AppTextStyles.h3()),
-                        const Spacer(),
-                        if (user != null) TokenBadge(count: user.chatTokens!),
-                        const SizedBox(width: 10),
-                        GestureDetector(
-                          onTap: () => _showFilters(context),
-                          child: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: state.selectedActivity != null
-                                  ? AppColors.primary.withOpacity(0.15)
-                                  : AppColors.surface2,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: state.selectedActivity != null
-                                    ? AppColors.primary.withOpacity(0.3)
-                                    : AppColors.border2,
+            body: Stack(
+              children: [
+                SafeArea(
+                  child: Column(
+                    children: [
+                      // Top Bar
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 5, 0),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            ),
-                            child: Icon(
-                              Icons.tune,
-                              color: state.selectedActivity != null
-                                  ? AppColors.primary
-                                  : AppColors.textMuted,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () => context.push(AppRoutes.notifications),
-                          child: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: AppColors.surface2,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: AppColors.border2),
-                            ),
-                            child: const Icon(
-                              Icons.notifications_outlined,
-                              color: AppColors.textMuted,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // ── 🗺 Gym Map entry — clearly visible ──
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                    child: Material(
-                      color: AppColors.primary.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(14),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () => context.push(AppRoutes.gymMap),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.primary.withOpacity(0.35)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.map_rounded, color: AppColors.primary, size: 22),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Gym Map',
-                                        style: AppTextStyles.subtitle(color: AppColors.textPrimary)),
-                                    Text('Gyms near you & buddies training now',
-                                        style: AppTextStyles.caption(),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis),
-                                  ],
+                              child: Center(
+                                child: Image.asset(
+                                  AppImages.logo,
+                                  height: 45,
+                                  width: 45,
                                 ),
                               ),
-                              const Icon(Icons.chevron_right, color: AppColors.primary),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text('Discover', style: AppTextStyles.h3()),
+                            const Spacer(),
+                            if (user != null)
+                              TokenBadge(count: user.chatTokens!),
+                            const SizedBox(width: 5),
+                            // Buddy Map (also: swipe left from the right edge)
+                            Tooltip(
+                              message: 'Buddy Map',
+                              child: GestureDetector(
+                                key: const ValueKey('discover-map-button'),
+                                onTap: () => context.push(AppRoutes.buddyMap),
+                                child: Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface2,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: AppColors.border2,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.map_outlined,
+                                    color: AppColors.teal,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                            GestureDetector(
+                              onTap: () => _showFilters(context),
+                              child: Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: state.selectedActivity != null
+                                      ? AppColors.primary.withOpacity(0.15)
+                                      : AppColors.surface2,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: state.selectedActivity != null
+                                        ? AppColors.primary.withOpacity(0.3)
+                                        : AppColors.border2,
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.tune,
+                                  color: state.selectedActivity != null
+                                      ? AppColors.primary
+                                      : AppColors.textMuted,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            GestureDetector(
+                              onTap: () =>
+                                  context.push(AppRoutes.notifications),
+                              child: Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface2,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: AppColors.border2),
+                                ),
+                                child: const Icon(
+                                  Icons.notifications_outlined,
+                                  color: AppColors.textMuted,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ),
+                      const SizedBox(height: 12),
 
-                  // Card Stack
-                  if (state.status != DiscoverStatus.failure)
-                    Expanded(
-                      child: state.isLoading && state.profiles.isEmpty
-                          ? const Center(
-                              child: CircularProgressIndicator(
-                                color: AppColors.primary,
-                              ),
-                            )
-                          : state.profiles.isEmpty &&
-                                state.status == DiscoverStatus.success
-                          ? EmptyState(
-                              emoji: '🔍',
-                              title: 'No more profiles',
-                              subtitle: 'Change filters or check back later',
-                              action: 'Change Filters',
-                              onAction: () => _showFilters(context),
-                            )
-                          : state.isExhausted
-                          ? EmptyState(
-                              emoji: '✨',
-                              title: 'You\'ve seen everyone!',
-                              subtitle: 'Come back tomorrow for fresh matches',
-                              action: 'Refresh',
-                              onAction: () => context.read<DiscoverBloc>().add(
-                                const DiscoverProfilesLoaded(refresh: true),
-                              ),
-                            )
-                          : Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                ...List.generate(2, (i) {
-                                  final idx = state.currentIndex + 2 - i;
-                                  if (idx >= state.profiles.length) {
-                                    return const SizedBox.shrink();
-                                  }
-                                  return Positioned(
-                                    top: 8.0 * (2 - i),
-                                    child: Transform.scale(
-                                      scale: 0.94 + 0.03 * (2 - i),
-                                      child: SizedBox(
-                                        width: size.width - 56,
-                                        height: size.height * 0.57,
-                                        child: _BuddyCard(
-                                          profile: state.profiles[idx],
+                      // ── Location off → people from everywhere, no distance ──
+                      if (state.locationAccess != LocationAccess.granted &&
+                          state.locationAccess != LocationAccess.unknown)
+                        LocationOffBanner(
+                          access: state.locationAccess,
+                          onTurnOn: () => _turnOnLocation(state.locationAccess),
+                        ),
+
+                      // Card Stack
+                      if (state.status != DiscoverStatus.failure)
+                        Expanded(
+                          child: state.isLoading && state.profiles.isEmpty
+                              ? const Center(
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.primary,
+                                  ),
+                                )
+                              : state.profiles.isEmpty &&
+                                    state.status == DiscoverStatus.success
+                              ? EmptyState(
+                                  emoji: '🔍',
+                                  title: 'No more profiles',
+                                  subtitle:
+                                      'Change filters or check back later',
+                                  action: 'Change Filters',
+                                  onAction: () => _showFilters(context),
+                                )
+                              : state.isExhausted
+                              ? EmptyState(
+                                  emoji: '✨',
+                                  title: 'You\'ve seen everyone!',
+                                  subtitle:
+                                      'Come back tomorrow for fresh matches',
+                                  action: 'Refresh',
+                                  onAction: () =>
+                                      context.read<DiscoverBloc>().add(
+                                        const DiscoverProfilesLoaded(
+                                          refresh: true,
+                                        ),
+                                      ),
+                                )
+                              : Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    ...List.generate(2, (i) {
+                                      final idx = state.currentIndex + 2 - i;
+                                      if (idx >= state.profiles.length) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return Positioned(
+                                        top: 8.0 * (2 - i),
+                                        child: Transform.scale(
+                                          scale: 0.94 + 0.03 * (2 - i),
+                                          child: SizedBox(
+                                            width: size.width - 56,
+                                            height: size.height * 0.57,
+                                            child: _BuddyCard(
+                                              profile: state.profiles[idx],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }),
+                                    GestureDetector(
+                                      onPanStart: (d) => setState(() {
+                                        _dragStart = d.globalPosition;
+                                      }),
+                                      onPanUpdate: (d) => setState(
+                                        () => _dragCurrent =
+                                            d.globalPosition - _dragStart,
+                                      ),
+                                      onPanEnd: (d) => _onDragEnd(d, state),
+                                      child: Transform.translate(
+                                        offset: _dragCurrent,
+                                        child: Transform.rotate(
+                                          angle: _dragCurrent.dx * 0.001,
+                                          child: Stack(
+                                            children: [
+                                              SizedBox(
+                                                width: size.width - 40,
+                                                height: size.height * 0.57,
+                                                child: _BuddyCard(
+                                                  profile:
+                                                      state.profiles[state
+                                                          .currentIndex],
+                                                ),
+                                              ),
+                                              if (_dragCurrent.dx > 40)
+                                                Positioned(
+                                                  top: 24,
+                                                  left: 24,
+                                                  child: _SwipeLabel(
+                                                    label: 'CONNECT!',
+                                                    color: AppColors.primary,
+                                                  ),
+                                                ),
+                                              if (_dragCurrent.dx < -40)
+                                                Positioned(
+                                                  top: 24,
+                                                  right: 24,
+                                                  child: _SwipeLabel(
+                                                    label: 'SKIP',
+                                                    color: AppColors.error,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  );
-                                }),
-                                GestureDetector(
-                                  onPanStart: (d) => setState(() {
-                                    _dragStart = d.globalPosition;
-                                  }),
-                                  onPanUpdate: (d) => setState(
-                                    () => _dragCurrent =
-                                        d.globalPosition - _dragStart,
-                                  ),
-                                  onPanEnd: (d) => _onDragEnd(d, state),
-                                  child: Transform.translate(
-                                    offset: _dragCurrent,
-                                    child: Transform.rotate(
-                                      angle: _dragCurrent.dx * 0.001,
-                                      child: Stack(
-                                        children: [
-                                          SizedBox(
-                                            width: size.width - 40,
-                                            height: size.height * 0.57,
-                                            child: _BuddyCard(
-                                              profile: state
-                                                  .profiles[state.currentIndex],
-                                            ),
-                                          ),
-                                          if (_dragCurrent.dx > 40)
-                                            Positioned(
-                                              top: 24,
-                                              left: 24,
-                                              child: _SwipeLabel(
-                                                label: 'CONNECT!',
-                                                color: AppColors.primary,
-                                              ),
-                                            ),
-                                          if (_dragCurrent.dx < -40)
-                                            Positioned(
-                                              top: 24,
-                                              right: 24,
-                                              child: _SwipeLabel(
-                                                label: 'SKIP',
-                                                color: AppColors.error,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
+                                  ],
+                                ),
+                        ),
+
+                      // Action Buttons
+                      if (state.profiles.isNotEmpty && !state.isExhausted)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(32, 8, 32, 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              ActionBtn(
+                                icon: Icons.close,
+                                color: AppColors.error,
+                                size: 56,
+                                onTap: () => context.read<DiscoverBloc>().add(
+                                  DiscoverSwipedLeft(
+                                    userId: state.currentProfile!.id,
                                   ),
                                 ),
-                              ],
-                            ),
-                    ),
-
-                  // Action Buttons
-                  if (state.profiles.isNotEmpty && !state.isExhausted)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(32, 8, 32, 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          ActionBtn(
-                            icon: Icons.close,
-                            color: AppColors.error,
-                            size: 56,
-                            onTap: () => context.read<DiscoverBloc>().add(
-                              DiscoverSwipedLeft(
-                                userId: state.currentProfile!.id,
                               ),
-                            ),
-                          ),
-                          ActionBtn(
-                            icon: Icons.star,
-                            color: AppColors.warning,
-                            size: 44,
-                            onTap: () {
-                              if (state.currentProfile == null) return;
-                              context.read<DiscoverBloc>().add(
-                                DiscoverSuperLiked(userId: state.currentProfile!.id),
-                              );
-                            },
-                          ),
-                          ActionBtn(
-                            icon: Icons.favorite,
-                            color: AppColors.primary,
-                            size: 64,
-                            onTap: () => context.read<DiscoverBloc>().add(
-                              DiscoverSwipedRight(
-                                userId: state.currentProfile!.id,
-                              ),
-                            ),
-                          ),
-                          ActionBtn(
-                            icon:  Icons.bolt,
-                            color: state.isBoostLive
-                                ? AppColors.warning   // glowing when active
-                                : AppColors.teal,
-                            size:  44,
-                            onTap: () {
-                              if (state.isBoostLive) {
-                                // Already active — show remaining time
-                                final remaining = state.boostExpiresAt
-                                    ?.difference(DateTime.now())
-                                    .inMinutes ?? 0;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      '⚡ Boost active — $remaining mins remaining',
-                                      style: AppTextStyles.bodySM(),
+                              ActionBtn(
+                                icon: Icons.star,
+                                color: AppColors.warning,
+                                size: 44,
+                                onTap: () {
+                                  if (state.currentProfile == null) return;
+                                  context.read<DiscoverBloc>().add(
+                                    DiscoverSuperLiked(
+                                      userId: state.currentProfile!.id,
                                     ),
-                                    backgroundColor: AppColors.surface2,
-                                    behavior:        SnackBarBehavior.floating,
+                                  );
+                                },
+                              ),
+                              ActionBtn(
+                                icon: Icons.favorite,
+                                color: AppColors.primary,
+                                size: 64,
+                                onTap: () => context.read<DiscoverBloc>().add(
+                                  DiscoverSwipedRight(
+                                    userId: state.currentProfile!.id,
                                   ),
-                                );
-                                return;
-                              }
-                              context.read<DiscoverBloc>().add(const DiscoverBoosted());
-                            },
+                                ),
+                              ),
+                              ActionBtn(
+                                icon: Icons.bolt,
+                                color: state.isBoostLive
+                                    ? AppColors
+                                          .warning // glowing when active
+                                    : AppColors.teal,
+                                size: 44,
+                                onTap: () {
+                                  if (state.isBoostLive) {
+                                    // Already active — show remaining time
+                                    final remaining =
+                                        state.boostExpiresAt
+                                            ?.difference(DateTime.now())
+                                            .inMinutes ??
+                                        0;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          '⚡ Boost active — $remaining mins remaining',
+                                          style: AppTextStyles.bodySM(),
+                                        ),
+                                        backgroundColor: AppColors.surface2,
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  context.read<DiscoverBloc>().add(
+                                    const DiscoverBoosted(),
+                                  );
+                                },
+                              ),
+                              ActionBtn(
+                                icon: Icons.refresh,
+                                color: AppColors.blue,
+                                size: 56,
+                                onTap: () => context.read<DiscoverBloc>().add(
+                                  const DiscoverProfilesLoaded(refresh: true),
+                                ),
+                              ),
+                            ],
                           ),
-                          ActionBtn(
-                            icon: Icons.refresh,
-                            color: AppColors.blue,
-                            size: 56,
-                            onTap: () => context.read<DiscoverBloc>().add(
-                              const DiscoverProfilesLoaded(refresh: true),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  // Error View with action
-                  if (state.status == DiscoverStatus.failure)
-                    ErrorView(
-                      appError: state.error!,
-                      onRetry: () {
-                        context.read<DiscoverBloc>().add(
-                          const DiscoverProfilesLoaded(),
-                        );
-                      },
-                    ),
-                ],
-              ),
+                        ),
+                      // Error View with action
+                      if (state.status == DiscoverStatus.failure)
+                        ErrorView(
+                          appError: state.error!,
+                          onRetry: () {
+                            context.read<DiscoverBloc>().add(
+                              const DiscoverProfilesLoaded(),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+                // Swipe left from the right edge → Buddy Map (Snap Map style)
+                Positioned(
+                  right: 0,
+                  top: 130,
+                  bottom: 120,
+                  child: MapEdgeHandle(
+                    onOpen: () => context.push(AppRoutes.buddyMap),
+                  ),
+                ),
+              ],
             ),
           );
         },
@@ -510,11 +820,16 @@ class _DiscoverScreenState extends State<DiscoverScreen>
     );
   }
 
-  void _showMatchDialog(BuddyProfile profile, {String? chatId, String? matchId}) {
+  void _showMatchDialog(
+    BuddyProfile profile, {
+    String? chatId,
+    String? matchId,
+  }) {
     GrowthService.instance.logFirst(GrowthService.firstMatch);
     showDialog(
       context: context,
-      builder: (_) => MatchDialog(profile: profile, chatId: chatId, matchId: matchId),
+      builder: (_) =>
+          MatchDialog(profile: profile, chatId: chatId, matchId: matchId),
     );
   }
 }
@@ -546,10 +861,13 @@ class _BuddyCard extends StatelessWidget {
             AppRoutes.influencerProfile.replaceAll(':id', profile.id),
           );
         } else {
-          context.push(AppRoutes.buddyView, extra: {
-            'buddyProfile': profile,
-            'discoverBloc': context.read<DiscoverBloc>(),
-          });
+          context.push(
+            AppRoutes.buddyView,
+            extra: {
+              'buddyProfile': profile,
+              'discoverBloc': context.read<DiscoverBloc>(),
+            },
+          );
         }
       },
       child: Container(
@@ -576,7 +894,8 @@ class _BuddyCard extends StatelessWidget {
                         avatarUrl: profile.avatarUrl,
                         name: profile.fullName,
                         height: double.maxFinite,
-                        swipeable: false, // drag = like/skip; tap edges = photos
+                        swipeable:
+                            false, // drag = like/skip; tap edges = photos
                       ),
                     )
                   : _Placeholder(profile: profile),
@@ -637,16 +956,22 @@ class _BuddyCard extends StatelessWidget {
                                   const SizedBox(width: 8),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 2),
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: AppColors.teal.withOpacity(0.18),
                                       borderRadius: BorderRadius.circular(100),
                                       border: Border.all(
-                                          color: AppColors.teal.withOpacity(0.5)),
+                                        color: AppColors.teal.withOpacity(0.5),
+                                      ),
                                     ),
-                                    child: Text('NEW',
-                                        style: AppTextStyles.label(
-                                            color: AppColors.teal)),
+                                    child: Text(
+                                      'NEW',
+                                      style: AppTextStyles.label(
+                                        color: AppColors.teal,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ],
@@ -863,7 +1188,7 @@ class MatchDialog extends StatelessWidget {
   const MatchDialog({required this.profile, this.chatId, this.matchId});
 
   final BuddyProfile profile;
-  final String? chatId;  // real chat id from the server (null → chat list)
+  final String? chatId; // real chat id from the server (null → chat list)
   final String? matchId;
 
   @override
@@ -1161,82 +1486,97 @@ class _PhotoCarouselState extends State<PhotoCarousel> {
     return Semantics(
       label: 'Photo ${_current + 1} of ${photos.length}',
       child: SizedBox(
-      height: widget.height,
-      child: LayoutBuilder(
-        builder: (context, box) {
-          final zone = box.maxWidth / 3; // left third = back, right third = next
-          return Stack(
-            children: [
-              PageView.builder(
-                controller: _ctrl,
-                itemCount: photos.length,
-                physics: widget.swipeable
-                    ? const PageScrollPhysics()
-                    : const NeverScrollableScrollPhysics(),
-                onPageChanged: (i) => setState(() => _current = i),
-                itemBuilder: (_, i) => Image.network(
-                  photos[i],
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: AppColors.surface2,
-                    child: Center(child: AppAvatar(name: widget.name, size: 60)),
-                  ),
-                ),
-              ),
-
-              if (photos.length > 1) ...[
-                Positioned(
-                  left: 0, top: 0, bottom: 0, width: zone,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () => _go(-1, photos.length),
-                  ),
-                ),
-                Positioned(
-                  right: 0, top: 0, bottom: 0, width: zone,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () => _go(1, photos.length),
-                  ),
-                ),
-              ],
-              if (widget.onOpenGallery != null)
-                Positioned(
-                  left: photos.length > 1 ? zone : 0,
-                  right: photos.length > 1 ? zone : 0,
-                  top: 0, bottom: 0,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () => widget.onOpenGallery!(_current),
+        height: widget.height,
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final zone =
+                box.maxWidth / 3; // left third = back, right third = next
+            return Stack(
+              children: [
+                PageView.builder(
+                  controller: _ctrl,
+                  itemCount: photos.length,
+                  physics: widget.swipeable
+                      ? const PageScrollPhysics()
+                      : const NeverScrollableScrollPhysics(),
+                  onPageChanged: (i) => setState(() => _current = i),
+                  itemBuilder: (_, i) => Image.network(
+                    photos[i],
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: AppColors.surface2,
+                      child: Center(
+                        child: AppAvatar(name: widget.name, size: 60),
+                      ),
+                    ),
                   ),
                 ),
 
-              // Progress dashes — top
-              if (photos.length > 1)
-                Positioned(
-                  top: 8, left: 8, right: 8,
-                  child: Row(
-                    children: List.generate(photos.length, (i) => Expanded(
-                      child: AnimatedContainer(
-                        key: ValueKey('photo-dash-$i'),
-                        duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        height: 3,
-                        decoration: BoxDecoration(
-                          color: i == _current
-                              ? Colors.white
-                              : Colors.white.withOpacity(0.35),
-                          borderRadius: BorderRadius.circular(2),
+                if (photos.length > 1) ...[
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: zone,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: () => _go(-1, photos.length),
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: zone,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: () => _go(1, photos.length),
+                    ),
+                  ),
+                ],
+                if (widget.onOpenGallery != null)
+                  Positioned(
+                    left: photos.length > 1 ? zone : 0,
+                    right: photos.length > 1 ? zone : 0,
+                    top: 0,
+                    bottom: 0,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: () => widget.onOpenGallery!(_current),
+                    ),
+                  ),
+
+                // Progress dashes — top
+                if (photos.length > 1)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    right: 8,
+                    child: Row(
+                      children: List.generate(
+                        photos.length,
+                        (i) => Expanded(
+                          child: AnimatedContainer(
+                            key: ValueKey('photo-dash-$i'),
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: i == _current
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.35),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
                         ),
                       ),
-                    )),
+                    ),
                   ),
-                ),
-            ],
-          );
-        },
-      ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -1282,7 +1622,9 @@ class _PhotoGallery extends StatefulWidget {
 }
 
 class _PhotoGalleryState extends State<_PhotoGallery> {
-  late final PageController _ctrl = PageController(initialPage: widget.initialIndex);
+  late final PageController _ctrl = PageController(
+    initialPage: widget.initialIndex,
+  );
   late int _index = widget.initialIndex;
 
   @override
@@ -1308,7 +1650,10 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
                 widget.photos[i],
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const Icon(
-                  Icons.broken_image_outlined, color: Colors.white38, size: 48),
+                  Icons.broken_image_outlined,
+                  color: Colors.white38,
+                  size: 48,
+                ),
               ),
             ),
           ),
@@ -1323,18 +1668,101 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
                   onPressed: () => Navigator.of(context).pop(),
                 ),
                 Expanded(
-                  child: Text(widget.name,
-                      style: AppTextStyles.subtitle(color: Colors.white)),
+                  child: Text(
+                    widget.name,
+                    style: AppTextStyles.subtitle(color: Colors.white),
+                  ),
                 ),
                 if (widget.photos.length > 1)
-                  Text('${_index + 1} / ${widget.photos.length}',
-                      style: AppTextStyles.bodySM(color: Colors.white70)),
+                  Text(
+                    '${_index + 1} / ${widget.photos.length}',
+                    style: AppTextStyles.bodySM(color: Colors.white70),
+                  ),
                 const SizedBox(width: 12),
               ],
             ),
           ),
         ),
       ],
+    ),
+  );
+}
+
+/// Shown on Discover while location is off.
+class LocationOffBanner extends StatelessWidget {
+  const LocationOffBanner({
+    super.key,
+    required this.access,
+    required this.onTurnOn,
+  });
+
+  final LocationAccess access;
+  final VoidCallback onTurnOn;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = access == LocationAccess.serviceOff
+        ? 'Your phone\'s location is off. Turn it on to see people within 10 km.'
+        : 'Location is off, so you see people from everywhere. Turn it on to see people within 10 km.';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+        decoration: BoxDecoration(
+          color: AppColors.warning.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.warning.withOpacity(0.4)),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.location_off_rounded,
+              color: AppColors.warning,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text(text, style: AppTextStyles.bodySM())),
+            TextButton(onPressed: onTurnOn, child: const Text('Turn on')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Thin handle on Discover's right edge: swipe it left (or tap) to open the
+/// Buddy Map, like Snap Map.
+class MapEdgeHandle extends StatelessWidget {
+  const MapEdgeHandle({super.key, required this.onOpen});
+
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: 'Open Buddy Map',
+    child: GestureDetector(
+      key: const ValueKey('map-edge-handle'),
+      behavior: HitTestBehavior.translucent,
+      onTap: onOpen,
+      onHorizontalDragEnd: (d) {
+        if ((d.primaryVelocity ?? 0) < -150) onOpen();
+      },
+      child: SizedBox(
+        width: 22,
+        child: Center(
+          child: Container(
+            width: 6,
+            height: 64,
+            decoration: BoxDecoration(
+              color: AppColors.teal.withOpacity(0.55),
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(6),
+              ),
+            ),
+          ),
+        ),
+      ),
     ),
   );
 }

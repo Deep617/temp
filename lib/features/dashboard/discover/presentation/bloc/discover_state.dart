@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:seshlly/core/errors/app_error.dart';
+import 'package:seshlly/core/services/location_service.dart';
 
 import '../../data/response_ml/buddy_profile.dart';
 
@@ -20,7 +21,8 @@ class DiscoverState extends Equatable {
     this.swipeError,
     this.lat,
     this.lng,
-    this.radiusKm = 5.0,
+    this.radiusKm = 10.0,
+    this.locationAccess = LocationAccess.unknown,
     // Constructor mein add karo:
     this.isBoostActive    = false,
     this.boostExpiresAt,
@@ -42,6 +44,8 @@ class DiscoverState extends Equatable {
   final double?  lat;
   final double?  lng;
   final double   radiusKm;
+  /// Whether Discover has the phone's position (banner when it doesn't).
+  final LocationAccess locationAccess;
 
   /// Non-null when the most recent right-swipe resulted in a match.
   final String? matchedUserId;
@@ -79,6 +83,7 @@ class DiscoverState extends Equatable {
     bool? hasMore,
     String? selectedActivity,
     String? selectedLevel,
+    bool clearFilters = false,
     AppError? error,
     bool clearError = false,
     bool clearMatch = false,
@@ -89,6 +94,7 @@ class DiscoverState extends Equatable {
     double? lat,
     double? lng,
     double? radiusKm,
+    LocationAccess? locationAccess,
     // copyWith mein add karo:
     bool? isBoostActive,
     DateTime? boostExpiresAt,
@@ -105,8 +111,8 @@ class DiscoverState extends Equatable {
     profiles: profiles ?? this.profiles,
     currentIndex: currentIndex ?? this.currentIndex,
     hasMore: hasMore ?? this.hasMore,
-    selectedActivity: selectedActivity ?? this.selectedActivity,
-    selectedLevel: selectedLevel ?? this.selectedLevel,
+    selectedActivity: clearFilters ? selectedActivity : selectedActivity ?? this.selectedActivity,
+    selectedLevel: clearFilters ? selectedLevel : selectedLevel ?? this.selectedLevel,
     error: clearError ? null : error ?? this.error,
     matchedUserId: clearMatch ? null : matchedUserId ?? this.matchedUserId,
     matchedChatId: clearMatch ? null : matchedChatId ?? this.matchedChatId,
@@ -115,6 +121,7 @@ class DiscoverState extends Equatable {
     lat:      lat      ?? this.lat,
     lng:      lng      ?? this.lng,
     radiusKm: radiusKm ?? this.radiusKm,
+    locationAccess: locationAccess ?? this.locationAccess,
     // copyWith body mein:
     isBoostActive:     isBoostActive     ?? this.isBoostActive,
     boostExpiresAt:    boostExpiresAt    ?? this.boostExpiresAt,
@@ -138,6 +145,6 @@ class DiscoverState extends Equatable {
     matchedUserId, matchedChatId, matchedMatchId, swipeError,
     // props mein add karo:
     isBoostActive, boostExpiresAt, superLikeSuccess, boostError, superLikeError,
-    boostActivated, tokensRemaining, lat, lng, radiusKm,
+    boostActivated, tokensRemaining, lat, lng, radiusKm, locationAccess,
   ];
 }

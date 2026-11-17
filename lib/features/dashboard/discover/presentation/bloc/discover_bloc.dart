@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:seshlly/core/errors/app_error.dart';
+import 'package:seshlly/core/services/location_service.dart';
 
 import '../../data/repositories/discover_repository.dart';
 import 'discover_event.dart';
@@ -8,6 +9,9 @@ import 'discover_state.dart';
 class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
   final DiscoverRepository _repo;
   int _page = 1;
+  // A refresh asked for while a load runs (e.g. the position arrived during
+  // the first load) runs right after it instead of being dropped.
+  bool _refreshPending = false;
 
   DiscoverBloc({required DiscoverRepository discoverRepository})
     : _repo = discoverRepository,
@@ -16,6 +20,8 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
     on<DiscoverSwipedRight>(_onSwipedRight);
     on<DiscoverSwipedLeft>(_onSwipedLeft);
     on<DiscoverFilterChanged>(_onFilterChanged);
+    on<DiscoverLocationUpdated>(_onLocationUpdated);
+    on<DiscoverLocationUnavailable>(_onLocationUnavailable);
     // Constructor mein add karo (on<DiscoverFilterChanged> ke baad):
     on<DiscoverSuperLiked>(_onSuperLiked);
     on<DiscoverBoosted>(_onBoosted);
@@ -26,7 +32,10 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
     DiscoverProfilesLoaded event,
     Emitter<DiscoverState> emit,
   ) async {
-    if (state.isLoading) return;
+    if (state.isLoading) {
+      if (event.refresh) _refreshPending = true;
+      return;
+    }
     if (event.refresh) {
       _page = 1;
       emit(
@@ -65,6 +74,10 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
       _page++;
     } on AppError catch (e) {
       emit(state.copyWith(status: DiscoverStatus.failure, error: e));
+    }
+    if (_refreshPending) {
+      _refreshPending = false;
+      add(const DiscoverProfilesLoaded(refresh: true));
     }
   }
 
@@ -107,14 +120,35 @@ class DiscoverBloc extends Bloc<DiscoverEvent, DiscoverState> {
   ) {
     emit(
       state.copyWith(
+        // null = "Clear All" → really clear (copyWith used to keep the old one)
+        clearFilters:     true,
         selectedActivity: event.activity,
-        selectedLevel: event.level,
-        lat:              event.lat,
+        selectedLevel:    event.level,
+        lat:              event.lat,   // null keeps the phone's position
         lng:              event.lng,
         radiusKm:         event.radiusKm.clamp(1.0, 10.0),
       ),
     );
     add(const DiscoverProfilesLoaded(refresh: true));
+  }
+
+  void _onLocationUpdated(
+    DiscoverLocationUpdated event,
+    Emitter<DiscoverState> emit,
+  ) {
+    emit(state.copyWith(
+      lat: event.lat,
+      lng: event.lng,
+      locationAccess: LocationAccess.granted,
+    ));
+    add(const DiscoverProfilesLoaded(refresh: true));
+  }
+
+  void _onLocationUnavailable(
+    DiscoverLocationUnavailable event,
+    Emitter<DiscoverState> emit,
+  ) {
+    emit(state.copyWith(locationAccess: event.access));
   }
 
   void _advance(Emitter<DiscoverState> emit) {

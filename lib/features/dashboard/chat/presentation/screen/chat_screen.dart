@@ -432,16 +432,20 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 titleSpacing: 0,
                 actions: [
-                  // ⏱ 24h / Normal messages
+                  // 24h / Normal messages — the dotted-circle "disappearing
+                  // messages" icon (the stopwatch read as a workout timer)
                   BlocBuilder<ChatBloc, ChatState>(
                     buildWhen: (p, c) => p.disappearing != c.disappearing,
                     builder: (_, cs) => IconButton(
-                      tooltip: 'Message timer',
+                      key: const ValueKey('chat-mode-button'),
+                      tooltip: cs.disappearing
+                          ? 'Disappearing messages: 24 hours'
+                          : 'Disappearing messages: off',
                       onPressed: () => _showModeSheet(cs.disappearing),
                       icon: Icon(
-                        cs.disappearing ? Icons.timer : Icons.timer_outlined,
+                        Icons.history_toggle_off_rounded,
                         color: cs.disappearing
-                            ? AppColors.warning
+                            ? AppColors.teal
                             : AppColors.textMuted,
                       ),
                     ),
@@ -530,18 +534,18 @@ class _ChatScreenState extends State<ChatScreen> {
                             vertical: 7,
                             horizontal: 16,
                           ),
-                          color: AppColors.warning.withOpacity(0.10),
+                          color: AppColors.teal.withOpacity(0.10),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.timer,
-                                  size: 14, color: AppColors.warning),
+                              const Icon(Icons.history_toggle_off_rounded,
+                                  size: 14, color: AppColors.teal),
                               const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
                                   'Messages disappear after 24 hours',
                                   style: AppTextStyles.caption(
-                                    color: AppColors.warning,
+                                    color: AppColors.teal,
                                   ).copyWith(fontWeight: FontWeight.w600),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -902,7 +906,7 @@ class _ChatScreenState extends State<ChatScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Message timer', style: AppTextStyles.h3()),
+              Text('Disappearing messages', style: AppTextStyles.h3()),
               const SizedBox(height: 4),
               Text(
                 'Applies to new messages only. Both of you will see the change.',
@@ -925,7 +929,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               const SizedBox(height: 8),
               _ModeOption(
-                icon: Icons.timer_outlined,
+                icon: Icons.history_toggle_off_rounded,
                 title: '24 hours',
                 subtitle: 'New messages disappear after 24 hours',
                 selected: current,

@@ -49,23 +49,31 @@ class EmailVerifyBanner extends StatelessWidget {
           ),
         ),
         TextButton(
-          onPressed: () => showModalBottomSheet<void>(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: AppColors.surface1,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            builder: (_) => BlocProvider.value(
-              value: context.read<AuthBloc>(),
-              child: _VerifySheet(email: user.email),
-            ),
-          ),
+          onPressed: () => showEmailVerifySheet(context),
           child: const Text('Verify'),
         ),
       ]),
     );
   }
+}
+
+/// Opens the "Verify your email" code sheet (used by the Email row in
+/// Profile → Verification).
+Future<void> showEmailVerifySheet(BuildContext context) {
+  final user = context.read<AuthBloc>().state.user;
+  if (user == null) return Future.value();
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface1,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => BlocProvider.value(
+      value: context.read<AuthBloc>(),
+      child: _VerifySheet(email: user.email),
+    ),
+  );
 }
 
 class _VerifySheet extends StatefulWidget {

@@ -59,6 +59,7 @@ class Gym {
     this.ratingCount = 0,
     this.openNow,
     this.buddiesHere = const [],
+    this.trainingNow = 0,
   });
 
   final String placeId;
@@ -70,6 +71,8 @@ class Gym {
   final int ratingCount;
   final bool? openNow;
   final List<BuddyCheckin> buddiesHere;
+  /// Everyone checked in here now (a number only — no names)
+  final int trainingNow;
 
   factory Gym.fromJson(Map<String, dynamic> j) => Gym(
         placeId: j['placeId'] as String,
@@ -83,5 +86,68 @@ class Gym {
         buddiesHere: (j['buddiesHere'] as List<dynamic>? ?? [])
             .map((e) => BuddyCheckin.fromJson(e as Map<String, dynamic>))
             .toList(),
+        trainingNow: (j['trainingNow'] as num?)?.toInt() ?? 0,
       );
+}
+
+/// A buddy on the Buddy Map (GET /gyms/map). Never an exact position:
+/// at a gym (checked in, last 2 h) or the centre of a ~3 km area.
+class BuddyOnMap {
+  const BuddyOnMap({
+    required this.userId,
+    required this.firstName,
+    required this.trainingNow,
+    required this.lat,
+    required this.lng,
+    this.avatarUrl,
+    this.gymName,
+    this.placeId,
+    this.areaKm,
+    this.at,
+  });
+
+  final String userId;
+  final String firstName;
+  final String? avatarUrl;
+  final bool trainingNow;
+  final String? gymName;
+  final String? placeId;
+  final double lat;
+  final double lng;
+  final double? areaKm;
+  final DateTime? at;
+
+  bool get atGym => placeId != null;
+
+  factory BuddyOnMap.fromJson(Map<String, dynamic> j) => BuddyOnMap(
+        userId: j['userId'] as String,
+        firstName: j['firstName'] as String? ?? 'Buddy',
+        avatarUrl: j['avatarUrl'] as String?,
+        trainingNow: j['trainingNow'] == true,
+        gymName: j['gymName'] as String?,
+        placeId: j['precision'] == 'gym' ? j['placeId'] as String? : null,
+        lat: (j['lat'] as num).toDouble(),
+        lng: (j['lng'] as num).toDouble(),
+        areaKm: (j['areaKm'] as num?)?.toDouble(),
+        at: DateTime.tryParse(j['at']?.toString() ?? '')?.toLocal(),
+      );
+}
+
+class BuddyMapData {
+  const BuddyMapData({this.buddies = const [], this.ghostMode = false, this.ghostUntil});
+
+  final List<BuddyOnMap> buddies;
+  final bool ghostMode;
+  final DateTime? ghostUntil;
+
+  factory BuddyMapData.fromJson(Map<String, dynamic> j) {
+    final me = j['me'] as Map<String, dynamic>? ?? const {};
+    return BuddyMapData(
+      buddies: (j['buddies'] as List<dynamic>? ?? [])
+          .map((e) => BuddyOnMap.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      ghostMode: me['ghostMode'] == true,
+      ghostUntil: DateTime.tryParse(me['ghostUntil']?.toString() ?? '')?.toLocal(),
+    );
+  }
 }

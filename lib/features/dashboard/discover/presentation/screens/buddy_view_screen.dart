@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
-import 'package:seshlly/features/dashboard/discover/presentation/bloc/discover_state.dart';
 
 import '../../../../../core/constants/app_constants.dart';
 import '../../../../../core/theme/app_colors.dart';
@@ -13,555 +10,698 @@ import '../bloc/discover_bloc.dart';
 import '../bloc/discover_event.dart';
 import 'discover_screen.dart';
 import '../../../../safety/presentation/widgets/safety_sheet.dart';
-import '../../../../../core/services/growth_service.dart';
 
-class BuddyViewScreen extends StatefulWidget {
+/// A Discover profile, opened by tapping the top card.
+///
+/// Layout (reference-app style): the main photo on top, the other photos
+/// between the info cards, and Pass / Super Like / Like fixed at the bottom
+/// so the user can answer from anywhere in the profile. Tapping any photo
+/// opens the full-screen gallery with all of them.
+class BuddyViewScreen extends StatelessWidget {
   const BuddyViewScreen({super.key, required this.buddyProfile});
 
   final BuddyProfile buddyProfile;
 
-  @override
-  State<BuddyViewScreen> createState() => _BuddyViewScreenState();
-}
-
-class _BuddyViewScreenState extends State<BuddyViewScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // context.read<ProfileBloc>().add(BuddyProfileLoaded(userId: widget
-    // .userId));
+  List<String> get _photos {
+    final p = buddyProfile;
+    if (p.photos.isNotEmpty) return p.photos;
+    return p.avatarUrl != null ? [p.avatarUrl!] : const [];
   }
+
+  // Pass / Like / Super Like answer the top Discover card, then go back:
+  // Discover shows the match dialog or the "limit reached" message.
+  void _answer(BuildContext context, DiscoverEvent event) {
+    context.read<DiscoverBloc>().add(event);
+    Navigator.of(context).maybePop();
+  }
+
+  void _openGallery(BuildContext context, int index) => showPhotoGallery(
+        context,
+        _photos,
+        initialIndex: index,
+        name: buddyProfile.fullName,
+      );
 
   @override
   Widget build(BuildContext context) {
-    // Match dialog once per match (it was opened from build() on every rebuild)
-    return BlocListener<DiscoverBloc, DiscoverState>(
-      listenWhen: (p, c) =>
-          c.matchedUserId != null &&
-          c.matchedUserId == widget.buddyProfile.id &&
-          p.matchedUserId != c.matchedUserId,
-      listener: (context, state) {
-        GrowthService.instance.logFirst(GrowthService.firstMatch);
-        showDialog(
-        context: context,
-        builder: (_) => MatchDialog(
-          profile: widget.buddyProfile,
-          chatId: state.matchedChatId,
-          matchId: state.matchedMatchId,
-        ),
-      );
-      },
-      child: BlocBuilder<DiscoverBloc, DiscoverState>(
-      builder: (context, state) {
-        // Only the profile matters here — Discover loading more cards in the
-        // background must not replace this screen with a spinner
-        if (widget.buddyProfile == null) {
-          return Scaffold(
-            backgroundColor: AppColors.bg,
-            body: state.error != null
-                ? Center(
-                    child: Text(
-                      state.error!.message,
-                      style: AppTextStyles.body(),
-                    ),
-                  )
-                : const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  ),
-          );
-        }
-        
-        /*else{
-         if(mounted){
-           context.pop();
-         }
-        }*/
+    final p = buddyProfile;
+    final photos = _photos;
+    final width = MediaQuery.of(context).size.width;
 
-        final p = widget.buddyProfile;
-        final actColor = p.primaryActivity != null
-            ? Color(
-                AppConstants.activities.firstWhere(
-                      (a) => a['id'] == p.primaryActivity,
-                      orElse: () => {'color': 0xFF0A84FF},
-                    )['color']
-                    as int,
-              )
-            : AppColors.primary;
+    // Photo i (i ≥ 1) goes after the section with the same number; extra
+    // photos (if a section is empty) are added at the end.
+    Widget? photoAt(int i) => i < photos.length
+        ? _InlinePhoto(
+            key: ValueKey('profile-photo-$i'),
+            url: photos[i],
+            name: p.firstName,
+            onTap: () => _openGallery(context, i),
+          )
+        : null;
 
-        return Scaffold(
-          backgroundColor: AppColors.bg,
-          body: CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                expandedHeight: 300,
-                pinned: true,
-                backgroundColor: AppColors.surface1,
-                leading: IconButton(
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.arrow_back, size: 18),
-                  ),
-                  onPressed: () => context.pop(),
+    final sections = <Widget>[
+      if (p.bio != null && p.bio!.trim().isNotEmpty)
+        _Card(label: 'About me', child: Text(p.bio!.trim(), style: AppTextStyles.body())),
+      _trainingCard(p),
+      _statsRow(p),
+      if (p.goals.isNotEmpty) _goalsCard(p),
+      _compatCard(p),
+    ];
+
+    final body = <Widget>[];
+    var nextPhoto = 1;
+    for (final s in sections) {
+      body.add(s);
+      final ph = photoAt(nextPhoto);
+      if (ph != null) {
+        body.add(ph);
+        nextPhoto++;
+      }
+    }
+    while (nextPhoto < photos.length) {
+      body.add(photoAt(nextPhoto)!);
+      nextPhoto++;
+    }
+    if (p.city != null || p.distanceKm != null) body.add(_locationCard(p));
+    body.add(_reportRow(context, p));
+
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            key: const ValueKey('profile-scroll'),
+            padding: const EdgeInsets.only(bottom: 120),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _Cover(
+                  profile: p,
+                  photoCount: photos.length,
+                  height: width * 4 / 3,
+                  photo: photos.isEmpty
+                      ? null
+                      : _NetPhoto(
+                          key: const ValueKey('profile-photo-0'),
+                          url: photos.first,
+                          name: p.firstName,
+                        ),
+                  onTap: photos.isEmpty ? null : () => _openGallery(context, 0),
                 ),
-                actions: [
-                  // ⋮ Report / Block
-                  SafetyMenuButton(
-                    userId: p.id,
-                    name: p.fullName,
-                    source: 'profile',
-                    boxed: true,
-                    onBlocked: () => context.pop(),
-                  ),
-                ],
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      (p.avatarUrl != null || p.photos.isNotEmpty)
-                          ? PhotoCarousel(
-                        photos:    p.photos,
-                        avatarUrl: p.avatarUrl,
-                        name:      p.firstName,
-                        height:    350,
-                        onOpenGallery: (i) => showPhotoGallery(
-                          context,
-                          p.photos.isNotEmpty ? p.photos : [p.avatarUrl!],
-                          initialIndex: i,
-                          name: p.fullName,
-                        ),
-                      )
-                          : _coverFallback(p, actColor),
-                      // Shade only — must not block taps/swipes on the photos
-                      IgnorePointer(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.transparent,
-                                Colors.black.withOpacity(0.9),
-                              ],
-                              stops: const [0.4, 1.0],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 20,
-                        left: 20,
-                        right: 20,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text(p.fullName, style: AppTextStyles.h2()),
-                                if (p.idVerified) ...[
-                                  const SizedBox(width: 6),
-                                  const Icon(
-                                    Icons.verified,
-                                    color: AppColors.blue,
-                                    size: 20,
-                                  ),
-                                ],
-                                if (p.isInfluencer) ...[
-                                  const SizedBox(width: 4),
-                                  const Icon(
-                                    Icons.star,
-                                    color: AppColors.gold,
-                                    size: 20,
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                AppBadge(label: p.levelName, small: true),
-                                const SizedBox(width: 8),
-                                if (p.isPro)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: AppColors.compatGradient,
-                                      borderRadius: BorderRadius.circular(100),
-                                    ),
-                                    child: Text(
-                                      'PRO',
-                                      style: AppTextStyles.label(
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                if (p.isOnline) ...[
-                                  const SizedBox(width: 8),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 8,
-                                        height: 8,
-                                        decoration: const BoxDecoration(
-                                          color: AppColors.teal,
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(
-                                        'Online',
-                                        style: AppTextStyles.bodySM(
-                                          color: AppColors.teal,
-                                        ).copyWith(fontWeight: FontWeight.w600),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      // Actions
-                      const SizedBox(height: 16),
-
-                      // Compat
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface1,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Row(
-                          children: [
-                            CompatRing(score: p.compatibilityScore, size: 72),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Compatibility Score',
-                                    style: AppTextStyles.subtitle(),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    p.compatibilityScore >= 80
-                                        ? '🔥 Excellent match! You train the same way.'
-                                        : p.compatibilityScore >= 60
-                                        ? '👍 Good match. Similar fitness goals.'
-                                        : p.compatibilityScore >= 40
-                                        ? '🤝 Decent match. Worth a try.'
-                                        : '⚡ Different styles — might be complementary!',
-                                    style: AppTextStyles.bodySM(),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ).animate(delay: 100.ms).fadeIn(),
-
-                      const SizedBox(height: 12),
-
-                      // Stats
-                      Row(
-                        children: [
-                          _InfoCard(
-                            emoji: '🤝',
-                            value: '${p.buddyCount}',
-                            label: 'Buddies',
-                          ),
-                          const SizedBox(width: 10),
-                          _InfoCard(
-                            emoji: '💪',
-                            value: '${p.sessionCount}',
-                            label: 'Sessions',
-                          ),
-                          const SizedBox(width: 10),
-                          _InfoCard(
-                            emoji: '⭐',
-                            value: '${p.trustScore.toInt()}',
-                            label: 'Trust',
-                          ),
-                        ],
-                      ).animate(delay: 150.ms).fadeIn(),
-
-                      // "Confirms on time" — buddy reliability
-                      if (p.confirmRate != null) ...[
-                        const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface1,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Row(
-                            children: [
-                              const Text('✅', style: TextStyle(fontSize: 14)),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text('Confirms proofs on time',
-                                    style: AppTextStyles.bodySM()),
-                              ),
-                              Text(
-                                '${p.confirmRate}%',
-                                style: AppTextStyles.subtitle(
-                                  color: p.confirmRate! >= 80
-                                      ? AppColors.teal
-                                      : p.confirmRate! >= 50
-                                          ? AppColors.warning
-                                          : AppColors.error,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 12),
-
-                      // Bio
-                      if (p.bio != null && p.bio!.isNotEmpty)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface1,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('About', style: AppTextStyles.subtitle()),
-                              const SizedBox(height: 8),
-                              Text(p.bio!, style: AppTextStyles.body()),
-                            ],
-                          ),
-                        ).animate(delay: 200.ms).fadeIn(),
-
-                      if (p.bio != null) const SizedBox(height: 12),
-
-                      // Training info
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface1,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SectionHeader(title: 'Training Info'),
-                            const SizedBox(height: 14),
-                            if (p.primaryActivity != null)
-                              _InfoRow(
-                                label: 'Main Activity',
-                                value:
-                                    p.primaryActivity![0].toUpperCase() +
-                                    p.primaryActivity!.substring(1),
-                              ),
-                            if (p.experienceLevel != null)
-                              _InfoRow(
-                                label: 'Level',
-                                value:
-                                    p.experienceLevel![0].toUpperCase() +
-                                    p.experienceLevel!.substring(1),
-                              ),
-                            if (p.primaryGym != null)
-                              _InfoRow(label: 'Gym', value: p.primaryGym!),
-                            if (p.city != null)
-                              _InfoRow(label: 'Location', value: p.city!),
-                            if (p.distanceKm != null)
-                              _InfoRow(
-                                label: 'Distance',
-                                value:
-                                    '${p.distanceKm!.toStringAsFixed(1)} km away',
-                              ),
-                          ],
-                        ),
-                      ).animate(delay: 250.ms).fadeIn(),
-
-                      const SizedBox(height: 12),
-
-                      // Goals
-                      if (p.goals.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface1,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SectionHeader(title: 'Goals'),
-                              const SizedBox(height: 12),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: p.goals.map((id) {
-                                  final g = AppConstants.goals.firstWhere(
-                                    (x) => x['id'] == id,
-                                    orElse: () => {
-                                      'id': id,
-                                      'emoji': '🎯',
-                                      'label': id,
-                                    },
-                                  );
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surface2,
-                                      borderRadius: BorderRadius.circular(100),
-                                      border: Border.all(
-                                        color: AppColors.border2,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          g['emoji']!,
-                                          style: const TextStyle(fontSize: 14),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          g['label']!,
-                                          style:
-                                              AppTextStyles.bodySM(
-                                                color: AppColors.textSecondary,
-                                              ).copyWith(
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ],
-                          ),
-                        ).animate(delay: 300.ms).fadeIn(),
-
-                      SizedBox(height: 20),
-                      ActionBtn(
-                        icon: Icons.favorite,
-                        color: AppColors.primary,
-                        size: 64,
-                        onTap: () => context.read<DiscoverBloc>().add(
-                          DiscoverSwipedRight(userId: widget.buddyProfile!.id),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+                for (final w in body)
+                  Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 0), child: w),
+              ],
+            ),
           ),
-        );
-      },
-    ),
+
+          // Back + Report/Block, over the photo
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  children: [
+                    _RoundIconButton(
+                      icon: Icons.arrow_back,
+                      tooltip: 'Back',
+                      onTap: () => Navigator.of(context).maybePop(),
+                    ),
+                    const Spacer(),
+                    SafetyMenuButton(
+                      userId: p.id,
+                      name: p.fullName,
+                      source: 'profile',
+                      boxed: true,
+                      onBlocked: () => Navigator.of(context).maybePop(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Sticky actions
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _ActionBar(
+              onPass: () => _answer(context, DiscoverSwipedLeft(userId: p.id)),
+              onSuper: () => _answer(context, DiscoverSuperLiked(userId: p.id)),
+              onLike: () => _answer(context, DiscoverSwipedRight(userId: p.id)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _coverFallback(BuddyProfile p, Color actColor) => Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [actColor.withOpacity(0.3), AppColors.bg],
-      ),
-    ),
-    child: Center(
-      child: Text(
-        p.firstName[0].toUpperCase(),
-        style: TextStyle(
-          fontSize: 80,
-          fontWeight: FontWeight.w800,
-          color: actColor,
+  // ── Sections (existing profile data only) ──
+
+  Widget _trainingCard(BuddyProfile p) {
+    String cap(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1).replaceAll('_', ' ');
+    Map<String, dynamic>? act(String id) {
+      for (final a in AppConstants.activities) {
+        if (a['id'] == id) return a;
+      }
+      return null;
+    }
+
+    final ids = <String>[
+      if (p.primaryActivity != null) p.primaryActivity!,
+      ...p.activities.where((a) => a != p.primaryActivity),
+    ];
+    final chips = <Widget>[
+      for (final id in ids)
+        _Chip(
+          text: act(id)?['label'] as String? ?? cap(id),
+          emoji: act(id)?['emoji'] as String?,
         ),
+      if (p.experienceLevel != null) _Chip(text: cap(p.experienceLevel!), emoji: '📈'),
+      if (p.primaryGym != null) _Chip(text: p.primaryGym!, emoji: '📍'),
+    ];
+    return _Card(
+      label: 'Training',
+      child: chips.isEmpty
+          ? Text('No training details yet', style: AppTextStyles.bodySM())
+          : Wrap(spacing: 8, runSpacing: 8, children: chips),
+    );
+  }
+
+  Widget _statsRow(BuddyProfile p) => Column(
+        children: [
+          Row(
+            children: [
+              _Stat(value: '${p.sessionCount}', label: 'Sessions'),
+              const SizedBox(width: 10),
+              _Stat(value: '${p.buddyCount}', label: 'Buddies'),
+              const SizedBox(width: 10),
+              _Stat(value: '${p.trustScore.toInt()}', label: 'Trust'),
+            ],
+          ),
+          if (p.confirmRate != null) ...[
+            const SizedBox(height: 10),
+            _Card(
+              child: Row(
+                children: [
+                  Expanded(child: Text('Confirms proofs on time', style: AppTextStyles.bodySM())),
+                  Text(
+                    '${p.confirmRate}%',
+                    style: AppTextStyles.subtitle(
+                      color: p.confirmRate! >= 80
+                          ? AppColors.teal
+                          : p.confirmRate! >= 50
+                              ? AppColors.warning
+                              : AppColors.error,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      );
+
+  Widget _goalsCard(BuddyProfile p) => _Card(
+        label: 'Goals',
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final id in p.goals)
+              () {
+                final g = AppConstants.goals.firstWhere(
+                  (x) => x['id'] == id,
+                  orElse: () => {'id': id, 'emoji': '🎯', 'label': id},
+                );
+                return _Chip(text: '${g['label']}', emoji: '${g['emoji']}');
+              }(),
+          ],
+        ),
+      );
+
+  Widget _compatCard(BuddyProfile p) {
+    final s = p.compatibilityScore;
+    final text = s >= 80
+        ? 'Excellent match. You train the same way.'
+        : s >= 60
+            ? 'Good match. Similar fitness goals.'
+            : s >= 40
+                ? 'Decent match. Worth a try.'
+                : 'Different styles. Might be complementary!';
+    return _Card(
+      child: Row(
+        children: [
+          CompatRing(score: s, size: 64),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Compatibility Score', style: AppTextStyles.subtitle()),
+                const SizedBox(height: 4),
+                Text(text, style: AppTextStyles.bodySM()),
+              ],
+            ),
+          ),
+        ],
       ),
-    ),
-  );
+    );
+  }
+
+  Widget _locationCard(BuddyProfile p) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [AppColors.primary, AppColors.teal]),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${p.firstName} trains in',
+                style: AppTextStyles.bodySM(color: Colors.white.withOpacity(0.85))),
+            const SizedBox(height: 4),
+            Text(
+              [
+                if (p.city != null) p.city!,
+                if (p.distanceKm != null) '${p.distanceKm!.toStringAsFixed(1)} km away',
+              ].join(' · '),
+              style: AppTextStyles.h3(color: Colors.white),
+            ),
+          ],
+        ),
+      );
+
+  Widget _reportRow(BuildContext context, BuddyProfile p) => Center(
+        child: TextButton.icon(
+          onPressed: () async {
+            final blocked = await showSafetySheet(
+              context,
+              userId: p.id,
+              name: p.fullName,
+              source: 'profile',
+            );
+            if (blocked && context.mounted) Navigator.of(context).maybePop();
+          },
+          icon: const Icon(Icons.flag_outlined, size: 16, color: AppColors.error),
+          label: Text('Report or block', style: AppTextStyles.bodySM(color: AppColors.error)),
+        ),
+      );
 }
 
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({
-    required this.emoji,
-    required this.value,
-    required this.label,
+// ── Pieces ──
+
+class _Cover extends StatelessWidget {
+  const _Cover({
+    required this.profile,
+    required this.photoCount,
+    required this.height,
+    required this.photo,
+    required this.onTap,
   });
 
-  final String emoji, value, label;
+  final BuddyProfile profile;
+  final int photoCount;
+  final double height;
+  final Widget? photo;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = profile;
+    return SizedBox(
+      height: height,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          GestureDetector(
+            onTap: onTap,
+            child: photo ??
+                Container(
+                  color: AppColors.surface2,
+                  alignment: Alignment.center,
+                  child: Text(
+                    p.firstName.isEmpty ? '?' : p.firstName[0].toUpperCase(),
+                    style: const TextStyle(fontSize: 80, fontWeight: FontWeight.w800, color: AppColors.primary),
+                  ),
+                ),
+          ),
+          IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.35),
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.9),
+                  ],
+                  stops: const [0.0, 0.45, 1.0],
+                ),
+              ),
+            ),
+          ),
+          // How many photos there are (tap opens them all)
+          if (photoCount > 1)
+            Positioned(
+              right: 16,
+              bottom: 96,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.55),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.photo_library_outlined, size: 14, color: Colors.white),
+                      const SizedBox(width: 5),
+                      Text('$photoCount photos',
+                          style: AppTextStyles.caption(color: Colors.white)
+                              .copyWith(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 20,
+            child: IgnorePointer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          p.age != null ? '${p.firstName}, ${p.age}' : p.fullName,
+                          style: AppTextStyles.h1(color: Colors.white),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (p.idVerified) ...[
+                        const SizedBox(width: 6),
+                        const Icon(Icons.verified, color: AppColors.blue, size: 22),
+                      ],
+                      if (p.isInfluencer) ...[
+                        const SizedBox(width: 4),
+                        const Icon(Icons.star, color: AppColors.gold, size: 22),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      AppBadge(label: p.levelName, small: true),
+                      if (p.isPro)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            gradient: AppColors.compatGradient,
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Text('PRO', style: AppTextStyles.label(color: Colors.black)),
+                        ),
+                      if (p.isOnline)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(color: AppColors.teal, shape: BoxShape.circle),
+                            ),
+                            const SizedBox(width: 5),
+                            Text('Online',
+                                style: AppTextStyles.bodySM(color: AppColors.teal)
+                                    .copyWith(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      if (p.distanceKm != null)
+                        Text('${p.distanceKm!.toStringAsFixed(1)} km away',
+                            style: AppTextStyles.bodySM(color: Colors.white.withOpacity(0.8))),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NetPhoto extends StatelessWidget {
+  const _NetPhoto({super.key, required this.url, required this.name});
+  final String url;
+  final String name;
+
+  @override
+  Widget build(BuildContext context) => Image.network(
+        url,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (_, __, ___) => Container(
+          color: AppColors.surface2,
+          child: Center(child: AppAvatar(name: name, size: 60)),
+        ),
+      );
+}
+
+class _InlinePhoto extends StatelessWidget {
+  const _InlinePhoto({super.key, required this.url, required this.name, required this.onTap});
+  final String url;
+  final String name;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: 'Photo of $name. Tap to see all photos',
+        child: GestureDetector(
+          onTap: onTap,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: AspectRatio(aspectRatio: 4 / 5, child: _NetPhoto(url: url, name: name)),
+          ),
+        ),
+      );
+}
+
+class _Card extends StatelessWidget {
+  const _Card({this.label, required this.child});
+  final String? label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface1,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (label != null) ...[
+              Text(label!.toUpperCase(),
+                  style: AppTextStyles.label(color: AppColors.textMuted)
+                      .copyWith(letterSpacing: 1.1)),
+              const SizedBox(height: 10),
+            ],
+            child,
+          ],
+        ),
+      );
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({required this.text, this.emoji});
+  final String text;
+  final String? emoji;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: AppColors.surface2,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: AppColors.border2),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (emoji != null) ...[
+              Text(emoji!, style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 6),
+            ],
+            Flexible(
+              child: Text(
+                text,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodySM(color: AppColors.textPrimary)
+                    .copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.value, required this.label});
+  final String value;
+  final String label;
 
   @override
   Widget build(BuildContext context) => Expanded(
-    child: Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface1,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 20)),
-          const SizedBox(height: 4),
-          Text(value, style: AppTextStyles.h3(color: AppColors.primary)),
-          Text(label, style: AppTextStyles.caption()),
-        ],
-      ),
-    ),
-  );
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surface1,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              Text(value, style: AppTextStyles.h3(color: AppColors.teal)),
+              const SizedBox(height: 2),
+              Text(label, style: AppTextStyles.caption()),
+            ],
+          ),
+        ),
+      );
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
-
-  final String label, value;
+class _RoundIconButton extends StatelessWidget {
+  const _RoundIconButton({required this.icon, required this.tooltip, required this.onTap});
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: AppTextStyles.bodySM()),
-        Text(
-          value,
-          style: AppTextStyles.bodySM(
-            color: AppColors.textPrimary,
-          ).copyWith(fontWeight: FontWeight.w600),
+  Widget build(BuildContext context) => IconButton(
+        tooltip: tooltip,
+        onPressed: onTap,
+        icon: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 20, color: Colors.white),
         ),
-      ],
-    ),
-  );
+      );
+}
+
+class _ActionBar extends StatelessWidget {
+  const _ActionBar({required this.onPass, required this.onSuper, required this.onLike});
+  final VoidCallback onPass;
+  final VoidCallback onSuper;
+  final VoidCallback onLike;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.bg.withOpacity(0), AppColors.bg.withOpacity(0.95), AppColors.bg],
+            stops: const [0, 0.4, 1],
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _ActionCircle(
+                  key: const ValueKey('action-pass'),
+                  icon: Icons.close_rounded,
+                  label: 'Pass',
+                  size: 60,
+                  color: AppColors.error,
+                  onTap: onPass,
+                ),
+                const SizedBox(width: 20),
+                _ActionCircle(
+                  key: const ValueKey('action-super'),
+                  icon: Icons.star_rounded,
+                  label: 'Super Like',
+                  size: 52,
+                  color: AppColors.gold,
+                  onTap: onSuper,
+                ),
+                const SizedBox(width: 20),
+                _ActionCircle(
+                  key: const ValueKey('action-like'),
+                  icon: Icons.favorite_rounded,
+                  label: 'Like',
+                  size: 68,
+                  color: AppColors.primary,
+                  filled: true,
+                  onTap: onLike,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+class _ActionCircle extends StatelessWidget {
+  const _ActionCircle({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.size,
+    required this.color,
+    required this.onTap,
+    this.filled = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final double size;
+  final Color color;
+  final VoidCallback onTap;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: label,
+        child: Material(
+          color: filled ? color : AppColors.surface1,
+          shape: CircleBorder(side: BorderSide(color: color.withOpacity(filled ? 0 : 0.45), width: 2)),
+          elevation: filled ? 6 : 0,
+          shadowColor: color.withOpacity(0.5),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: Icon(icon, color: filled ? Colors.white : color, size: size * 0.45),
+            ),
+          ),
+        ),
+      );
 }

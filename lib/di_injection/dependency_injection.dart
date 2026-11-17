@@ -52,6 +52,7 @@ import '../features/safety/data/repositories_impl/safety_repository_impl.dart';
 import '../features/gym_map/data/datasource/gym_map_remote_datasource.dart';
 import '../features/gym_map/data/repositories/gym_map_repository.dart';
 import '../features/gym_map/data/repositories_impl/gym_map_repository_impl.dart';
+import '../features/gym_map/presentation/bloc/buddy_map_bloc.dart';
 import '../features/subscription/data/repositories/subscription_repositories_impl.dart';
 
 final getIt = GetIt.instance;
@@ -196,6 +197,7 @@ Future<void> setupDependencies() async {
   getIt.registerLazySingleton<GymMapRepository>(
         () => GymMapRepositoryImpl(getIt(), getIt()),
   );
+  getIt.registerFactory<BuddyMapBloc>(() => BuddyMapBloc(getIt()));
 
   getIt.registerFactory<StrikeBloc>(
         () => StrikeBloc(api: getIt(), chatRepository: getIt<ChatRepository>()),

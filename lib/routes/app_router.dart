@@ -47,6 +47,8 @@ import '../features/feed_leaderboard/presentation/screen/feed_screen.dart';
 import '../features/feed_leaderboard/presentation/screen/leaderboard_screen.dart';
 import '../features/feed_leaderboard/presentation/widgets/feed_stories.dart';
 import '../core/services/monitoring_service.dart';
+import '../features/gym_map/presentation/bloc/buddy_map_bloc.dart';
+import '../features/gym_map/presentation/screens/buddy_map_screen.dart';
 import '../features/gym_map/presentation/screens/gym_map_screen.dart';
 import '../features/safety/presentation/screens/blocked_users_screen.dart';
 import '../features/match/match_screen.dart';
@@ -345,6 +347,23 @@ GoRouter buildRouter(AuthBloc authBloc) {
         path: AppRoutes.gymMap,
         builder: (_, __) => const GymMapScreen(),
       ),
+      // Buddy Map — swipe left on Discover; slides in from the right
+      GoRoute(
+        path: AppRoutes.buddyMap,
+        pageBuilder: (_, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: BlocProvider(
+            create: (_) => getIt<BuddyMapBloc>(),
+            child: const BuddyMapScreen(),
+          ),
+          transitionsBuilder: (_, anim, __, child) => SlideTransition(
+            position: Tween(begin: const Offset(1, 0), end: Offset.zero)
+                .chain(CurveTween(curve: Curves.easeOutCubic))
+                .animate(anim),
+            child: child,
+          ),
+        ),
+      ),
 
       // ── Feed ─────────────────────────────────────────
       GoRoute(path: AppRoutes.feed, builder: (_, __) => const FeedScreen()),
@@ -483,6 +502,7 @@ class AppRoutes {
   static const storyViewer = '/stories';
   static const blockedUsers = '/settings/blocked';
   static const gymMap = '/gyms/map';
+  static const buddyMap = '/buddy-map';
 
   // Strike 2 — Buddy Strike
   static const strikeView = '/strike/view';

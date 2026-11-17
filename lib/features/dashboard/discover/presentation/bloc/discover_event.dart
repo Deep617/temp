@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:seshlly/core/services/location_service.dart';
 
 abstract class DiscoverEvent extends Equatable {
   const DiscoverEvent();
@@ -40,7 +41,7 @@ class DiscoverFilterChanged extends DiscoverEvent {
     this.level,
     this.lat,
     this.lng,
-    this.radiusKm = 5.0,
+    this.radiusKm = 10.0,
   });
 
   final String? activity;
@@ -51,6 +52,28 @@ class DiscoverFilterChanged extends DiscoverEvent {
 
   @override
   List<Object?> get props => [activity, level, lat, lng, radiusKm];
+}
+
+/// The phone's position is known → search within 10 km of it.
+class DiscoverLocationUpdated extends DiscoverEvent {
+  const DiscoverLocationUpdated({required this.lat, required this.lng});
+
+  final double lat;
+  final double lng;
+
+  @override
+  List<Object?> get props => [lat, lng];
+}
+
+/// No position (permission denied, location off…) → the screen shows a
+/// "Turn on location" banner.
+class DiscoverLocationUnavailable extends DiscoverEvent {
+  const DiscoverLocationUnavailable(this.access);
+
+  final LocationAccess access;
+
+  @override
+  List<Object?> get props => [access];
 }
 
 // Referral events — new file ya existing events file mein add karo

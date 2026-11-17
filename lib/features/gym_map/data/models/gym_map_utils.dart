@@ -35,5 +35,30 @@ Uri directionsUri(Gym gym) => Uri.https('www.google.com', '/maps/dir/', {
       'travelmode': 'driving',
     });
 
+/// The gym to ask "Are you at …? Check in" about when the app opens:
+/// the nearest gym within [maxMeters], unless already checked in or already
+/// asked about that gym today.
+Gym? pickGymToPrompt({
+  required List<Gym> gyms,
+  required double lat,
+  required double lng,
+  required bool alreadyCheckedIn,
+  required Set<String> promptedPlaceIds,
+  double maxMeters = 200,
+}) {
+  if (alreadyCheckedIn) return null;
+  Gym? best;
+  var bestD = double.infinity;
+  for (final g in gyms) {
+    if (promptedPlaceIds.contains(g.placeId)) continue;
+    final d = distanceMeters(lat, lng, g.lat, g.lng);
+    if (d <= maxMeters && d < bestD) {
+      best = g;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
 /// OpenStreetMap data must be credited on screen (ODbL licence).
 bool needsOsmCredit(List<Gym> gyms) => gyms.any((g) => g.placeId.startsWith('osm:'));

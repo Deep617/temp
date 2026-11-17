@@ -35,4 +35,12 @@ class GymMapRepositoryImpl extends BaseRepository implements GymMapRepository {
   @override
   Future<void> checkOut() =>
       remote.checkOut().catchError((e) => throw AppError.fromException(e));
+
+  @override
+  Future<BuddyMapData> buddyMap() =>
+      remote.buddyMap().catchError((e) => throw AppError.fromException(e));
+
+  @override
+  Future<void> setGhostMode(String mode) =>
+      remote.setGhostMode(mode).catchError((e) => throw AppError.fromException(e));
 }
